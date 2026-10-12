@@ -766,7 +766,7 @@ class OutdoorClass extends Actor {
     // posiciones de los alumnos; el hueco libre (índice 2) es el tuyo
     this.seats = [0, 22, 48, 74, 96].map(dx => x * TS + dx);
     this.spot = this.seats[2];
-    this.board = x * TS + 128; this.teacherX = x * TS + 108;
+    this.board = x * TS + 128; this.teacherX = x * TS + 180; // al otro lado de la pizarra
   }
   update(g) {
     this.animT++;
@@ -785,11 +785,11 @@ class OutdoorClass extends Actor {
     ctx.fillStyle = '#2f5a3e'; ctx.fillRect(bxp + 2, base - 50, 44, 26);
     drawText(ctx, '2+2=4', bxp + 24, base - 46, { color: '#e8f0e0', align: 'center' });
     drawText(ctx, 'AEIOU', bxp + 24, base - 36, { color: '#e8f0e0', align: 'center' });
-    // el profesor: escribe en la pizarra, y cuando llegas se gira y te señala el sitio
+    // el profesor, de pie junto a la pizarra mirando hacia ella y hacia los
+    // alumnos; escribe con la tiza (destello en la mano)
     const near = Math.abs(g.player.cx - this.spot) < 120 && !this.done;
-    const timg = near ? flipS(OBJ.teacher) : OBJ.teacher;
-    ctx.drawImage(timg, Math.round(this.teacherX), base - 27 + (Math.floor(this.animT / 30) % 2 && !near ? 0 : 0));
-    if (!near && Math.floor(this.animT / 20) % 2) { ctx.fillStyle = '#ffffff'; ctx.fillRect(this.teacherX + 13, base - 16, 2, 1); }
+    ctx.drawImage(flipS(OBJ.teacher), Math.round(this.teacherX), base - 27);
+    if (!near && Math.floor(this.animT / 20) % 2) { ctx.fillStyle = '#ffffff'; ctx.fillRect(this.teacherX - 1, base - 16, 2, 1); }
     // alumnos sentados en el suelo mirando la pizarra
     this.seats.forEach((sx, i) => {
       if (i === 2) {
