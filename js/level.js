@@ -184,7 +184,6 @@ const BIRDS = [];
 const HERBS = [];
 MTN.up.forEach((l, i) => { if (i % 4 === 2) HERBS.push({ type: 'herb', x: mid(l) + (i % 8 === 2 ? 3 : -3), y: l[1] - 3 }); });
 // puntos de control en la montaña (reapareces montado en la cabra)
-const MTN_CP = [MTN.up[8], MTN.up[16], MTN.up[24]].map(l => ({ type: 'checkpoint', x: Math.floor(mid(l)), y: l[1] }));
 
 // Silueta de la montaña calculada a partir del camino: cada saliente queda
 // pegada a la roca (nada de salientes flotando en el aire).
@@ -311,17 +310,13 @@ const LEVEL = {
     { type: 'llama', x: 10, y: G },
     { type: 'bridge', x0: 50, x1: 64, row: G - 2 },
     { type: 'cabra', x: 91, y: G },
-    // puntos de control invisibles
-    { type: 'checkpoint', x: 39, y: G - 2 },
-    { type: 'checkpoint', x: 66, y: G - 2 },
-    { type: 'checkpoint', x: 88, y: G },
-    ...MTN_CP,
+    // puntos de control invisibles: el valle y la subida son cortos, así que el
+    // primero está en la cumbre, antes del parapente
     { type: 'checkpoint', x: 151, y: 110, w: 14, h: 10 },   // toda la orilla donde aterriza el parapente
     { type: 'checkpoint', x: sx(44), y: 108 },
     { type: 'checkpoint', x: sx(72.5), y: 111 },
     { type: 'checkpoint', x: sx(99), y: 107 },
     { type: 'checkpoint', x: 226, y: 103, w: 8 },        // al salir del huaico
-    { type: 'checkpoint', x: 242, y: 110, w: 6 },        // a la orilla de la selva baja
     { type: 'rockfall', x: 82, y: G - 13, interval: 130 },
     { type: 'checkpoint', x: 121, y: SUMMIT },
     // en la cumbre crece un platanal: su hoja gigante sirve de parapente
