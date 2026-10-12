@@ -343,8 +343,11 @@ const LEVEL = {
     { type: 'school', x: SCH + 14, y: 110 },
     { type: 'outdoorClass', x: SCH + 22, y: 110 },
     // mototaxis estacionados: el transporte del pueblo
-    { type: 'mototaxi', x: SCH + 36, y: 110, model: 'rojo' },
-    { type: 'mototaxi', x: SCH + 39.8, y: 110, model: 'azul', flip: true, run: true },
+    // paradero: los mototaxis hacen fila uno detrás de otro; el primero ya tiene el motor prendido
+    { type: 'mototaxi', x: SCH + 34.5, y: 110, model: 'azul' },
+    { type: 'mototaxi', x: SCH + 36.6, y: 110, model: 'rojo' },
+    { type: 'mototaxi', x: SCH + 38.7, y: 110, model: 'azul' },
+    { type: 'mototaxi', x: SCH + 40.8, y: 110, model: 'rojo', run: true },
     { type: 'mototaxi', x: SCH - 4.8, y: 110, model: 'azul' },   // esperando pasajeros en el puerto
     ...BIRDS,
     ...HERBS,
