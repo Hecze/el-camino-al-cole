@@ -663,13 +663,13 @@
     // muro de follaje al fondo, con el borde superior irregular
     // al final la selva se aclara poco a poco (el follaje se desvanece) en vez de cortarse de golpe
     const fadeA = (x) => J.fade ? clamp(Math.min(x1 - x, x - x0) / (J.fade * TILE), 0, 1) : 1;
+    // en los bordes no se hace transparente (se veía el fondo a través): el follaje baja como una loma
     for (let x = cx0 - (cx0 % 4); x < cx1; x += 4) {
-      ctx.globalAlpha = fadeA(x);
-      const top = wr - 150 + Math.round(Math.sin(x * 0.05) * 10 + hash(x >> 3) * 14) + Math.round((1 - fadeA(x)) * 80);
+      const k = fadeA(x); if (k <= 0) continue;
+      const top = wr - 150 + Math.round(Math.sin(x * 0.05) * 10 + hash(x >> 3) * 14) + Math.round(Math.pow(1 - k, 1.5) * 150);
       ctx.fillStyle = '#244a2c'; ctx.fillRect(x, top, 4, wr - top + 4);
       ctx.fillStyle = '#2f5d34'; ctx.fillRect(x, top, 4, 3);
     }
-    ctx.globalAlpha = 1;
     for (let i = 0; i < 150; i++) {
       // manchas de hojas
       const x = x0 + Math.floor(hash(i * 31) * (x1 - x0)); if (x < cx0 - 10 || x > cx1) continue;

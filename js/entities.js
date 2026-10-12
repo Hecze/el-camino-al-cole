@@ -789,8 +789,8 @@ class School extends Actor {
   draw(ctx) {
     const bx = Math.round(this.x), base = this.base;
     ctx.save();
-    // el edificio entero está ladeado
-    ctx.translate(bx + 6, base); ctx.rotate(-0.035); ctx.translate(-(bx + 6), -base);
+    // el edificio entero está ladeado: el lado izquierdo se hunde en el barro (no flota)
+    ctx.translate(bx + 116, base); ctx.rotate(-0.035); ctx.translate(-(bx + 116), -base);
     const R = (c, x, y, w, h) => { ctx.fillStyle = c; ctx.fillRect(bx + x, base + y, w, h); };
     R('rgba(40,20,10,0.25)', 2, -2, 118, 2);
     // muro sucio y descascarado

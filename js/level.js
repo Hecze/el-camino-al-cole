@@ -194,7 +194,8 @@ const LEVEL = {
   ],
   // fondo de la selva baja: lomas amazónicas bajas y brumosas, sin nevados
   bgEast: {
-    x0: 232, x1: 256, anchorRow: 112,
+    // el cambio ocurre en plena selva, donde el muro de follaje tapa todo el cielo
+    x0: SV + 22, x1: SV + 32, anchorRow: 112,
     layers: [
       { kind: 'hills', color: '#8fb0a8', color2: '#7a9c96', y: 109.6, parallax: 0.08, vpar: 0.10, amp: 2.4, seed: 9 },
       { kind: 'canopy', color: '#5f8f6a', color2: '#4d7a5a', y: 110.6, parallax: 0.18, vpar: 0.24, amp: 2.2, seed: 13 },
@@ -213,7 +214,7 @@ const LEVEL = {
   jungle: { x0: 228, x1: SV + SWID + 4, fade: 16, waterRow: 112, trees: [sx(5), sx(26), sx(35), sx(45), sx(53), sx(61), sx(68), sx(80), sx(90), sx(98), sx(106), sx(116)] },
   goatEnd: 118, goatEndRow: SUMMIT,
   // al planear no puedes alejarte de la ladera este
-  glide: { x0: 119, x1: 160 },
+  glide: { x0: 119, x1: 155.4 },   // a la derecha no pasa de la orilla: más allá está el precipicio del huaico
   glideLandRow: 100,   // la hoja solo se suelta al aterrizar por debajo de esta fila (el valle)
   altitude: { baseRow: G, baseM: 3650, perRow: 13 },
   zones: [
