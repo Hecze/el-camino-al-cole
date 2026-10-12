@@ -314,10 +314,8 @@ const LEVEL = {
     // puntos de control invisibles: el valle y la subida son cortos, así que el
     // primero está en la cumbre, antes del parapente
     { type: 'checkpoint', x: 151, y: 110, w: 14, h: 10 },   // toda la orilla donde aterriza el parapente
-    { type: 'checkpoint', x: sx(44), y: 108 },
-    { type: 'checkpoint', x: sx(72.5), y: 111 },
-    { type: 'checkpoint', x: sx(99), y: 107 },
-    { type: 'checkpoint', x: 250, y: 103, w: 8 },        // al salir del huaico
+    // un solo punto de control en la selva: en la orilla, antes de entrar al agua
+    { type: 'checkpoint', x: SV - 4, y: 110, w: 4 },
     { type: 'rockfall', x: 82, y: G - 13, interval: 130 },
     { type: 'checkpoint', x: 121, y: SUMMIT },
     // en la cumbre crece un platanal: su hoja gigante sirve de parapente
