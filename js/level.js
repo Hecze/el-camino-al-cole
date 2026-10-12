@@ -207,7 +207,8 @@ const LEVEL = {
     [160, 111, 16, 3, 'mud', -1], [176, 109, 16, 3, 'mud', -1], [192, 107, 16, 3, 'mud', -1], [208, 105, 14, 3, 'mud', -1],
   ],
   // rocas fijas en cada escalón del huaico (para subir sin caerte)
-  fgRocks: [[174, 109, 2, 5], [190, 107, 2, 5], [206, 105, 2, 5]],
+  // la primera (x 161) sirve para entrar al huaico desde la orilla sin depender del tronco justo
+  fgRocks: [[161, 111, 2, 3], [174, 109, 2, 5], [190, 107, 2, 5], [206, 105, 2, 5]],
   entities: [
     // la casa del niño, con mamá en la puerta
     { type: 'house', x: 0, y: G },
