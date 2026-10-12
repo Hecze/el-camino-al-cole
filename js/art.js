@@ -492,8 +492,10 @@ OBJ.page = spr([
   'K11111111K',
   'KKKKKKKKKK',
 ]);
+// ensancha un sprite repitiendo una columna del medio (para troncos y lajas más anchos)
+function widen(rows, extra, col) { return rows.map(r => r.slice(0, col) + r[col].repeat(extra) + r.slice(col)); }
 // tronco del huaico (grande y ancho para que se pueda aterrizar bien)
-OBJ.log = spr([
+OBJ.log = spr(widen([
   '....KKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKK....',
   '...KjmmmmjmmmmmmmjmmmmmmmjmmmmmmmmjKK...',
   '..KmmmMmmmmmmmMmmmmmmmMmmmmmmMmmmmKtTK..',
@@ -502,9 +504,9 @@ OBJ.log = spr([
   '.KmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmKtTtTK.',
   '.KMMMMiMMMMMMMMMiMMMMMMMMiMMMMMMMMKtTK..',
   '..KKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKK...',
-]);
+], 12, 18));
 // laja: roca plana grande que flota en el lodo
-OBJ.slab = spr([
+OBJ.slab = spr(widen([
   '......KKKKKKKKKKKKKKKKK.......',
   '...KKKddssdsssddsssssssKKK....',
   '..KdddssssssssssssSsssssSSK...',
@@ -513,7 +515,7 @@ OBJ.slab = spr([
   'KSSssssssssssssssssssSSSSSDDK.',
   'KDSSSSsSSSSSSSSSSSSSSSSSSDDDK.',
   '.KKKKKKKKKKKKKKKKKKKKKKKKKKKK..',
-]);
+], 12, 14));
 // pasto fresco: comida para la cabra (¡súper salto!). Manojo de alfalfa
 // atado con una cinta roja, con flores lilas: tiene que destacar en la roca.
 OBJ.herb = spr([
@@ -874,6 +876,15 @@ OBJ.lily = spr([
   '.RgggegggggGgggggegggggGgggR..',
   '..RRgggggggggggggggggggggRR...',
   '....RRRRRRRRRRRRRRRRRRRRRR....',
+]);
+// tronco caído flotando en la selva (plataforma fija, una vía)
+T.trunk = spr([
+  '.e..G..e...G.e..',
+  'KKKKKKKKKKKKKKKK',
+  'mjmmMmmjmmmMmmjm',
+  'mmMmmmjmmMmmmmmm',
+  'MMMMiMMMMMMiMMMM',
+  'KKKKKKKKKKKKKKKK',
 ]);
 // suelo de selva: tierra oscura con musgo
 T.jungle = spr([

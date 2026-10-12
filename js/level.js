@@ -16,6 +16,7 @@ const TILE_SPECS = {
   jungle:    { solid: true, top: T.jungle, body: T.jungleBody },
   swampRock: { solid: true, top: T.mudRock, body: T.stone },   // piedra de río redondeada
   branch:    { oneway: true, body: T.branch },
+  trunk:     { oneway: true, body: T.trunk },     // tronco caído flotando
   ropeBridge:{ oneway: true },                       // lo dibuja la entidad del puente
   swampTop:  { liquid: 'swamp' }, swampBody: { liquid: 'swamp' },
   waterTop:  { liquid: 'water' }, waterBody: { liquid: 'water' },
@@ -175,12 +176,12 @@ const EAGLES = [[24, 58], [50, 84], [76, 106]].map((b, i) => ({ type: 'eagle', r
 
 // La selva inundada va entre el aterrizaje del parapente y el huaico.
 const SV = 157;          // primera columna de agua de la selva
-const SWID = 72;         // ancho de la selva
-const D = 84;            // todo lo que viene después (huaico y colegio) se desplaza esto
+const SWID = 120;        // ancho de la selva
+const D = 132;            // todo lo que viene después (huaico y colegio) se desplaza esto
 const sx = (lx) => SV + lx;
 
 const LEVEL = {
-  name: 'EL CAMINO AL COLE', w: 346, h: 150,
+  name: 'EL CAMINO AL COLE', w: 394, h: 150,
   anchorRow: G,
   bgLayers: [
     { kind: 'mountains', color: '#8c93c9', color2: '#6d72a6', y: G - 3.4, parallax: 0.08, vpar: 0.10, amp: 8.5, seed: 5, snow: true },
@@ -197,7 +198,7 @@ const LEVEL = {
   // EL CAÑÓN DEL VALLE: puente colgante inca con una gran catarata al fondo
   canyon: { x0: 50, x1: 64, rimRow: G - 2, fall: { x: 57, top: G - 8 } },
   // LA SELVA: árboles, lianas y agua quieta
-  jungle: { x0: 143, x1: SV + SWID + 2, waterRow: 112, trees: [sx(45), sx(53), sx(61), sx(68), sx(5), sx(26), sx(35)] },
+  jungle: { x0: 143, x1: SV + SWID + 4, fade: 16, waterRow: 112, trees: [sx(5), sx(26), sx(35), sx(45), sx(53), sx(61), sx(68), sx(80), sx(90), sx(98), sx(106), sx(116)] },
   goatEnd: 118, goatEndRow: SUMMIT,
   // al planear no puedes alejarte de la ladera este
   glide: { x0: 119, x1: 160 },
@@ -225,6 +226,10 @@ const LEVEL = {
     // ── LA SELVA INUNDADA ──
     [145, 110, 12, 40, 'jungle'],                 // donde aterriza el parapente
     [SV, 118, SWID, 32, 'jungle'],                // fondo fangoso bajo el agua
+    // parte 4: raíces de manglar que asoman
+    [sx(95), 110, 2, 8, 'jungle'],
+    // parte 5: la orilla de salida, que sube suave hacia la quebrada cálida
+    [sx(114), 110, 6, 40, 'jungle'],
     // ── LA QUEBRADA CÁLIDA: orilla, lecho del huaico y el colegio ──
     [145 + D, 110, 12, 40, 'clay'],
     [160 + D, 114, 16, 36, 'clay'], [176 + D, 112, 16, 38, 'clay'], [192 + D, 110, 16, 40, 'clay'], [208 + D, 108, 14, 42, 'clay'],
@@ -236,12 +241,14 @@ const LEVEL = {
     [50, G - 2, 14, 'ropeBridge'],
     // ramas firmes de la selva (donde duermen los perezosos)
     [sx(43), 108, 4, 'branch'], [sx(54), 104, 4, 'branch'], [sx(65), 108, 4, 'branch'],
+    // parte 4: un tronco caído hace de puente, y otro árbol con perezoso
+    [sx(76), 111, 8, 'trunk'], [sx(98), 107, 4, 'branch'],
   ],
   liquids: [
     // el río del fondo del cañón
     [50, G + 1, 14, 5, 'water', 1],
     // el agua quieta de la selva
-    [SV, 112, SWID, 6, 'swamp', 0.15],
+    [SV, 112, SWID - 6, 6, 'swamp', 0.15],
     // el huaico: cuatro escalones de lodo que bajan hacia el precipicio
     [160 + D, 111, 16, 3, 'mud', -1], [176 + D, 109, 16, 3, 'mud', -1], [192 + D, 107, 16, 3, 'mud', -1], [208 + D, 105, 14, 3, 'mud', -1],
   ],
@@ -249,7 +256,8 @@ const LEVEL = {
   // orilla y la última como peldaño para el salto final a la orilla del colegio
   // rocas que asoman del agua de la selva (se colocan después del agua: entran en ella)
   //   parte 1: rocas para aprender · parte 2: descanso entre victorias regias · parte 3: para salir si caes
-  swampRocks: [[sx(3), 111, 2, 7], [sx(8), 111, 2, 7], [sx(13), 111, 2, 7], [sx(18), 111, 2, 7], [sx(40), 111, 2, 7], [sx(52), 111, 2, 7], [sx(63), 111, 2, 7]],
+  swampRocks: [[sx(3), 111, 2, 7], [sx(8), 111, 2, 7], [sx(13), 111, 2, 7], [sx(18), 111, 2, 7], [sx(40), 111, 2, 7], [sx(52), 111, 2, 7], [sx(63), 111, 2, 7],
+               [sx(72), 111, 2, 7], [sx(103), 111, 2, 7], [sx(110), 111, 2, 7]],
   fgRocks: [[161 + D, 111, 2, 3], [174 + D, 109, 2, 5], [190 + D, 107, 2, 5], [206 + D, 105, 2, 5], [219 + D, 104, 2, 4]],
   entities: [
     // la casa del niño, con mamá en la puerta
@@ -264,6 +272,8 @@ const LEVEL = {
     ...MTN_CP,
     { type: 'checkpoint', x: 151, y: 110, w: 14, h: 10 },   // toda la orilla donde aterriza el parapente
     { type: 'checkpoint', x: sx(44), y: 108 },
+    { type: 'checkpoint', x: sx(72.5), y: 111 },
+    { type: 'checkpoint', x: sx(99), y: 107 },
     { type: 'checkpoint', x: 151 + D, y: 110 },
     { type: 'rockfall', x: 82, y: G - 13, interval: 130 },
     { type: 'checkpoint', x: 121, y: SUMMIT },
@@ -273,10 +283,13 @@ const LEVEL = {
     // ── la selva ──
     { type: 'lily', x: sx(23.5) }, { type: 'lily', x: sx(28) }, { type: 'lily', x: sx(32.5) }, { type: 'lily', x: sx(37) },
     { type: 'dryBranch', x: sx(49), y: 106 }, { type: 'dryBranch', x: sx(59.5), y: 106 },
-    { type: 'sloth', x: sx(44.5), y: 108 }, { type: 'sloth', x: sx(55.5), y: 104 }, { type: 'sloth', x: sx(66.5), y: 108 },
+    { type: 'sloth', x: sx(44.5), y: 108 }, { type: 'sloth', x: sx(55.5), y: 104 }, { type: 'sloth', x: sx(66.5), y: 108 }, { type: 'sloth', x: sx(99.5), y: 107 },
+    { type: 'lily', x: sx(87) }, { type: 'lily', x: sx(91.5) }, { type: 'lily', x: sx(107) },
     { type: 'caiman', x0: sx(0), x1: sx(21), leap: false },
     { type: 'caiman', x0: sx(21), x1: sx(43), leap: true },
     { type: 'caiman', x0: sx(43), x1: sx(71), leap: true },
+    { type: 'caiman', x0: sx(71), x1: sx(95), leap: true },
+    { type: 'caiman', x0: sx(97), x1: sx(114), leap: true },
     { type: 'huaico', x0: 160 + D, x1: 222 + D, interval: 135, speed: 0.75, inflow: { x: 215 + D, top: 92 } },
     // el colegio se cae a pedazos... la clase se da afuera, sentados en el suelo
     { type: 'school', x: 231 + D, y: 103 },

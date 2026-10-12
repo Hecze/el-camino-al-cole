@@ -294,14 +294,14 @@ class Player extends Actor {
     if (this.dragT % 9 === 0) g.burst(this.cx, s, 'mud', 3);
     // FORCEJEO: cada pulsación es un saltito con salpicadura; si pulsas seguido
     // el impulso se acumula y al llenarse sales de un brinco. Si paras, se pierde.
-    this.struggle = Math.max(0, this.struggle - 0.05);
+    this.struggle = Math.max(0, this.struggle - 0.044);
     if (this.hop > 0) this.hop--;
     if (Input.consumeJump()) {
       this.struggle += 1; this.hop = 8;
-      const k = this.struggle / 8;
+      const k = this.struggle / 7;
       g.burst(this.cx, s - 2, 'foam', 5 + Math.round(k * 12)); g.burst(this.cx, s - 2, 'mud', 3);
       g.audio('mud');
-      if (this.struggle >= 8) {
+      if (this.struggle >= 7) {
         this.dragged = false; this.y = s - this.h - 6; this.vy = -6.8; this.vx = 0.9; this.struggle = 0;
         unstick(this, g.level);
         g.audio('jump'); g.burst(this.cx, s, 'foam', 24); g.burst(this.cx, s, 'mud', 10); g.shake(1.5, 6);

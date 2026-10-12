@@ -624,15 +624,20 @@
     if (x1 < Game.cam.x || x0 > Game.cam.x + BASE_W) return;
     const cx0 = Math.max(x0, Math.floor(Game.cam.x)), cx1 = Math.min(x1, Math.ceil(Game.cam.x + BASE_W));
     // muro de follaje al fondo, con el borde superior irregular
+    // al final la selva se aclara poco a poco (el follaje se desvanece) en vez de cortarse de golpe
+    const fadeA = (x) => J.fade ? clamp((x1 - x) / (J.fade * TILE), 0, 1) : 1;
     for (let x = cx0 - (cx0 % 4); x < cx1; x += 4) {
-      const top = wr - 150 + Math.round(Math.sin(x * 0.05) * 10 + hash(x >> 3) * 14);
+      ctx.globalAlpha = fadeA(x);
+      const top = wr - 150 + Math.round(Math.sin(x * 0.05) * 10 + hash(x >> 3) * 14) + Math.round((1 - fadeA(x)) * 80);
       ctx.fillStyle = '#244a2c'; ctx.fillRect(x, top, 4, wr - top + 4);
       ctx.fillStyle = '#2f5d34'; ctx.fillRect(x, top, 4, 3);
     }
-    for (let i = 0; i < 90; i++) {
+    ctx.globalAlpha = 1;
+    for (let i = 0; i < 150; i++) {
       // manchas de hojas
       const x = x0 + Math.floor(hash(i * 31) * (x1 - x0)); if (x < cx0 - 10 || x > cx1) continue;
       const y = wr - 140 + Math.floor(hash(i * 17) * 120);
+      if (fadeA(x) < 0.5) continue;
       ctx.fillStyle = hash(i * 3) > 0.5 ? '#2f6b3a' : '#1d4026'; ctx.fillRect(x, y, 6 + Math.floor(hash(i) * 6), 3); ctx.fillRect(x + 2, y - 2, 4, 2);
     }
     // rayos de sol entre las copas
@@ -654,8 +659,8 @@
       for (let k = 0; k < 5; k++) { const ox = Math.round(Math.cos(k * 1.3) * 20); ctx.fillRect(x + 6 + ox - 8, wr - 166 + k * 2, 16, 4); }
     }
     // lianas que cuelgan y se mecen
-    for (let i = 0; i < 12; i++) {
-      const x = x0 + 40 + Math.floor(hash(i * 43) * (x1 - x0 - 80)); if (x < cx0 - 10 || x > cx1 + 10) continue;
+    for (let i = 0; i < 18; i++) {
+      const x = x0 + 40 + Math.floor(hash(i * 43) * (x1 - x0 - 80 - (J.fade || 0) * TILE)); if (x < cx0 - 10 || x > cx1 + 10) continue;
       const len = 40 + Math.floor(hash(i * 11) * 80), y0 = wr - 162;
       for (let y = 0; y < len; y += 2) { const sw = Math.round(Math.sin(tick * 0.02 + i + y * 0.02) * (y / len) * 3); ctx.fillStyle = '#3f6b2c'; ctx.fillRect(x + sw, y0 + y, 1, 2); if (y % 12 === 6) { ctx.fillStyle = '#5f9f4a'; ctx.fillRect(x + sw + 1, y0 + y, 2, 1); } }
     }
