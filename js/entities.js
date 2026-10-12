@@ -867,7 +867,8 @@ class House extends Actor {
     R('#8a4a2a', 84, -9, 10, 9); R('#a85a32', 85, -8, 8, 2); R('#2a1f2d', 86, -10, 6, 1);
     // mamá en la puerta: mira al niño y se despide con la mano
     const p = g.player, near = Math.abs(p.cx - (bx + 44)) < 170;
-    const wave = near && Math.floor(this.animT / 14) % 2 === 0;
+    // agita la mano con calma (cambia de pose cada ~0,6 s)
+    const wave = near && Math.floor(this.animT / 36) % 2 === 0;
     const img = OBJ.mom[wave ? 1 : 0];
     ctx.drawImage(p.cx < bx + 44 ? flipS(img) : img, bx + 36, base - 25);
   }
