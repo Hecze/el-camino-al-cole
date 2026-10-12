@@ -9,6 +9,9 @@ const TILE_SPECS = {
   snow:      { solid: true, top: T.snowTop, body: T.stone },
   pirca:     { solid: true, body: T.pirca },
   ledge:     { oneway: true, body: T.ledge },
+  ledgeSnow: { oneway: true, body: T.ledgeSnow },
+  clay:      { solid: true, top: T.clay, body: T.clayBody },
+  mudRock:   { solid: true, body: T.mudRock },
   waterTop:  { liquid: 'water' }, waterBody: { liquid: 'water' },
   mudTop:    { liquid: 'mud' },   mudBody:   { liquid: 'mud' },
 };
@@ -85,88 +88,138 @@ function buildLevel(def) {
       for (let x = l[0]; x < l[0] + l[2]; x++)
         put(x, y, (y === l[1] ? l[4] + 'Top' : l[4] + 'Body'));
   }
+  for (const r of def.fgRocks || [])
+    for (let y = r[1]; y < r[1] + r[3]; y++)
+      for (let x = r[0]; x < r[0] + r[2]; x++) put(x, y, 'mudRock');
   return Object.assign({}, def, { grid, cols, rows, liquids, tile: (x, y) => (x >= 0 && x < cols && y >= 0 && y < rows ? grid[y][x] : null) });
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  EL CAMINO AL COLE — un solo nivel, de izquierda a derecha.
 //
-//   x 0–96    EL VALLE   · montado en la llama: pircas, arroyos y un derrumbe
-//   x 86–134  EL APU     · la cabra salta sola; tú la guías sobre el vacío
-//   x 135–204 EL HUAICO  · salta de tronco en tronco contra la corriente
-//   x 205–    EL COLEGIO
+//   x 0–96     EL VALLE    · montado en la llama: pircas, cascadas y un derrumbe
+//   x 82–156   EL APU      · una montaña gigante: la cabra salta sola, tú la
+//                            guías. Subes por la cara oeste y bajas por la este.
+//   x 145–221  EL HUAICO   · quebrada cálida: salta de tronco en tronco contra
+//                            la corriente; abajo espera el precipicio.
+//   x 222–     EL COLEGIO
 // ─────────────────────────────────────────────────────────────────────────────
+const G = 144;          // fila del suelo del valle
+const SUMMIT = 18;      // fila de la cumbre
+
+// Zigzag de salientes: desplazamientos respecto al centro del camino. Cada
+// salto entre salientes consecutivas cubre como mucho 4 casillas en horizontal.
+const ZIG = [0, 4, 1, -3, 1, 5, 2, -2, -5, -1, 3, -1, -4, 0, 4, 0];
+function mountainPath() {
+  const up = [], down = [];
+  // subida (cara oeste): de la fila 141 a la 21, una saliente cada 3 filas
+  const nUp = Math.round((G - 3 - (SUMMIT + 3)) / 3) + 1;
+  for (let i = 0; i < nUp; i++) {
+    const row = G - 3 - i * 3;
+    const center = 103 + (i / (nUp - 1)) * 14;
+    const x = Math.round(center + ZIG[i % ZIG.length] * 0.9);
+    up.push([x - 1, row, i < 3 ? 4 : 3, row < 80 ? 'ledgeSnow' : 'ledge']);
+  }
+  // bajada (cara este): una saliente cada 6 filas. La cabra rebota ~5 filas,
+  // así que nunca vuelve a caer en la saliente de la que acaba de bajar.
+  const nDown = 15;
+  for (let i = 0; i < nDown; i++) {
+    const row = SUMMIT + 4 + i * 6;
+    // zigzag izquierda-derecha: ninguna saliente queda justo debajo de la anterior
+    const center = 125 + (i / (nDown - 1)) * 16;
+    const x = Math.round(center + (i % 2 ? 4 : 0));
+    down.push([x - 1, row, 3, row < 80 ? 'ledgeSnow' : 'ledge']);
+  }
+  return { up, down };
+}
+const MTN = mountainPath();
+const mid = (l) => l[0] + l[2] / 2;
+// cóndores que cruzan el risco a distintas alturas (cada vez más rápidos)
+const BIRDS = [];
+[124, 104, 84, 64, 46, 32].forEach((row, i) => {
+  BIRDS.push({ type: 'condor', x0: 90, x1: 123, y: row - 1.5, speed: 1.4 + i * 0.12, phase: i * 0.7, dir: i % 2 ? -1 : 1 });
+});
+[52, 82].forEach((row, i) => {
+  BIRDS.push({ type: 'condor', x0: 124, x1: 156, y: row - 2, speed: 1.6 + i * 0.15, phase: i * 1.3, dir: i % 2 ? 1 : -1 });
+});
+// pasto para la cabra: algo apartado del camino (cuesta ir a por él)
+const HERBS = [];
+MTN.up.forEach((l, i) => { if (i % 4 === 2) HERBS.push({ type: 'herb', x: mid(l) + (i % 8 === 2 ? 3 : -3), y: l[1] - 3 }); });
+// puntos de control en la montaña (reapareces montado en la cabra)
+const MTN_CP = [MTN.up[10], MTN.up[20], MTN.up[30], MTN.down[5], MTN.down[10]].map(l => ({ type: 'checkpoint', x: Math.floor(mid(l)), y: l[1] }));
+
 const LEVEL = {
-  name: 'EL CAMINO AL COLE', w: 240, h: 40,
-  anchorRow: 34,
+  name: 'EL CAMINO AL COLE', w: 262, h: 150,
+  anchorRow: G,
   bgLayers: [
-    { kind: 'mountains', color: '#8c93c9', color2: '#6d72a6', y: 30.6, parallax: 0.08, vpar: 0.10, amp: 8.5, seed: 5, snow: true },
-    { kind: 'mountains', color: '#8a6fa6', color2: '#6a5486', y: 32.2, parallax: 0.18, vpar: 0.24, amp: 6, seed: 7 },
-    { kind: 'mountains', color: '#7d9a62', color2: '#5f7e4c', y: 33.4, parallax: 0.32, vpar: 0.40, amp: 3.8, seed: 21 },
-    { kind: 'hills', color: '#a8a356', color2: '#7f8a44', y: 34.4, parallax: 0.52, vpar: 0.62, amp: 2.2, seed: 3 },
+    { kind: 'mountains', color: '#8c93c9', color2: '#6d72a6', y: G - 3.4, parallax: 0.08, vpar: 0.10, amp: 8.5, seed: 5, snow: true },
+    { kind: 'mountains', color: '#8a6fa6', color2: '#6a5486', y: G - 1.8, parallax: 0.18, vpar: 0.24, amp: 6, seed: 7 },
+    { kind: 'mountains', color: '#7d9a62', color2: '#5f7e4c', y: G - 0.6, parallax: 0.32, vpar: 0.40, amp: 3.8, seed: 21 },
+    { kind: 'hills', color: '#a8a356', color2: '#7f8a44', y: G + 0.4, parallax: 0.52, vpar: 0.62, amp: 2.2, seed: 3 },
     { kind: 'clouds', color: '#fff6e6', parallax: 0.06, count: 9, seed: 11 },
   ],
-  spawn: { x: 3, y: 34 },
-  goatEnd: 117,
+  spawn: { x: 3, y: G },
+  // la gran montaña: silueta de fondo con nieve en lo alto
+  mountain: { peakX: 121, peakRow: 10, slope: 0.2, snowRow: 78 },
+  goatEnd: 147,
+  altitude: { baseRow: G, baseM: 3650, perRow: 13 },
   zones: [
     { x: 0,   name: 'EL VALLE',  music: 'valle' },
-    { x: 86,  name: 'EL APU',    music: 'apu' },
-    { x: 120, name: 'LA CUMBRE', music: 'apu' },
-    { x: 140, name: 'EL HUAICO', music: 'huayco' },
-    { x: 205, name: 'EL COLEGIO', music: 'huayco' },
+    { x: 86,  name: 'EL APU',    music: 'apu', alt: true },
+    { x: 145, name: 'EL HUAICO', music: 'huayco' },
+    { x: 222, name: 'EL COLEGIO', music: 'huayco' },
   ],
   rects: [
     // ── EL VALLE ──
-    [0, 34, 22, 6, 'grass'],
-    [15, 33, 1, 1, 'pirca'],
-    [25, 34, 13, 6, 'grass'],
-    [31, 32, 1, 2, 'pirca'],
-    [38, 32, 18, 8, 'grass'],
-    [46, 31, 1, 1, 'pirca'], [47, 30, 1, 2, 'pirca'],
-    [61, 34, 36, 6, 'grass'],
-    // ── EL APU: la cumbre y la bajada al huaico ──
-    [115, 11, 20, 1, 'snow'], [115, 12, 20, 28, 'stone'],
-    [135, 15, 4, 25, 'stone'], [139, 19, 4, 21, 'stone'], [143, 23, 4, 17, 'stone'], [147, 27, 4, 13, 'stone'],
-    // ── EL COLEGIO ──
-    [205, 20, 35, 20, 'grass'],
+    [0, G, 22, 6, 'grass'],
+    [15, G - 1, 1, 1, 'pirca'],
+    [25, G, 13, 6, 'grass'],
+    [31, G - 2, 1, 2, 'pirca'],
+    [38, G - 2, 18, 8, 'grass'],
+    [46, G - 3, 1, 1, 'pirca'], [47, G - 4, 1, 2, 'pirca'],
+    [61, G, 40, 6, 'grass'],
+    // ── LA CUMBRE ──
+    [116, SUMMIT, 9, 1, 'snow'],
+    // ── LA QUEBRADA CÁLIDA: orilla, lecho del huaico y el colegio ──
+    [145, 110, 12, 40, 'clay'],
+    [160, 114, 16, 36, 'clay'], [176, 112, 16, 38, 'clay'], [192, 110, 16, 40, 'clay'], [208, 108, 14, 42, 'clay'],
+    [222, 103, 40, 47, 'clay'],
   ],
-  backdrop: [[100, 12, 15, 28]],
-  platforms: [
-    // salientes del risco (una vía: la cabra las atraviesa desde abajo)
-    [97, 31, 4, 'ledge'], [102, 28, 3, 'ledge'], [99, 25, 3, 'ledge'], [104, 22, 4, 'ledge'],
-    [109, 19, 3, 'ledge'], [106, 16, 3, 'ledge'], [111, 13, 3, 'ledge'],
-    [93, 24, 2, 'ledge'], // atajo arriesgado con una hoja de tarea
-  ],
+  platforms: [...MTN.up, ...MTN.down],
   liquids: [
     // arroyos que bajan del cerro: caen en cascada a una quebrada estrecha
-    [22, 34, 3, 6, 'water', 1, 27],
-    [56, 34, 5, 6, 'water', 1, 25],
-    [151, 28, 14, 12, 'mud', -1], [165, 26, 14, 14, 'mud', -1], [179, 24, 14, 16, 'mud', -1], [193, 22, 12, 18, 'mud', -1],
+    [22, G, 3, 6, 'water', 1, G - 7],
+    [56, G, 5, 6, 'water', 1, G - 9],
+    // el huaico: cuatro escalones de lodo que bajan hacia el precipicio (x 157–159)
+    [160, 111, 16, 3, 'mud', -1], [176, 109, 16, 3, 'mud', -1], [192, 107, 16, 3, 'mud', -1], [208, 105, 14, 3, 'mud', -1],
   ],
+  // rocas fijas en cada escalón del huaico (para subir sin caerte)
+  fgRocks: [[174, 109, 2, 5], [190, 107, 2, 5], [206, 105, 2, 5]],
   entities: [
-    { type: 'llama', x: 9, y: 34 },
-    { type: 'cabra', x: 91, y: 34 },
+    { type: 'llama', x: 9, y: G },
+    { type: 'cabra', x: 91, y: G },
     // puntos de control invisibles
-    { type: 'checkpoint', x: 39, y: 32 },
-    { type: 'checkpoint', x: 64, y: 34 },
-    { type: 'checkpoint', x: 88, y: 34 },
-    { type: 'checkpoint', x: 122, y: 11 },
-    { type: 'checkpoint', x: 148, y: 27 },
-    { type: 'rockfall', x: 82, y: 21, interval: 130 },
-    { type: 'huaico', x0: 151, x1: 205, interval: 76, speed: 0.85 },
-    { type: 'school', x: 222, y: 20 },
+    { type: 'checkpoint', x: 39, y: G - 2 },
+    { type: 'checkpoint', x: 64, y: G },
+    { type: 'checkpoint', x: 88, y: G },
+    ...MTN_CP,
+    { type: 'checkpoint', x: 151, y: 110 },
+    { type: 'rockfall', x: 82, y: G - 13, interval: 130 },
+    { type: 'huaico', x0: 160, x1: 222, interval: 84, speed: 0.75, inflow: { x: 219, top: 92 } },
+    { type: 'school', x: 240, y: 103 },
+    ...BIRDS,
+    ...HERBS,
     // las 3 hojas de tarea que se le volaron al niño, enganchadas en el camino
-    { type: 'page', x: 47, y: 29 },   // sobre la pirca alta
-    { type: 'page', x: 93, y: 23 },   // en la saliente escondida del risco
-    { type: 'page', x: 139, y: 18 },  // en la bajada hacia el huaico
+    { type: 'page', x: 47, y: G - 5 },                                            // sobre la pirca alta
+    { type: 'page', x: MTN.up[25][0] - 5, y: MTN.up[25][1] - 6 },                 // en el aire, junto al risco
+    { type: 'page', x: 154, y: 109 },                                             // en la orilla del huaico
   ],
   decor: [
-    ['sign', 1, 33], ['cantuta', 6, 33], ['ichu', 11, 33], ['ichu', 19, 33], ['maguey', 27, 33],
-    ['cantuta', 35, 33], ['ichu', 41, 31], ['cantuta', 51, 31], ['ichu', 63, 33], ['maguey', 70, 33],
-    ['ichu', 78, 33], ['cantuta', 85, 33], ['sign', 95, 33],
-    ['ichu', 117, 10], ['ichu', 128, 10], ['sign', 133, 10],
-    ['ichu', 149, 26], ['cantuta', 207, 19], ['ichu', 211, 19], ['maguey', 214, 19],
-    ['cantuta', 232, 19], ['ichu', 236, 19],
+    ['sign', 1, G - 1], ['cantuta', 6, G - 1], ['ichu', 11, G - 1], ['ichu', 19, G - 1], ['maguey', 27, G - 1],
+    ['cantuta', 35, G - 1], ['ichu', 41, G - 3], ['cantuta', 51, G - 3], ['ichu', 63, G - 1], ['maguey', 70, G - 1],
+    ['ichu', 78, G - 1], ['cantuta', 85, G - 1],
+    ['cactus', 146, 109], ['maguey', 149, 109],
+    ['cactus', 225, 102], ['maguey', 229, 102], ['cantuta', 233, 102], ['cactus', 252, 102], ['maguey', 257, 102],
   ],
 };
 

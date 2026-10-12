@@ -91,6 +91,8 @@ const AUDIO = (() => {
     drown:   () => { noise(0.6, 0.3, 400, 0, { sweep: 120 }); [300, 240, 190].forEach((f, i) => tone(f, 0.12, 'sine', 0.18, now() + i * 0.12, f * 0.6)); },
     mount:   () => { tone(330, 0.12, 'triangle', 0.22, 0, 520); tone(660, 0.18, 'triangle', 0.18, now() + 0.08); },
     bleat:   () => { const t = now(); for (let i = 0; i < 5; i++) tone(520 + (i % 2) * 40, 0.07, 'sawtooth', 0.07, t + i * 0.05, 480); },
+    munch:   () => { for (let i = 0; i < 4; i++) noise(0.05, 0.18, 1800, now() + i * 0.07, { type: 'bandpass', q: 1.5 }); SFX.bleat(); },
+    caw:     () => { const t = now(); tone(900, 0.22, 'sawtooth', 0.06, t, 520); tone(820, 0.28, 'sawtooth', 0.05, t + 0.26, 480); },
     boing:   () => { tone(200, 0.16, 'triangle', 0.16, 0, 420); noise(0.05, 0.08, 800); },
     rock:    () => { noise(0.2, 0.3, 450); tone(140, 0.16, 'sine', 0.25, 0, 60); },
     rumble:  () => { noise(0.8, 0.25, 220, 0, { attack: 0.2 }); },

@@ -27,8 +27,8 @@
 
   // ── la hora del día ──────────────────────────────────────────────────────
   // Sales de casa a las 6:20 con el sol saliendo; la clase empieza a las 8:00.
-  // Cada segundo de juego son 30 segundos del reloj (≈3 min 20 s para llegar).
-  const DAY_START = 6 * 60 + 20, CLASS_START = 8 * 60, CLOCK_RATE = 0.5;
+  // Cada segundo de juego son 18 segundos del reloj (≈5 min 30 s para llegar).
+  const DAY_START = 6 * 60 + 20, CLASS_START = 8 * 60, CLOCK_RATE = 0.3;
   const SKY_DAWN = ['#2e2f63', '#c46f8a', '#ffb877'], SKY_MORNING = ['#4f86c6', '#9cc8e8', '#f6dcb0'];
   function clockMinutes() { return DAY_START + (Game.time / 60) * CLOCK_RATE; }
   function clockText(m) { m = Math.floor(m == null ? clockMinutes() : m); return Math.floor(m / 60) + ':' + String(m % 60).padStart(2, '0'); }
@@ -99,13 +99,13 @@
   }
 
   // ── partículas ───────────────────────────────────────────────────────────
-  const COL = { dust: '#c9a86a', spark: '#ffe27a', mud: '#7a5232', splash: '#bdf0f4', rock: '#8a8296', paper: '#ffffff' };
+  const COL = { leaf: '#8fd062', feather: '#2a1f2d', dust: '#c9a86a', spark: '#ffe27a', mud: '#7a5232', splash: '#bdf0f4', rock: '#8a8296', paper: '#ffffff' };
 
   // ── estado ───────────────────────────────────────────────────────────────
   const Game = {
     state: 'menu', level: null, player: null, entities: [], movers: [], particles: [],
     cam: { x: 0, y: 0 }, look: 0, floorY: 0, shakeT: 0, shakeMag: 0, fade: 1,
-    pages: 0, score: 0,
+    pages: 0, herbs: 0, score: 0, huaico: null,
     menuSel: 0, pauseSel: 0, stateT: 0, T: 0,
     spawn: { x: 0, y: 0 }, spawnMount: null, zone: -1, zoneName: '',
     banner: 0, deaths: 0, time: 0, pointer: null,
@@ -130,16 +130,18 @@
   Game.onGoatDone = () => {};
   Game.setCheckpoint = (cp) => {
     Game.spawn = { x: cp.spawn.x, y: cp.spawn.y };
-    Game.spawnMount = Game.player.riding instanceof Llama ? Game.player.riding : null;
+    const m = Game.player.riding;
+    Game.spawnMount = m && !m.retired ? m : null;
   };
   Game.playerEnvDeath = (kind) => {
     if (Game.state !== 'play') return;
     const p = Game.player, a = p.riding || p;
     if (kind === 'water') { AUDIO.play('splash'); Game.burst(a.cx, a.y + a.h, 'splash', 18); }
     else if (kind === 'mud') AUDIO.play('drown');
+    else if (kind === 'bird') { AUDIO.play('crush'); Game.shake(3, 10); Game.burst(a.cx, a.cy, 'feather', 16); }
     else if (kind === 'rock') { AUDIO.play('crush'); Game.shake(4, 12); Game.burst(a.cx, a.cy, 'rock', 14); }
     else AUDIO.play('fall');
-    Game.deaths++; Game.state = 'respawn'; Game.stateT = 0;
+    Game.deaths++; Game.lastDeath = kind; Game.state = 'respawn'; Game.stateT = 0;
   };
   Game.gameComplete = () => {
     if (Game.state !== 'play') return;
@@ -153,10 +155,11 @@
     for (const e of Game.entities) { if (e instanceof Mount && !e.retired) e.reset(); if (e.onRespawn) e.onRespawn(Game); }
     Game.entities = Game.entities.filter(e => !(e instanceof Boulder));
     p.riding = null; p.x = Game.spawn.x; p.y = Game.spawn.y - p.h;
-    p.vx = 0; p.vy = 0; p.mudT = 0; p.mountCd = 0; p.invuln = 50; p.lastMover = null;
+    p.vx = 0; p.vy = 0; p.dragged = false; p.overEdge = false; p.stickT = 0; p.mountCd = 0; p.invuln = 50; p.lastMover = null;
     const m = Game.spawnMount;
     if (m) { m.x = p.cx - m.w / 2; m.y = Game.spawn.y - m.h; m.vx = 0; m.vy = 0; p.mount(m, Game, true); }
     Game.floorY = p.cy;
+    updateCamera(true);
     Input.clearJump();
     Game.state = 'play'; Game.fade = 0.8;
   };
@@ -166,9 +169,9 @@
     const lv = LEVELS[0];
     Game.level = lv;
     Game.entities = []; Game.movers = []; Game.particles = [];
-    Game.pages = 0; Game.score = 0; Game.deaths = 0; Game.time = 0;
+    Game.pages = 0; Game.herbs = 0; Game.score = 0; Game.deaths = 0; Game.time = 0;
     for (const def of lv.entities) { const e = makeEntity(def, lv); if (e) Game.entities.push(e); }
-    for (const e of Game.entities.slice()) if (e instanceof Huaico) e.prefill(Game);
+    for (const e of Game.entities.slice()) if (e instanceof Huaico) { Game.huaico = e; e.prefill(Game); }
     const px = lv.spawn.x * TILE + 4, py = lv.spawn.y * TILE - 15;
     Game.player = new Player(px, py);
     Game.spawn = { x: px, y: lv.spawn.y * TILE }; Game.spawnMount = null;
@@ -197,7 +200,11 @@
     if (body.onGround || snap) Game.floorY = p.cy;
     let focusY = Game.floorY, off = BASE_H * 0.62;
     if (p.cy > Game.floorY + 10) focusY = p.cy; // cayendo: lo seguimos ya
-    if (p.riding instanceof Cabra) { focusY = Math.min(Game.floorY, p.cy + 10); off = BASE_H * 0.72; } // trepando: mira arriba
+    if (p.riding instanceof Cabra) {
+      const descending = lv.mountain && p.cx > lv.mountain.peakX * TILE + 40;
+      if (descending) { focusY = p.cy; off = BASE_H * 0.36; }                   // bajando: mira abajo
+      else { focusY = Math.min(Game.floorY, p.cy + 10); off = BASE_H * 0.72; }  // trepando: mira arriba
+    }
 
     const tx = p.cx + Game.look - BASE_W / 2, ty = focusY - off;
     if (snap) { cam.x = tx; cam.y = ty; }
@@ -316,7 +323,7 @@
     updateZone();
     updateCamera(false);
     // el huaico hace temblar el suelo
-    if (Game.zone === 3 && tick % 90 === 0) Game.shake(1, 10);
+    if (Game.zoneName === 'EL HUAICO' && tick % 90 === 0) Game.shake(1, 10);
   }
 
   function collisionPass() {
@@ -330,6 +337,8 @@
         if (p.riding instanceof Cabra) continue;
         if (p.riding && !(e instanceof Cabra)) continue;
         if (aabb(body, { x: e.x, y: e.y - 6, w: e.w, h: e.h + 6 })) p.mount(e, Game);
+      } else if (e instanceof Condor) {
+        if (p.invuln <= 0 && aabb(hb, e.hitbox)) { Game.playerEnvDeath('bird'); return; }
       } else if (e instanceof Boulder) {
         if (p.invuln <= 0 && aabb(hb, { x: e.x + 1, y: e.y + 1, w: e.w - 2, h: e.h - 2 })) { Game.playerEnvDeath('rock'); return; }
       }
@@ -383,15 +392,20 @@
 
     ctx.save();
     ctx.translate(Math.round(-camx + sx), Math.round(-camy + sy));
+    renderMountain(lv);
     renderBackdrop(lv);
     renderTiles(lv);
+    renderInflow(lv);
     renderLiquids(lv);
     renderDecor(lv);
     renderEntities();
     const p = Game.player;
     if (Game.state !== 'respawn' && !p.won) { p.draw(ctx, Game); p.drawRider(ctx); }
+    renderFront(lv);
     renderParticles();
     ctx.restore();
+    renderSnowfall(lv, camy);
+    renderBirdWarnings();
     // luz fría y violácea del amanecer que se va disipando
     if (day < 1) { ctx.fillStyle = 'rgba(70,40,110,' + (0.22 * (1 - day)) + ')'; ctx.fillRect(0, 0, BASE_W, BASE_H); }
 
@@ -402,7 +416,7 @@
   // pared del risco detrás de las salientes (decorado, no colisiona)
   let backTile = null;
   function getBackTile() {
-    if (!backTile) { backTile = PIX.createCanvas(TILE, TILE); const g = backTile.getContext('2d'); g.drawImage(T.stone, 0, 0); g.globalCompositeOperation = 'source-atop'; g.fillStyle = 'rgba(40,30,60,0.55)'; g.fillRect(0, 0, TILE, TILE); }
+    if (!backTile) { backTile = PIX.createCanvas(TILE, TILE); const g = backTile.getContext('2d'); g.drawImage(T.stone, 0, 0); g.globalCompositeOperation = 'source-atop'; g.fillStyle = 'rgba(70,50,60,0.42)'; g.fillRect(0, 0, TILE, TILE); }
     return backTile;
   }
   function renderBackdrop(lv) {
@@ -418,12 +432,91 @@
     }
   }
 
+  // ── la gran montaña: silueta de fondo, roca abajo y nieve arriba ─────────
+  let snowBack = null, rockShade = null;
+  function renderMountain(lv) {
+    const M = lv.mountain; if (!M) return;
+    const rock = getBackTile();
+    if (!snowBack) {
+      snowBack = PIX.createCanvas(TILE, TILE); let g = snowBack.getContext('2d'); g.drawImage(T.stone, 0, 0);
+      g.globalCompositeOperation = 'source-atop'; g.fillStyle = 'rgba(236,242,255,0.78)'; g.fillRect(0, 0, TILE, TILE);
+      rockShade = PIX.createCanvas(TILE, TILE); g = rockShade.getContext('2d'); g.fillStyle = 'rgba(20,14,40,0.28)'; g.fillRect(0, 0, TILE, TILE);
+    }
+    const r0 = Math.max(M.peakRow, Math.floor(Game.cam.y / TILE) - 1), r1 = Math.min(lv.rows - 1, Math.ceil((Game.cam.y + BASE_H) / TILE));
+    const c0 = Math.floor(Game.cam.x / TILE) - 1, c1 = Math.ceil((Game.cam.x + BASE_W) / TILE);
+    for (let r = r0; r <= r1; r++) {
+      const half = (r - M.peakRow) * M.slope + 1;
+      const L = Math.round(M.peakX - half - hash(r * 13) * 1.5), R = Math.round(M.peakX + half + hash(r * 29) * 1.5);
+      const snowLine = M.snowRow + Math.round(hash(r * 7) * 6 - 3);
+      for (let c = Math.max(L, c0); c <= Math.min(R, c1); c++) {
+        if (isSolidCode(lv.tile(c, r))) continue;
+        const snowy = r < snowLine - Math.floor(hash(c * 31) * 5) || (r < snowLine + 8 && hash(c * 17 + r) > 0.75);
+        const px = c * TILE, py = r * TILE;
+        ctx.drawImage(snowy ? snowBack : rock, px, py);
+        // estratos de roca: franjas más claras y más oscuras
+        const band = Math.floor((r + Math.floor(hash(c >> 2) * 3)) / 4) % 3;
+        if (!snowy && band !== 1) { ctx.fillStyle = band ? 'rgba(255,230,200,0.07)' : 'rgba(20,10,30,0.12)'; ctx.fillRect(px, py, TILE, TILE); }
+        const h = hash(c * 131 + r * 17);
+        if (!snowy) {
+          if (h > 0.93) { ctx.fillStyle = 'rgba(25,15,30,0.55)'; ctx.fillRect(px + 5, py + 2, 1, 6); ctx.fillRect(px + 6, py + 7, 1, 5); ctx.fillRect(px + 7, py + 11, 1, 3); } // grieta
+          else if (h > 0.88 && r > M.snowRow + 12) { ctx.globalAlpha = 0.75; ctx.drawImage(T.ichu, px, py + 6); ctx.globalAlpha = 1; } // ichu de altura
+          else if (h > 0.85 && r < M.snowRow + 25) { ctx.fillStyle = 'rgba(240,246,255,0.6)'; ctx.fillRect(px + 2, py + 9, 7, 2); ctx.fillRect(px + 4, py + 8, 3, 1); } // manchón de nieve
+        }
+        if (c > M.peakX) ctx.drawImage(rockShade, px, py); // ladera en sombra
+      }
+    }
+  }
+  // nieve que cae cuando estás en lo alto de la montaña
+  function renderSnowfall(lv, camy) {
+    const M = lv.mountain; if (!M) return;
+    const a = clamp((M.snowRow * TILE - camy) / 400, 0, 1); if (a <= 0) return;
+    ctx.fillStyle = 'rgba(255,255,255,' + (0.85 * a) + ')';
+    for (let i = 0; i < 70; i++) {
+      const x = mod(hash(i * 3) * BASE_W + tick * (0.3 + hash(i) * 0.5) - Game.cam.x * 0.3, BASE_W);
+      const y = mod(hash(i * 7) * BASE_H + tick * (0.6 + hash(i * 5) * 0.6) - camy * 0.3, BASE_H);
+      ctx.fillRect(Math.round(x), Math.round(y), i % 5 === 0 ? 2 : 1, i % 5 === 0 ? 2 : 1);
+    }
+  }
+  // rocas que van delante del lodo (los troncos pasan por detrás)
+  function renderFront(lv) {
+    // solo la cabeza de la roca va delante: lo que cae del escalón pasa por detrás
+    for (const r of lv.fgRocks || []) for (let x = r[0]; x < r[0] + r[2]; x++) ctx.drawImage(T.mudRock, x * TILE, r[1] * TILE);
+  }
+  // el huaico baja del cerro: cascada de lodo por donde entran troncos y lajas
+  function renderInflow(lv) {
+    const hu = Game.huaico; if (!hu || !hu.inflow) return;
+    const Pl = LIQ.mud, x = hu.inflow.x, top = hu.inflow.y, s = hu.surfaceAt(x - 4);
+    if (x + 40 < Game.cam.x || x - 40 > Game.cam.x + BASE_W) return;
+    const rock = getBackTile();
+    for (let r = Math.floor(top / TILE) - 1; r * TILE < s; r++) for (let c = Math.floor(x / TILE) - 2; c <= Math.floor(x / TILE) + 2; c++) {
+      if (isSolidCode(lv.tile(c, r)) || liquidKind(lv.tile(c, r))) continue;
+      ctx.drawImage(T.clayBody, c * TILE, r * TILE); ctx.drawImage(rockShade || rock, c * TILE, r * TILE);
+    }
+    const a = x - 9, b = x + 9, H = s - top;
+    ctx.fillStyle = Pl.bands[1]; ctx.fillRect(a, top, b - a, H);
+    ctx.fillStyle = Pl.bands[0]; ctx.fillRect(a, top, 1, H); ctx.fillRect(b - 1, top, 1, H);
+    for (let xx = a + 1; xx < b - 1; xx++) for (let k = 0; k < 3; k++) {
+      const yy = top + mod(hash(xx * 13 + k * 31) * H + tick * (2.5 + hash(xx * 7 + k) * 1.5), H);
+      ctx.fillStyle = k === 0 ? Pl.foam : Pl.streak[k]; ctx.fillRect(xx, Math.floor(yy), 1, Math.min(5, s - Math.floor(yy)));
+    }
+    for (let j = 0; j < 14; j++) { const r = hash(j * 17 + Math.floor(tick / 3)); if (r < 0.3) continue; ctx.fillStyle = r > 0.7 ? Pl.foam : Pl.hi; ctx.fillRect(a - 8 + Math.floor(hash(j * 3 + Math.floor(tick / 3)) * 34), s - 2 + Math.floor(r * 4), 2, 1); }
+  }
+  // el precipicio: el lodo se despeña al vacío por el borde del lecho
+  function renderPrecipice(L, Pl, X0, wl, t) {
+    const yEnd = Game.cam.y + BASE_H + 4; if (wl > yEnd) return;
+    for (let c = -6; c < 1; c++) {
+      ctx.fillStyle = Pl.bands[c < -4 ? 2 : c < -1 ? 1 : 0]; ctx.fillRect(X0 + c, wl, 1, yEnd - wl);
+      for (let k = 0; k < 4; k++) { const yy = wl + mod(hash(c * 7 + k * 13) * 300 + t * (3 + k * 0.7), 300); if (yy > yEnd) continue; ctx.fillStyle = k ? Pl.hi : Pl.foam; ctx.fillRect(X0 + c, Math.floor(yy), 1, 4); }
+    }
+    for (let j = 0; j < 8; j++) { const r = hash(j * 23 + Math.floor(t / 3)); if (r < 0.4) continue; ctx.fillStyle = Pl.foam; ctx.fillRect(X0 - 4 + Math.floor(hash(j + Math.floor(t / 3) * 3) * 8), wl - 1 + Math.floor(r * 3), 1, 1); }
+  }
+
   function renderTiles(lv) {
     const c0 = Math.max(0, Math.floor(Game.cam.x / TILE) - 1), c1 = Math.min(lv.cols - 1, Math.ceil((Game.cam.x + BASE_W) / TILE) + 1);
     const r0 = Math.max(0, Math.floor(Game.cam.y / TILE) - 1), r1 = Math.min(lv.rows - 1, Math.ceil((Game.cam.y + BASE_H) / TILE) + 1);
     for (let y = r0; y <= r1; y++) for (let x = c0; x <= c1; x++) {
       const code = lv.tile(x, y); if (!code) continue;
-      const spec = TILE_SPECS[code]; if (!spec || spec.liquid) continue;
+      const spec = TILE_SPECS[code]; if (!spec || spec.liquid || spec.front) continue;
       const img = spec.top && !isSolidCode(lv.tile(x, y - 1)) ? spec.top : spec.body;
       if (img) ctx.drawImage(img, x * TILE, y * TILE);
     }
@@ -463,6 +556,7 @@
         ctx.fillRect(x, sy, 1, 1);
       }
       if (L.fallTop) { renderFall(lv, L, Pl, X0, X1, wl, cx0, cx1, t); continue; }
+      if (L.kind === 'mud' && !lv.liquids.some(N => N !== L && N.x + N.w === L.x) && !isSolidCode(lv.tile(L.x - 1, L.y))) renderPrecipice(L, Pl, X0, wl, t);
       // 3) vetas de corriente bajo la superficie (más rápidas arriba que al fondo)
       const depth = Math.max(8, Math.min(bot, wl + 44) - wl);
       const nS = Math.floor(W * depth / (L.kind === 'mud' ? 90 : 150));
@@ -598,6 +692,19 @@
     ctx.globalAlpha = 1;
   }
 
+  // aviso "!" en el borde por donde va a entrar un cóndor
+  function renderBirdWarnings() {
+    for (const e of Game.entities) {
+      if (!(e instanceof Condor) || !e.warning) continue;
+      const sy = e.baseY - Game.cam.y; if (sy < 10 || sy > BASE_H - 10) continue;
+      const left = e.dir > 0, x = left ? 6 : BASE_W - 16;
+      if (Math.floor(tick / 6) % 2) continue;
+      panel(x - 2, sy - 6, 14, 14);
+      drawText(ctx, '!', x + 5, sy - 3, { color: '#ff6b5a', align: 'center' });
+      drawText(ctx, left ? '>' : '<', x + (left ? 10 : -2), sy - 3, { color: '#ff6b5a', align: 'center' });
+    }
+  }
+
   // ── HUD ──────────────────────────────────────────────────────────────────
   function panel(x, y, w, h) { ctx.fillStyle = 'rgba(28,18,30,0.55)'; ctx.fillRect(x + 1, y, w - 2, h); ctx.fillRect(x, y + 1, w, h - 2); }
   function renderHUD() {
@@ -607,7 +714,13 @@
     const late = clockMinutes() >= CLASS_START;
     panel(BASE_W - 52, 6, 46, 16);
     drawText(ctx, clockText(), BASE_W - 29, 11, { color: late ? '#f2917d' : '#fff3d6', align: 'center' });
-    if (Game.zoneName) drawText(ctx, Game.zoneName, BASE_W - 58, 11, { color: '#fff3d6', align: 'right', shadow: true, shadowColor: '#00000088' });
+    const Z = Game.level.zones[Game.zone], A = Game.level.altitude;
+    if (Z && Z.alt && A) {
+      // altímetro: en la montaña, en vez del nombre del tramo
+      const m = Math.max(A.baseM, Math.round((A.baseM + (A.baseRow * TILE - (Game.player.y + Game.player.h)) / TILE * A.perRow) / 10) * 10);
+      const txt = String(m).replace(/\B(?=(\d{3})+(?!\d))/g, '.') + ' M';
+      drawText(ctx, txt, BASE_W - 58, 11, { color: '#d9f1ff', align: 'right', shadow: true, shadowColor: '#00000088' });
+    } else if (Game.zoneName) drawText(ctx, Game.zoneName, BASE_W - 58, 11, { color: '#fff3d6', align: 'right', shadow: true, shadowColor: '#00000088' });
 
     // título al empezar
     if (Game.banner < 170) {
@@ -656,6 +769,7 @@
     const rows = [
       ['HOJAS DE TAREA', Game.pages + ' / 3', '#ffffff'],
       ['HORA DE LLEGADA', clockText(Game.arrival) + (onTime ? '  ¡A TIEMPO!' : '  TARDE'), onTime ? '#9be7c4' : '#f2917d'],
+      ['PASTO PARA LA CABRA', '' + Game.herbs, '#8fd062'],
       ['CAÍDAS', '' + Game.deaths, '#f2917d'],
     ];
     rows.forEach((r, i) => {
@@ -708,7 +822,7 @@
       drawText(ctx, r[0], 30, 50 + i * 15, { color: '#9be7c4' });
       drawText(ctx, r[1], BASE_W - 30, 50 + i * 15, { color: '#f4e9d8', align: 'right' });
     });
-    const tips = ['LLAMA: TÓCALA PARA MONTARLA. CORRE Y SALTA MÁS.', 'CABRA: SALTA SOLA. TÚ SOLO LA GUÍAS.', 'HUAICO: SALTA DE TRONCO EN TRONCO.', 'LAS APACHETAS GUARDAN TU AVANCE.'];
+    const tips = ['LLAMA: TÓCALA PARA MONTARLA. CORRE Y SALTA MÁS.', 'CABRA: SALTA SOLA. TÚ SOLO LA GUÍAS.', 'EL PASTO LE DA A LA CABRA UN SÚPER SALTO.', 'HUAICO: SI CAES, PULSA SALTO PARA AGARRARTE.'];
     tips.forEach((t, i) => drawText(ctx, t, BASE_W / 2, 132 + i * 12, { color: '#cdbde8', align: 'center' }));
     drawText(ctx, 'PULSA PARA VOLVER', BASE_W / 2, 196, { color: '#fff3d6', align: 'center' });
   }
@@ -752,5 +866,6 @@
   Game.debugStep = update;
   Game.debugRender = render;
   Game.startGame = startGame;
+  Game.snapCamera = () => updateCamera(true);
   init();
 })();

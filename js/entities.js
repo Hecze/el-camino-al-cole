@@ -54,6 +54,16 @@ function moveY(a, level) {
   }
 }
 
+// si un actor acabó dentro de roca sólida, lo subimos hasta un hueco libre
+function unstick(a, level) {
+  const solidAt = () => {
+    for (let ty = Math.floor(a.y / TS); ty <= Math.floor((a.y + a.h - 1) / TS); ty++)
+      for (let tx = Math.floor(a.x / TS); tx <= Math.floor((a.x + a.w - 1) / TS); tx++) if (isSolidCode(level.tile(tx, ty))) return true;
+    return false;
+  };
+  for (let i = 0; i < 80 && solidAt(); i++) a.y -= 1;
+}
+
 const _flipCache = new WeakMap();
 function flipS(s) { if (!s) return s; let f = _flipCache.get(s); if (!f) { f = PIX.flipped(s); _flipCache.set(s, f); } return f; }
 
@@ -71,7 +81,8 @@ class Player extends Actor {
     super(x, y, 8, 15);
     this.facing = 1; this.coyote = 0; this.animT = 0;
     this.riding = null; this.mountCd = 0; this.lastMover = null;
-    this.dropThrough = false; this.dropT = 0; this.surfT = 0; this.mudT = 0;
+    this.dropThrough = false; this.dropT = 0; this.surfT = 0; this.stickT = 0;
+    this.dragged = false; this.dragT = 0; this.overEdge = false;
     this.won = false; this.invuln = 0;
   }
   get jumpHeld() { return Input.held('jump') || Input.held('up'); }
@@ -80,6 +91,7 @@ class Player extends Actor {
     const level = g.level;
     if (this.won) { this.animT++; return; }
     if (this.mountCd > 0) this.mountCd--;
+    if (this.dragged) { this.updateDragged(g); return; }
     if (this.invuln > 0) this.invuln--;
 
     // ── montado: la montura se mueve en su propio update ──
@@ -121,21 +133,34 @@ class Player extends Actor {
     moveY(this, level);
 
     // plataformas móviles (troncos del huaico): nos llevan con la corriente
+    // Plataformas móviles (troncos del huaico): nos llevan con la corriente.
+    // Ayudas invisibles: el borde perdona unos píxeles (más si ya estabas
+    // encima), y al aterrizar se frena el impulso y el tronco te "atrae" hacia
+    // su centro durante un instante, para no resbalar al lodo.
     let onMover = null;
     if (this.vy >= 0) for (const m of g.movers) {
-      if (m.dead) continue;
-      const reach = this.lastMover === m ? 10 : 6;
-      if (this.x + this.w > m.x + 1 && this.x < m.x + m.w - 1 &&
-          this.y + this.h >= m.y - 4 && this.y + this.h <= m.y + reach) {
+      if (m.dead || m.falling) continue;
+      const on = this.lastMover === m, grace = on ? 7 : 4;
+      if (this.x + this.w > m.x - grace && this.x < m.x + m.w + grace &&
+          this.y + this.h >= m.y - 5 && this.y + this.h <= m.y + (on ? 12 : 8)) {
         this.y = m.y - this.h; this.vy = 0; this.onGround = true; onMover = m; break;
       }
     }
+    if (onMover && onMover !== this.lastMover) { this.vx *= 0.25; this.stickT = 18; g.audio('land'); g.burst(this.cx, this.y + this.h, 'mud', 3); }
     if (onMover) {
+      if (this.stickT > 0) {
+        this.stickT--;
+        const pad = 6, l = onMover.x + pad, r = onMover.x + onMover.w - pad;
+        if (!Input.held('left') && !Input.held('right')) {
+          if (this.cx < l) this.x += Math.min(1.2, l - this.cx);
+          else if (this.cx > r) this.x -= Math.min(1.2, this.cx - r);
+          this.vx *= 0.6;
+        }
+      }
       const vx = this.vx; this.vx = onMover.dx; moveX(this, level); this.vx = this.wall ? 0 : vx;
       this.surfT = 6;
     }
-    if (onMover && !this.lastMover) g.audio('land');
-    else if (this.onGround && !wasGround && this.vy === 0) g.onPlayerLand(this);
+    if (!onMover && this.onGround && !wasGround && this.vy === 0) g.onPlayerLand(this);
     this.lastMover = onMover;
     if (this.surfT > 0) this.surfT--;
 
@@ -174,29 +199,66 @@ class Player extends Actor {
       if (k === 'water') inWater = true; else if (k === 'mud') inMud = true;
     }
     if (inWater) { g.playerEnvDeath('water'); return; }
-    if (inMud) {
-      // el lodo te traga: un instante para reaccionar y se acabó
-      this.vx *= 0.5; this.vy = Math.min(this.vy, 0.7);
-      if (this.mudT % 6 === 0) g.burst(this.cx, this.y + this.h, 'mud', 5);
-      if (++this.mudT > 16) g.playerEnvDeath('mud');
-    } else this.mudT = 0;
-    if (this.y > level.rows * TS + 40) g.playerEnvDeath('fall');
+    if (inMud && g.huaico) {
+      // el huaico te atrapa y te arrastra hacia el precipicio
+      this.dragged = true; this.dragT = 0; this.overEdge = false; this.vx = 0; this.vy = 0;
+      g.audio('splash'); g.burst(this.cx, this.y + this.h, 'mud', 14); g.shake(2, 8);
+      return;
+    }
+    if (this.y > Math.max(level.rows * TS + 40, 0) || this.y > g.cam.y + 216 + 80) g.playerEnvDeath('fall');
+  }
+
+  updateDragged(g) {
+    const hu = g.huaico;
+    this.dragT++; this.animT++;
+    if (this.overEdge) {
+      // cayendo por el precipicio
+      this.vy = Math.min(this.vy + 0.35, 7); this.y += this.vy; this.x -= 0.5;
+      if (this.dragT > 50) g.playerEnvDeath('fall');
+      return;
+    }
+    const s = hu.surfaceAt(this.cx);
+    if (s === null) { this.overEdge = true; this.dragT = 0; this.vy = -1.5; g.audio('fall'); return; }
+    // la corriente arrastra (un poco más rápido que los troncos); puedes bracear algo
+    let swim = 0;
+    if (Input.held('right')) swim = 0.35; else if (Input.held('left')) swim = -0.25;
+    this.x += -hu.speed * 1.35 + swim;
+    const target = s - this.h + 6 + (Math.floor(this.dragT / 10) % 2);
+    if (this.y < target) { this.vy = Math.min(this.vy + 0.4, 5); this.y = Math.min(target, this.y + this.vy); }
+    else { this.y = target; this.vy = 0; }
+    if (this.dragT % 9 === 0) g.burst(this.cx, s, 'mud', 3);
+    if (Input.consumeJump()) {
+      // ¿hay un tronco al alcance? te agarras a él
+      const grab = g.movers.find(m => !m.dead && !m.falling && this.cx > m.x - 10 && this.cx < m.x + m.w + 10 && m.y > this.y - 14 && m.y < this.y + 26);
+      if (grab) {
+        this.dragged = false; this.y = grab.y - this.h; this.vy = 0; this.vx = 0;
+        this.lastMover = grab; this.stickT = 18; this.onGround = true; this.invuln = 20; unstick(this, g.level);
+        g.audio('jump'); g.burst(this.cx, this.y + this.h, 'mud', 10);
+      } else if (Math.random() < 0.12) {
+        // muy de vez en cuando, un manotazo desesperado te saca del lodo
+        this.dragged = false; this.y = s - this.h - 6; this.vy = -6.6; this.vx = 0.8; unstick(this, g.level);
+        g.audio('jump'); g.burst(this.cx, s, 'mud', 12);
+      } else { g.audio('mud'); g.burst(this.cx, s - 2, 'mud', 5); }
+    }
   }
 
   draw(ctx, g) {
     if (this.riding) return;
+    if (this.dragged) {
+      const s = this.overEdge ? 99999 : (g.huaico.surfaceAt(this.cx) || 99999);
+      ctx.save(); ctx.beginPath(); ctx.rect(this.x - 10, this.y - 12, 28, s + 1 - (this.y - 12)); ctx.clip();
+      const img = P.jump, jx = Math.floor(this.dragT / 6) % 2;
+      ctx.drawImage(this.facing < 0 ? flipS(img) : img, Math.round(this.cx - 8 + jx), Math.round(this.y + this.h - 22));
+      ctx.restore();
+      return;
+    }
     if (this.invuln > 0 && Math.floor(this.invuln / 4) % 2 === 0) return;
     let img;
     if (this.surfT > 0 && Math.abs(this.vx) < 0.3) img = P.surf;
     else if (!this.onGround) img = this.vy < 0 ? P.jump : P.fall;
     else if (Math.abs(this.vx) > 0.25) { const sp = Math.max(4, 9 - Math.abs(this.vx) * 2); img = P.run[Math.floor(this.animT / sp) % 4]; }
     else img = P.idle[0];
-    if (this.mudT > 0) {
-      // hundiéndose: recortamos los pies
-      ctx.save(); ctx.beginPath(); ctx.rect(this.x - 8, this.y - 10, 24, 22 + 6 - this.mudT); ctx.clip();
-    }
-    ctx.drawImage(this.facing < 0 ? flipS(img) : img, Math.round(this.cx - 8), Math.round(this.y + this.h - 22 + (this.mudT > 0 ? this.mudT * 0.6 : 0)));
-    if (this.mudT > 0) ctx.restore();
+    ctx.drawImage(this.facing < 0 ? flipS(img) : img, Math.round(this.cx - 8), Math.round(this.y + this.h - 22));
   }
   drawRider(ctx) {
     if (!this.riding) return;
@@ -218,7 +280,7 @@ class Mount extends Actor {
       const k = liquidAt(lv, px, this.y + this.h - 2);
       if (k) { if (this.rider) { g.playerEnvDeath(k); } else this.reset(); return; }
     }
-    if (this.y > lv.rows * TS + 24) { if (this.rider) g.playerEnvDeath('fall'); else this.reset(); }
+    if (this.y > lv.rows * TS + 24 || (this.rider && this.y > g.cam.y + 216 + 60)) { if (this.rider) g.playerEnvDeath('fall'); else this.reset(); }
   }
 }
 
@@ -255,7 +317,7 @@ class Llama extends Mount {
 
 // Cabra montesa: rebota sola sin parar; el jugador solo la dirige.
 class Cabra extends Mount {
-  constructor(x, y) { super(x, y - 14, 18, 14, { dx: 4, dy: -10 }); this.canDismount = false; this.landT = 0; this.idleT = 0; }
+  constructor(x, y) { super(x, y - 15, 20, 15, { dx: 5, dy: -10 }); this.canDismount = false; this.landT = 0; this.idleT = 0; this.boost = 0; }
   update(g) {
     this.animT++;
     if (this.landT > 0) this.landT--;
@@ -269,7 +331,13 @@ class Cabra extends Mount {
         if (g.level.goatEnd && this.cx > g.level.goatEnd * TS) {
           // llegó a la cumbre: la cabra se queda pastando
           this.retired = true; this.vx = 0; this.rider.dismount(g, -4.2); g.audio('bleat'); g.onGoatDone();
-        } else { this.vy = PHYS.GOAT_JUMP; this.onGround = false; this.landT = 5; g.audio('boing'); g.burst(this.cx, this.y + this.h, 'dust', 5); }
+        } else {
+          // después de comer pasto, el siguiente salto es un súper salto
+          const big = this.boost > 0;
+          this.vy = PHYS.GOAT_JUMP * (big ? 1.4 : 1); if (big) this.boost--;
+          this.onGround = false; this.landT = 5; g.audio(big ? 'bleat' : 'boing');
+          g.burst(this.cx, this.y + this.h, big ? 'spark' : 'dust', big ? 14 : 5);
+        }
       }
     } else {
       this.vx *= 0.8;
@@ -282,7 +350,8 @@ class Cabra extends Mount {
   }
   draw(ctx) {
     const img = !this.onGround ? (this.vy < 0 ? GOAT.jump : GOAT.stand) : (this.landT > 0 ? GOAT.land : GOAT.stand);
-    ctx.drawImage(this.facing < 0 ? flipS(img) : img, Math.round(this.cx - 11 + (this.facing < 0 ? 2 : -2)), Math.round(this.y + this.h - 17));
+    ctx.drawImage(this.facing < 0 ? flipS(img) : img, Math.round(this.cx - 14 + (this.facing < 0 ? 2 : -2)), Math.round(this.y + this.h - 20));
+    if (this.boost > 0 && Math.floor(this.animT / 4) % 2) { ctx.fillStyle = '#ffe27a'; ctx.fillRect(Math.round(this.cx + (this.animT % 16) - 8), Math.round(this.y - 4), 1, 1); }
   }
 }
 
@@ -328,61 +397,111 @@ class Rockfall {
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
-// HUAICO: troncos y lajas bajan con el lodo, escalón a escalón.
+// HUAICO: el lodo baja del cerro por la derecha, corre escalón a escalón hacia
+// la izquierda y se despeña por el precipicio. Arrastra troncos y lajas.
 class Huaico {
   constructor(def, level) {
-    this.x0 = def.x0 * TS; this.x1 = def.x1 * TS; this.interval = def.interval || 76; this.speed = def.speed || 0.85;
-    this.level = level; this.t = this.interval; this.n = 0;
+    this.x0 = def.x0 * TS; this.x1 = def.x1 * TS; this.interval = def.interval || 84; this.speed = def.speed || 0.75;
+    this.inflow = def.inflow ? { x: def.inflow.x * TS + 8, y: def.inflow.top * TS } : null;
+    this.level = level; this.t = 20; this.n = 0;
   }
   surfaceAt(x) {
     for (const l of this.level.liquids) if (l.kind === 'mud' && x >= l.x * TS && x < (l.x + l.w) * TS) return l.y * TS + 4;
     return null;
   }
-  prefill(g) { for (let x = this.x1 - 34; x > this.x0 + 12; x -= this.interval * this.speed) this.spawn(g, x, true); }
-  spawn(g, x, instant) {
-    const d = new Debris(this.n++ % 3 === 2 ? 'slab' : 'log', x, this, instant);
+  prefill(g) { for (let x = this.x1 - 60; x > this.x0 + 20; x -= this.interval * this.speed) this.spawn(g, x, null); }
+  spawn(g, x, y) {
+    const d = new Debris(this.n++ % 3 === 2 ? 'slab' : 'log', x, this, y);
     g.addEntity(d); g.movers.push(d);
   }
-  update(g) { if (--this.t <= 0) { this.t = this.interval; this.spawn(g, this.x1 - 32, false); } }
+  update(g) { if (--this.t <= 0) { this.t = this.interval; this.spawn(g, this.inflow.x, this.inflow.y); } }
   draw() {}
 }
 class Debris extends Actor {
-  constructor(kind, x, hu, instant) {
-    const w = kind === 'log' ? 28 : 18;
-    super(x, 0, w, 6);
-    this.kind = kind; this.hu = hu; this.isMover = true;
-    this.dx = 0; this.dy = 0; this.t = Math.random() * 6; this.sinkT = 0;
-    this.y = hu.surfaceAt(this.cx) - 4 + (instant ? 0 : 14);
+  constructor(kind, x, hu, y) {
+    const img = kind === 'log' ? OBJ.log : OBJ.slab;
+    super(x - img.width / 2 + 2, 0, img.width - 4, 8);
+    this.kind = kind; this.img = img; this.hu = hu; this.isMover = true;
+    this.dx = 0; this.dy = 0; this.t = Math.random() * 6; this.falling = false; this.fallT = 0; this.rot = 0;
+    // si viene de la cascada, cae desde arriba; si no, ya está flotando
+    this.y = y != null ? y : hu.surfaceAt(this.cx) - 8;
+    this.landed = y == null;
   }
   update(g) {
     const px = this.x, py = this.y;
     this.t += 0.07;
-    this.x -= this.hu.speed;
-    const s = this.hu.surfaceAt(this.cx);
-    if (s === null || this.cx < this.hu.x0 + 10 || this.sinkT > 0) {
-      this.sinkT++; this.y += 0.45;
-      if (this.sinkT > 40) this.dead = true;
+    if (this.falling) {
+      // se despeña por el precipicio dando vueltas
+      this.vy = Math.min(this.vy + 0.4, 8); this.y += this.vy; this.x -= 0.4; this.rot += 0.08;
+      if (++this.fallT > 70) this.dead = true;
     } else {
-      const target = s - 4 - (Math.sin(this.t) > 0.4 ? 1 : 0);
-      if (this.y < target - 1) {
-        this.vy = Math.min(this.vy + 0.45, 6); this.y = Math.min(this.y + this.vy, target);
-        if (this.y >= target) { this.vy = 0; g.burst(this.cx, s, 'mud', 10); if (g.near(this.cx, 220)) g.audio('mud'); }
-      } else if (this.y > target) this.y = Math.max(target, this.y - 0.7); // emerge del lodo
-      else { this.y = target; this.vy = 0; }
+      if (this.landed) this.x -= this.hu.speed;
+      const s = this.hu.surfaceAt(this.cx);
+      if (s === null) { if (this.cx < this.hu.x0) { this.falling = true; this.vy = 0.5; } }
+      else {
+        const target = s - 8 - (Math.sin(this.t) > 0.4 ? 1 : 0);
+        if (this.y < target - 1) {
+          this.vy = Math.min(this.vy + 0.45, 7); this.y = Math.min(this.y + this.vy, target);
+          if (this.y >= target) { this.vy = 0; this.landed = true; g.burst(this.cx, s, 'mud', 12); if (g.near(this.cx, 220)) g.audio('mud'); }
+        } else { this.y = target; this.vy = 0; this.landed = true; }
+      }
     }
     this.dx = this.x - px; this.dy = this.y - py;
   }
   draw(ctx, g) {
-    const s = this.hu.surfaceAt(this.cx) || (this.y + 4);
-    ctx.save(); ctx.beginPath(); ctx.rect(this.x - 6, this.y - 30, this.w + 12, s + 2 - (this.y - 30)); ctx.clip();
-    const img = this.kind === 'log' ? OBJ.log : OBJ.slab;
+    const img = this.img;
+    if (this.falling) {
+      ctx.save(); ctx.translate(Math.round(this.cx), Math.round(this.y + 4)); ctx.rotate(-this.rot);
+      ctx.drawImage(img, -Math.round(img.width / 2), -4); ctx.restore();
+      return;
+    }
+    const s = this.hu.surfaceAt(this.cx);
+    if (s === null) { ctx.drawImage(img, Math.round(this.cx - img.width / 2), Math.round(this.y - 1)); return; }
+    ctx.save(); ctx.beginPath(); ctx.rect(this.x - 8, this.y - 40, this.w + 16, s + 2 - (this.y - 40)); ctx.clip();
     ctx.drawImage(img, Math.round(this.cx - img.width / 2), Math.round(this.y - 1));
     ctx.restore();
+    if (!this.landed) return;
     // ola de proa: el lodo se arremolina delante
-    ctx.fillStyle = '#e2c49a';
+    ctx.fillStyle = '#f0d6a8';
     const f = Math.floor(g.T / 5) % 2;
-    ctx.fillRect(Math.round(this.x - 2 - f), Math.round(s), 2, 1);
+    ctx.fillRect(Math.round(this.x - 3 - f), Math.round(s), 3, 1);
     ctx.fillRect(Math.round(this.x + this.w + f), Math.round(s) + 1, 2, 1);
+  }
+}
+
+// Cóndor que cruza la montaña en línea recta, de vez en cuando. Antes de
+// entrar grazna y aparece un aviso en el borde de la pantalla: hay que esquivarlo.
+class Condor extends Actor {
+  constructor(def) {
+    super(0, def.y * TS, 20, 7);
+    // vuela de x0 a x1 (solo sobre su ladera de la montaña)
+    this.cx0 = (def.x0 + def.x1) / 2 * TS; this.half = (def.x1 - def.x0) / 2 * TS; this.speed = def.speed || 1.6;
+    this.baseY = def.y * TS; this.dir = def.dir || 1; this.animT = 0;
+    this.wait = 90 + Math.floor((def.phase || 0) * 60); this.active = false; this.warnT = 0;
+    this.x = -9999;
+  }
+  get warning() { return !this.active && this.wait > 0 && this.wait < 70; }
+  update(g) {
+    this.animT++;
+    const near = Math.abs(g.player.cy - this.baseY) < 160 && Math.abs(g.player.cx - this.cx0) < 360;
+    if (!this.active) {
+      if (!near) return;               // solo vuelan cuando estás cerca de su altura
+      if (--this.wait === 69) g.audio('caw');
+      if (this.wait <= 0) { this.active = true; this.x = this.cx0 - this.dir * this.half - this.w / 2; }
+      return;
+    }
+    this.x += this.dir * this.speed;
+    this.y = this.baseY + Math.sin(this.animT * 0.05) * 4;
+    if ((this.dir > 0 && this.x > this.cx0 + this.half) || (this.dir < 0 && this.x < this.cx0 - this.half - this.w)) {
+      this.active = false; this.dir *= -1; this.x = -9999; this.wait = 220 + Math.floor(Math.random() * 120);
+    }
+  }
+  onRespawn() { this.active = false; this.x = -9999; this.wait = 160; }
+  get hitbox() { return this.active ? { x: this.x + 5, y: this.y + 2, w: this.w - 10, h: this.h - 4 } : { x: -9999, y: -9999, w: 0, h: 0 }; }
+  draw(ctx) {
+    if (!this.active) return;
+    const img = E.condorBig[Math.floor(this.animT / 9) % 2];
+    ctx.drawImage(this.dir < 0 ? flipS(img) : img, Math.round(this.cx - 14), Math.round(this.y - 2));
   }
 }
 
@@ -398,10 +517,17 @@ class Pickup extends Actor {
     if (this.overlaps(p, 3) || (p.riding && this.overlaps(p.riding, 1))) this.collect(g);
   }
   collect(g) {
+    if (this.type === 'herb') {
+      // solo la cabra come pasto: le da un súper salto
+      const goat = g.player.riding; if (!(goat instanceof Cabra)) return;
+      this.dead = true; goat.boost = 1; g.herbs++; g.audio('munch'); g.burst(this.cx, this.cy, 'leaf', 12);
+      return;
+    }
     this.dead = true;
     g.audio('page'); g.pages++; g.burst(this.cx, this.cy, 'paper', 16);
   }
   draw(ctx) {
+    if (this.type === 'herb') { ctx.drawImage(OBJ.herb, Math.round(this.cx - 6), Math.round(this.cy - 5 + Math.sin(this.animT) * 1.5)); return; }
     // la hoja aletea con el viento, apoyada en el suelo
     const tilt = Math.sin(this.animT * 1.4) > 0 ? 0 : 1;
     ctx.drawImage(OBJ.page, Math.round(this.cx - 5 + tilt), Math.round(this.y + this.h - 11));
@@ -410,7 +536,7 @@ class Pickup extends Actor {
 
 // Punto de control invisible: al pasar por aquí, reapareces aquí.
 class Checkpoint extends Actor {
-  constructor(x, y) { super(x * TS, y * TS - 24, 16, 24); this.on = false; this.spawn = { x: x * TS + 4, y: y * TS }; }
+  constructor(x, y) { super(x * TS - 24, y * TS - 64, 64, 64); this.on = false; this.spawn = { x: x * TS + 4, y: y * TS }; }
   update(g) {
     const p = g.player;
     if (!this.on && (p.overlaps(this) || (p.riding && p.riding.overlaps(this)))) { this.on = true; g.setCheckpoint(this); }
@@ -496,6 +622,8 @@ function makeEntity(def, level) {
     case 'checkpoint': return new Checkpoint(def.x, def.y);
     case 'school': return new School(def.x, def.y);
     case 'page': return new Pickup('page', def.x, def.y);
+    case 'herb': return new Pickup('herb', def.x, def.y);
+    case 'condor': return new Condor(def);
     default: return null;
   }
 }

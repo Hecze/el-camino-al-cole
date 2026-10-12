@@ -21,6 +21,8 @@ const PAL = {
   'm': '#9b663b', 'M': '#6e4627', 'i': '#56381f', 'I': '#3a2414', 'j': '#b98a55',
   't': '#d9ad74', 'T': '#9a6a38',
   'l': '#efe2c8', 'L': '#c7ad86', 'f': '#fffaf0', 'F': '#8a7253',
+  // tierra cálida de la quebrada
+  'z': '#b8693d', 'Z': '#94502d', 'A': '#d08a58', 'B': '#7a3f24',
 };
 function spr(rows) { return PIX.fromRows(rows, PAL); }
 
@@ -148,6 +150,89 @@ T.ledge = spr([
   '.DDSDDSDDSDDSDD.',
   '..DDKDD.KDDDKD..',
   '...K.K...K..K...',
+]);
+
+// ── tierra cálida de la quebrada (zona del huaico) ─────────────────────────
+T.clay = spr([
+  '..e....E..e..E..',
+  '.eEe..eEe.eEe.e.',
+  'AAzAAAzAAAAzAAzA',
+  'zzzzzzzzzAzzzzzz',
+  'zZzzzzzzzzzzZzzz',
+  'zzzzAzzzzzzzzzzz',
+  'zzzzzzzzZzzzzzAz',
+  'ZzzzzzzzzzzzzzzZ',
+  'zzzsszzzzzzAzzzz',
+  'zzzSSzzzzzzzzzzz',
+  'zzzzzzzZzzzzzzzz',
+  'zAzzzzzzzzzzZzzz',
+  'zzzzzzzzzzzzzzzz',
+  'zzzzzZzzzAzzzzsz',
+  'zzzzzzzzzzzzzzSz',
+  'BzzzzzzzzzzzzzzB',
+]);
+T.clayBody = spr([
+  'zzzzzzzzzAzzzzzz',
+  'zZzzzzzzzzzzZzzz',
+  'zzzzAzzzzzzzzzzz',
+  'zzzzzzzzZzzzzzAz',
+  'ZzzzzzzzzzzzzzzZ',
+  'zzzsszzzzzzAzzzz',
+  'zzzSSzzzzzzzzzzz',
+  'zzzzzzzZzzzzzzzz',
+  'zAzzzzzzzzzzZzzz',
+  'zzzzzzzzzzzzzzzz',
+  'zzzzzZzzzAzzzzsz',
+  'zzzzzzzzzzzzzzSz',
+  'zzZzzzzzzzzzzzzz',
+  'zzzzzzzzzzZzzzzz',
+  'zzzzzAzzzzzzzzzz',
+  'BzzzzzzzzzzzzzzB',
+]);
+// saliente nevada (parte alta de la montaña)
+T.ledgeSnow = spr([
+  '.1111f11111f111.',
+  '1ffffffdfffffff1',
+  'dfdsfdssdfsdffsd',
+  'SDSSDSsSSDSSsDSS',
+  '.DDSDDSDDSDDSDD.',
+  '..DDKDD.KDDDKD..',
+  '...K.K...K..K...',
+]);
+// roca fija en los escalones del huaico (se dibuja delante del lodo)
+T.mudRock = spr([
+  '..KKKKKKKKKKKK..',
+  '.KddddsssddsssK.',
+  'KdsssssssssssSSK',
+  'KssSssssssSssSSK',
+  'KsssssssssssSSDK',
+  'KSsssSsssssSSSDK',
+  'KSSsssssSSSSSDDK',
+  'KDSSSSSSSSSSDDDK',
+  'KDDSSSSSSSSDDDDK',
+  'KDDDDSSSSDDDDDDK',
+  'KDDDDDDDDDDDDDDK',
+  'KIDDDDDDDDDDDDIK',
+  'KIIDDDDDDDDDDIIK',
+  'KIIIIDDDDDDIIIIK',
+  'KIIIIIIIIIIIIIIK',
+  'KIIIIIIIIIIIIIIK',
+]);
+// cactus candelabro (quebradas secas)
+T.cactus = spr([
+  '......kk........',
+  '.....kcck.......',
+  '.....kcck..kk...',
+  '.kk..kcck.kcck..',
+  'kcck.kcck.kcck..',
+  'kcck.kcck.kcck..',
+  'kcckkkcckkkcck..',
+  '.kcccccccccck...',
+  '..kkkkcckkkk....',
+  '.....kcck.......',
+  '.....kcck.......',
+  '.....kcck.......',
+  '.....kCCk.......',
 ]);
 
 T.cloud = spr([
@@ -289,32 +374,79 @@ LL.run = [llama('runA'), llama('runB'), llama('runC'), llama('runB')];
 LL.jump = llama('jump');
 
 // ─────────────────────────────────────────────────────────────────────────────
-// CABRA MONTESA: cuernos curvos, barba, patas firmes. 22x17
+// CABRA MONTESA: cuernos curvos, barba, patas firmes. 28x21
 // ─────────────────────────────────────────────────────────────────────────────
-const GOAT_TOP = [
-  '..............KKK.....',
-  '.............KSSSK....',
-  '............KSK.KSK...',
-  '............KSK..K....',
-  '............KwwwwK....',
-  '............KwwKwwK...',
-  '.............KwwwwwK..',
-  '..KK.........KwwwKK...',
-  '.KwwKKKKKKKKKKwwwK....',
-  'KwwwwwwwwwwwwwwwKsK...',
-  'KwwwwwwwwwwwwwwsKsK...',
-  'KswwwwwwwwwwwwwsK.....',
-  '.KsswwwwwwwwwwssK.....',
-];
-const GOAT_LEGS = {
-  stand: ['..KsK.KsK..KsK.KsK....', '..KSK.KSK..KSK.KSK....', '..KKK.KKK..KKK.KKK....', '......................'],
-  jump:  ['..KsKKsK....KsKKsK....', '...KKKK......KKKK.....', '......................', '......................'],
-  land:  ['.KsK...KsKKsK...KsK...', '.KKK...KKKKKK...KKK...', '......................', '......................'],
-};
+// (generada con primitivas y retocada: cuernos anillados hacia atrás, barba, colita)
 const GOAT = {
-  stand: spr(GOAT_TOP.concat(GOAT_LEGS.stand)),
-  jump: spr(GOAT_TOP.concat(GOAT_LEGS.jump)),
-  land: spr(GOAT_TOP.concat(GOAT_LEGS.land)),
+  stand: spr([
+  '..............KSDSSK........',
+  '.............KDKKKDSK.......',
+  '............KSSK..KSSK......',
+  '...........KSDK.KKKwwwK.....',
+  '...........KSK.KwwwwwKwKK...',
+  '............K.KWKwwwwwwwwK..',
+  '..K...........KwwwwwwwwwwSK.',
+  '.KwK..KKKKKKKKKwwwwwwwwwwWK.',
+  '.KwwKKwWWWWWWwwwwwwwwWWKWK..',
+  '..KKwwwwwwwwwwwwwwwwwWWKK...',
+  '..KwwwwwwwwwwwwwwwwwwWWK....',
+  '..KwwwwwwwwwwwwwwwKKKKWK....',
+  '..KwwwwwwwwwwwwwwwK...K.....',
+  '...KWWWWWWwwwwwwwK..........',
+  '....KWWWWWWWWWWWWK..........',
+  '...KWwKSDKKKKWwKSDK.........',
+  '...KWwKSDK..KWwKSDK.........',
+  '...KWwKSDK..KWwKSDK.........',
+  '...KWwKSDK..KWwKSDK.........',
+  '....KK.KK....KK.KK..........',
+  '............................',
+  ]),
+  jump: spr([
+  '..............KSDSSK........',
+  '.............KDKKKDSK.......',
+  '............KSSK..KSSK......',
+  '...........KSDK.KKKwwwK.....',
+  '...........KSK.KwwwwwKwKK...',
+  '............K.KWKwwwwwwwwK..',
+  '..K...........KwwwwwwwwwwSK.',
+  '.KwK..KKKKKKKKKwwwwwwwwwwWK.',
+  '.KwwKKwWWWWWWwwwwwwwwWWKWK..',
+  '..KKwwwwwwwwwwwwwwwwwWWKK...',
+  '..KwwwwwwwwwwwwwwwwwwWWK....',
+  '..KwwwwwwwwwwwwwwwKKKKWK....',
+  '..KwwwwwwwwwwwwwwwK...K.....',
+  '...KWWWWWWwwwwwwwK..........',
+  '....KWWWWWWWWWWWWKK.........',
+  '...KWwSDKKKKKKKWwSDK........',
+  '...KWwSDK.....KWwSDK........',
+  '....KKSDK......KKSDK........',
+  '......KK.........KK.........',
+  '............................',
+  '............................',
+  ]),
+  land: spr([
+  '..............KSDSSK........',
+  '.............KDKKKDSK.......',
+  '............KSSK..KSSK......',
+  '...........KSDK.KKKwwwK.....',
+  '...........KSK.KwwwwwKwKK...',
+  '............K.KWKwwwwwwwwK..',
+  '..K...........KwwwwwwwwwwSK.',
+  '.KwK..KKKKKKKKKwwwwwwwwwwWK.',
+  '.KwwKKwWWWWWWwwwwwwwwWWKWK..',
+  '..KKwwwwwwwwwwwwwwwwwWWKK...',
+  '..KwwwwwwwwwwwwwwwwwwWWK....',
+  '..KwwwwwwwwwwwwwwwKKKKWK....',
+  '..KwwwwwwwwwwwwwwwK...K.....',
+  '...KWWWWWWwwwwwwwK..........',
+  '...KKWWWWWWWWWWWWK..........',
+  '..KWwKKSDKKKWwKKSDK.........',
+  '..KWwKKSDK.KWwKKSDK.........',
+  '..KWwKKSDK.KWwKKSDK.........',
+  '...KK..KK...KK..KK..........',
+  '............................',
+  '............................',
+  ]),
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -360,26 +492,69 @@ OBJ.page = spr([
   'K11111111K',
   'KKKKKKKKKK',
 ]);
-// tronco del huaico
+// tronco del huaico (grande y ancho para que se pueda aterrizar bien)
 OBJ.log = spr([
-  '...KKKKKKKKKKKKKKKKKKKKKKKKK..',
-  '..KjmmmjmmmmmjmmmmmmjmmmmmKtK.',
-  '.KmmMmmmmmMmmmmmmMmmmmmmmKtTtK',
-  '.KmmmmmmmmmmmmmmmmmmmmmmmKTtTK',
-  '.KMmmmmMmmmmmmMmmmmmMmmmmKtTtK',
-  '.KMMMMiMMMMMMMMiMMMMMMiMMMKtK.',
-  '..KKKKKKKKKKKKKKKKKKKKKKKKKK..',
+  '....KKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKK....',
+  '...KjmmmmjmmmmmmmjmmmmmmmjmmmmmmmmjKK...',
+  '..KmmmMmmmmmmmMmmmmmmmMmmmmmmMmmmmKtTK..',
+  '.KmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmKtTTtK.',
+  '.KMmmmmmMmmmmmmmMmmmmmmMmmmmmmmmmKTtTTK.',
+  '.KmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmKtTtTK.',
+  '.KMMMMiMMMMMMMMMiMMMMMMMMiMMMMMMMMKtTK..',
+  '..KKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKK...',
 ]);
-// roca plana que flota en el lodo
+// laja: roca plana grande que flota en el lodo
 OBJ.slab = spr([
-  '....KKKKKKKKKKK.....',
-  '..KKddssdssssssKK...',
-  '.KdsssssssssSsssSK..',
-  'KsssSssssssssssSSSK.',
-  'KSSsssssSsssssSSSSK.',
-  'KDSSSSSSSSSSSSSSSDK.',
-  '.KKKKKKKKKKKKKKKKK..',
+  '......KKKKKKKKKKKKKKKKK.......',
+  '...KKKddssdsssddsssssssKKK....',
+  '..KdddssssssssssssSsssssSSK...',
+  '.KdssssSsssssssssssssssSSSSK..',
+  'KdsssssssssSssssssssSssSSSSDK.',
+  'KSSssssssssssssssssssSSSSSDDK.',
+  'KDSSSSsSSSSSSSSSSSSSSSSSSDDDK.',
+  '.KKKKKKKKKKKKKKKKKKKKKKKKKKKK..',
 ]);
+// pasto fresco: comida para la cabra (¡súper salto!)
+OBJ.herb = spr([
+  '...y..e..x..',
+  '..yYyeEexXx.',
+  '...yeGeEex..',
+  '.e..GeGEe.e.',
+  'eEe.GGeGG.Ee',
+  '.eGeGGGGGeG.',
+  '..GGGGGGGGG.',
+  '..KTTTTTTTK.',
+  '..KtTtTtTtK.',
+  '...KKKKKKK..',
+]);
+// cóndor que cruza el risco (obstáculo): colores reales, 28x12
+E.condorBig = [
+  spr([
+    '.............KK.............',
+    '............KppK............',
+    '...........K1111K...........',
+    'K.K.K.KKKKKKK11KKKKKKK.K.K.K',
+    '.KKKKKKKKKKKKKKKKKKKKKKKKKK.',
+    '..KhhhhhhhKKKKKKKKhhhhhhhK..',
+    '....KKKhhhhKKKKKKhhhhKKK....',
+    '.......KKKKKKKKKKKKKK.......',
+    '...........KKKKKK...........',
+    '............K..K............',
+  ]),
+  spr([
+    '.............KK.............',
+    '.....KKKKKKKKppKKKKKKKK.....',
+    '...KKhhhhhhK1111KhhhhhhKK...',
+    '.KKhhhhhhKKKK11KKKKhhhhhhKK.',
+    'K.K.KKKKKKKKKKKKKKKKKKK.K.K.',
+    '.K.K....KKKKKKKKKKK....K.K..',
+    '..........KKKKKKKK..........',
+    '...........KKKKKK...........',
+    '............K..K............',
+    '............................',
+  ]),
+];
+
 // piedra del derrumbe (rueda)
 OBJ.boulder = spr([
   '....KKKKKK....',
