@@ -669,12 +669,13 @@ class CollapseHouse extends Actor {
       for (let i = 0; i < n; i++) R('#3a2414', -1 + ((i % 2) ? 1 : 0), -35 + i * 5, 1, 5);
       if (this.state !== 'erode') for (let i = 0; i < 4; i++) R('#3a2414', 22 - i * 2, -10 - i * 5, 1, 5);
     }
-    // cartelito de cartón clavado en una estaca al lado de la casa: "SE VENDE"
-    R('#6b4524', 48, -22, 2, 22);
-    R('#8a6a4a', 31, -40, 37, 21); R('#d9c19a', 32, -39, 35, 19);
-    drawText(ctx, 'SE', 49, -38, { color: '#5a3b22', align: 'center' });
-    drawText(ctx, 'VENDE', 49, -30, { color: '#5a3b22', align: 'center' });
-    R('#6b4524', 47, -41, 4, 2);   // clavo
+    // cartelito de cartón clavado en una estaca al lado de la casa: "SE VENDE",
+    // con letras chiquitas de 3x5 (más chico que una ventana, como de verdad)
+    R('#6b4524', 41, -14, 1, 14);
+    R('#8a6a4a', 32, -27, 21, 15); R('#d9c19a', 33, -26, 19, 13);
+    const MICRO = { S: ['###', '#..', '###', '..#', '###'], E: ['###', '#..', '##.', '#..', '###'], V: ['#.#', '#.#', '#.#', '#.#', '.#.'], N: ['#.#', '###', '###', '#.#', '#.#'], D: ['##.', '#.#', '#.#', '#.#', '##.'] };
+    const word = (w, x0, y0) => { for (let k = 0; k < w.length; k++) MICRO[w[k]].forEach((row, j) => { for (let i = 0; i < 3; i++) if (row[i] === '#') R('#5a3b22', x0 + k * 4 + i, y0 + j, 1, 1); }); };
+    word('SE', 39, -25); word('VENDE', 33, -19);
     // techo de calamina a dos aguas (hasta que la corriente lo arranca)
     if (this.roofOn) {
       for (let i = 0; i < 11; i++) { const w = 76 - (10 - i) * 6; R(i % 2 ? '#9aa0a8' : '#8a9098', Math.round(-w / 2), i - 46, w, 1); }
@@ -1011,7 +1012,7 @@ class Striker extends Actor {
     const w = Math.max(...this.sign.map(l => textWidth(l))) + 6, h = this.sign.length * 9 + 3;
     ctx.fillStyle = '#1d1622'; ctx.fillRect(px + 1 - w / 2 - 1, py - h + 10 - 1, w + 2, h + 2);
     ctx.fillStyle = '#fffaf0'; ctx.fillRect(px + 1 - w / 2, py - h + 10, w, h);
-    this.sign.forEach((l, i) => drawText(ctx, l, px + 1, py - h + 12 + i * 9, { color: '#d8432f', align: 'center' }));
+    this.sign.forEach((l, i) => drawText(ctx, l, px + 1, py - h + 12 + i * 9, { color: '#27426e', align: 'center' }));
   }
 }
 
