@@ -192,6 +192,16 @@ const LEVEL = {
     { kind: 'hills', color: '#a8a356', color2: '#7f8a44', y: G + 0.4, parallax: 0.52, vpar: 0.62, amp: 2.2, seed: 3 },
     { kind: 'clouds', color: '#fff6e6', parallax: 0.06, count: 9, seed: 11 },
   ],
+  // fondo de la selva baja: lomas amazónicas bajas y brumosas, sin nevados
+  bgEast: {
+    x0: 232, x1: 256, anchorRow: 112,
+    layers: [
+      { kind: 'hills', color: '#8fb0a8', color2: '#7a9c96', y: 109.6, parallax: 0.08, vpar: 0.10, amp: 2.4, seed: 9 },
+      { kind: 'canopy', color: '#5f8f6a', color2: '#4d7a5a', y: 110.6, parallax: 0.18, vpar: 0.24, amp: 2.2, seed: 13 },
+      { kind: 'canopy', color: '#3f7a4c', color2: '#30623e', y: 111.6, parallax: 0.32, vpar: 0.40, amp: 1.8, seed: 17 },
+      { kind: 'clouds', color: '#f4f6ee', parallax: 0.06, count: 7, seed: 4 },
+    ],
+  },
   spawn: { x: 6, y: G },
   // la gran montaña: silueta de fondo con nieve en lo alto
   mountain: { peakX: 121, peakRow: 10, snowRow: 78, shape: mountainShape(121, 10, 150) },

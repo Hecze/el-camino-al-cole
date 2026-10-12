@@ -50,7 +50,11 @@
       let n = 0, amp = 1, norm = 0, fr = 1;
       for (let o = 0; o < 4; o++) { n += Math.sin((x / W) * Math.PI * 2 * fr + s * 1.7 * (o + 1) + o) * amp; norm += amp; amp *= 0.55; fr *= 2; }
       // picos andinos: crestas más afiladas
-      const v = n / norm; return def.kind === 'mountains' ? Math.sign(v) * Math.pow(Math.abs(v), 0.8) : v;
+      const v = n / norm;
+      if (def.kind === 'mountains') return Math.sign(v) * Math.pow(Math.abs(v), 0.8);
+      // copas de árboles: lomas suaves cubiertas de bultos redondeados
+      if (def.kind === 'canopy') return v + Math.abs(Math.sin(x * 0.11 + s)) * 0.35 + Math.abs(Math.sin(x * 0.047 + s * 3)) * 0.25;
+      return v;
     }
     const center = 120, ampPx = def.amp * TILE * 0.5;
     // relleno escalonado de 2px (look pixel art)
@@ -71,7 +75,7 @@
   function getStrip(def, key) { if (!strips[key]) strips[key] = buildStrip(def); return strips[key]; }
 
   const cloudSeed = {}, cloudCache = {};
-  function drawClouds(layer, camx, dy, key) {
+  function drawClouds(layer, camx, dy, key, ctx) {
     const W = 768;
     if (!cloudSeed[key]) {
       const arr = [], s = layer.seed || 1;
@@ -359,6 +363,32 @@
     }
   }
 
+  // cielo, sol y capas de parallax en el canvas dado (se usa también para el fondo de la selva)
+  let bgEastCanvas = null;
+  function drawSkyAndLayers(ctx, layers, anchorRow, day, camx, camy, tag) {
+    const gr = ctx.createLinearGradient(0, 0, 0, BASE_H);
+    for (let i = 0; i < 3; i++) gr.addColorStop([0, 0.6, 1][i], lerpColor(SKY_DAWN[i], SKY_MORNING[i], day));
+    ctx.fillStyle = gr; ctx.fillRect(0, 0, BASE_W, BASE_H);
+    const anchor = anchorRow * TILE - BASE_H * 0.62;
+    // sol naciente por el este, detrás de los cerros
+    const sunX = 78 + day * 40, sunY = 112 - day * 82 - (camy - anchor) * 0.03;
+    const sunCol = lerpColor('#ffb066', '#fff3cf', day);
+    const glow = ctx.createRadialGradient(sunX, sunY, 4, sunX, sunY, 150 - day * 90);
+    glow.addColorStop(0, 'rgba(255,200,130,' + (0.75 - day * 0.45) + ')'); glow.addColorStop(1, 'rgba(255,170,110,0)');
+    ctx.fillStyle = glow; ctx.fillRect(0, 0, BASE_W, BASE_H);
+    ctx.fillStyle = sunCol; ctx.beginPath(); ctx.arc(sunX, sunY, 15, 0, Math.PI * 2); ctx.fill();
+    for (let i = 0; i < layers.length; i++) {
+      const L = layers[i];
+      if (L.kind === 'clouds') { drawClouds(L, camx, -(camy - anchor) * 0.05, tag + 'c' + i, ctx); if (tag === 'w') drawSkyCondors(-(camy - anchor) * 0.06); continue; }
+      const strip = getStrip(L, tag + 'l' + i);
+      const off = -mod(camx * L.parallax, strip.width);
+      const yoff = Math.round((L.y * TILE - anchor) - (camy - anchor) * L.vpar - 120);
+      for (let x = off; x < BASE_W; x += strip.width) ctx.drawImage(strip, Math.round(x), yoff);
+      if (yoff + strip.height < BASE_H) { ctx.fillStyle = L.color2; ctx.fillRect(0, yoff + strip.height, BASE_W, BASE_H); }
+    }
+
+  }
+
   // ── render ───────────────────────────────────────────────────────────────
   function render() {
     ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -372,27 +402,18 @@
 
     // el día avanza con el reloj: amanece al empezar, mañana clara al llegar
     const day = dayProgress();
-    const gr = ctx.createLinearGradient(0, 0, 0, BASE_H);
-    for (let i = 0; i < 3; i++) gr.addColorStop([0, 0.6, 1][i], lerpColor(SKY_DAWN[i], SKY_MORNING[i], day));
-    ctx.fillStyle = gr; ctx.fillRect(0, 0, BASE_W, BASE_H);
-
     const camx = Game.cam.x, camy = Game.cam.y;
-    const anchor = lv.anchorRow * TILE - BASE_H * 0.62;
-    // sol naciente por el este, detrás de los cerros
-    const sunX = 78 + day * 40, sunY = 112 - day * 82 - (camy - anchor) * 0.03;
-    const sunCol = lerpColor('#ffb066', '#fff3cf', day);
-    const glow = ctx.createRadialGradient(sunX, sunY, 4, sunX, sunY, 150 - day * 90);
-    glow.addColorStop(0, 'rgba(255,200,130,' + (0.75 - day * 0.45) + ')'); glow.addColorStop(1, 'rgba(255,170,110,0)');
-    ctx.fillStyle = glow; ctx.fillRect(0, 0, BASE_W, BASE_H);
-    ctx.fillStyle = sunCol; ctx.beginPath(); ctx.arc(sunX, sunY, 15, 0, Math.PI * 2); ctx.fill();
-    for (let i = 0; i < lv.bgLayers.length; i++) {
-      const L = lv.bgLayers[i];
-      if (L.kind === 'clouds') { drawClouds(L, camx, -(camy - anchor) * 0.05, 'c' + i); drawSkyCondors(-(camy - anchor) * 0.06); continue; }
-      const strip = getStrip(L, 'l' + i);
-      const off = -mod(camx * L.parallax, strip.width);
-      const yoff = Math.round((L.y * TILE - anchor) - (camy - anchor) * L.vpar - 120);
-      for (let x = off; x < BASE_W; x += strip.width) ctx.drawImage(strip, Math.round(x), yoff);
-      if (yoff + strip.height < BASE_H) { ctx.fillStyle = L.color2; ctx.fillRect(0, yoff + strip.height, BASE_W, BASE_H); }
+    drawSkyAndLayers(ctx, lv.bgLayers, lv.anchorRow, day, camx, camy, 'w');
+    // al bajar a la selva amazónica el fondo andino se funde con lomas de selva brumosas
+    const E = lv.bgEast;
+    if (E) {
+      const w = clamp((camx / TILE - E.x0) / (E.x1 - E.x0), 0, 1);
+      if (w > 0) {
+        if (!bgEastCanvas) bgEastCanvas = PIX.createCanvas(BASE_W, BASE_H);
+        const ec = bgEastCanvas.getContext('2d'); ec.imageSmoothingEnabled = false;
+        drawSkyAndLayers(ec, E.layers, E.anchorRow, day, camx, camy, 'e');
+        ctx.globalAlpha = w; ctx.drawImage(bgEastCanvas, 0, 0); ctx.globalAlpha = 1;
+      }
     }
 
     ctx.save();
