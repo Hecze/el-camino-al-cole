@@ -228,7 +228,7 @@ const AUDIO = (() => {
   }
   // quena: tono casi puro con un poco de 2º y 3º armónico, entra un pelín bajo
   // y sube a la nota, vibrato que llega tarde y soplo constante
-  function quena(f, dur, vol, t) {
+  function quena(f, dur, vol, t, scoop = 0.975, soft = false) {
     const vib = ctx.createOscillator(); vib.frequency.value = 5.2;
     const vg = ctx.createGain(); vg.gain.setValueAtTime(0, t); vg.gain.linearRampToValueAtTime(f * 0.011, t + Math.min(0.35, dur * 0.7));
     vib.connect(vg);
@@ -241,7 +241,7 @@ const AUDIO = (() => {
     const oscs = [];
     for (const [mul, amp] of [[1, 1], [2, 0.16], [3, 0.06]]) {
       const o = ctx.createOscillator(); o.type = 'sine';
-      o.frequency.setValueAtTime(f * mul * 0.975, t); o.frequency.exponentialRampToValueAtTime(f * mul, t + 0.06);
+      o.frequency.setValueAtTime(f * mul * scoop, t); o.frequency.exponentialRampToValueAtTime(f * mul, t + (scoop < 0.95 ? 0.1 : 0.06));
       const og = ctx.createGain(); og.gain.value = amp;
       const vm = ctx.createGain(); vm.gain.value = mul; vg.connect(vm); vm.connect(o.frequency);
       o.connect(og); og.connect(lp); oscs.push(o);
@@ -249,7 +249,7 @@ const AUDIO = (() => {
     lp.connect(g); g.connect(musicGain);
     [vib, ...oscs].forEach(x => { x.start(t); x.stop(t + dur + 0.12); });
     breath(f, dur, vol * 0.55, t, 6);                                  // aire en la nota
-    breath(f * 2.5, Math.min(dur, 0.08), vol * 0.5, t, 1.5);          // golpe de lengua
+    if (!soft) breath(f * 2.5, Math.min(dur, 0.08), vol * 0.5, t, 1.5);          // golpe de lengua
   }
   // zampoña (siku): caña grave, ataque soplado con "chiff" y mucho aire
   function zampona(f, dur, vol, t) {
@@ -297,6 +297,22 @@ const AUDIO = (() => {
     noise(0.08, vol * 0.35, 600, t, { out: musicGain });   // parche de cuero
   }
 
+  // adornos del quenista: cada pasada sale distinta (apoyatura, mordente, trino, glissando)
+  const PENTA = [];
+  for (let o = 3; o <= 6; o++) for (const n of ['A', 'C', 'D', 'E', 'G']) PENTA.push(freq(n + o));
+  PENTA.sort((x, y) => x - y);
+  const upper = (f) => PENTA.find(p => p > f * 1.01) || f * 1.122;
+  function quenaOrn(f, dur, vol, t, orn) {
+    const r = Math.random();
+    if (orn <= 0 || dur < 0.2 || r > orn) return quena(f, dur, vol, t);
+    const k = Math.random(), u = upper(f), g = 0.055;
+    if (k < 0.3) { quena(u, g, vol * 0.8, t); quena(f, dur - g, vol, t + g, 0.99, true); }                         // apoyatura
+    else if (k < 0.55) { quena(f, g, vol, t); quena(u, g, vol * 0.8, t + g, 0.99, true); quena(f, dur - 2 * g, vol, t + 2 * g, 0.99, true); } // mordente
+    else if (k < 0.8 && dur >= 0.4) {                                                                              // trino
+      const n = Math.floor((dur * 0.55) / g); for (let i = 0; i < n; i++) quena(i % 2 ? u : f, g, vol * (i % 2 ? 0.8 : 1), t + i * g, 0.995, i > 0);
+      quena(f, dur - n * g, vol, t + n * g, 0.995, true);
+    } else quena(f, dur, vol, t, 0.89);                                                                            // glissando desde abajo
+  }
   function schedule() {
     if (!musicOn || !ctx || !song) return;
     const s = song;
@@ -308,8 +324,8 @@ const AUDIO = (() => {
         const local = st % trk.length;
         for (const ev of trk.events) if (ev.step === local) {
           if (fn === 'bass') bass(freq(ev.note), ev.len * spb * 0.95, 0.32, nextTime);
-          else if (fn === 'lead') ((s.lead_inst === 'zampona') ? zampona : quena)(freq(ev.note), ev.len * spb * 0.92, 0.17, nextTime);
-          else zampona(freq(ev.note), ev.len * spb * 0.95, 0.11, nextTime);
+          else if (fn === 'lead') quenaOrn(freq(ev.note), ev.len * spb * 0.92, 0.17, nextTime, s.orn || 0);
+          else zampona(freq(ev.note), ev.len * spb * 0.95, s.lead2Vol || 0.11, nextTime);
         }
       }
       // charango: un acorde por compás de 2/4 (8 semicorcheas)
