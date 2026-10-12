@@ -338,8 +338,8 @@ const LEVEL = {
     { type: 'collapseHouse', x: 213, y: 107 },
     // el colegio se cae a pedazos... la clase se da afuera, sentados en el suelo
     // profesores en huelga delante del colegio que está por caerse
-    { type: 'striker', x: SCH + 1.5, y: 110, v: 0, slot: 0, sign: ['¡HUELGA!'], say: ['¡EL COLE SE PUEDE', 'CAER EN CUALQUIER', 'MOMENTO!'] },
-    { type: 'striker', x: SCH + 6.5, y: 110, v: 1, slot: 1, flip: true, sign: ['¡ARREGLEN', 'EL COLE!'], say: ['¡HACE AÑOS PEDIMOS', 'QUE LO ARREGLEN!'] },
+    { type: 'striker', x: SCH + 1.5, y: 110, v: 0, sign: ['¡HUELGA!'] },
+    { type: 'striker', x: SCH + 6.5, y: 110, v: 1, flip: true, sign: ['¡ARREGLEN', 'EL COLE!'] },
     { type: 'school', x: SCH + 14, y: 110 },
     { type: 'outdoorClass', x: SCH + 22, y: 110 },
     // mototaxis estacionados: el transporte del pueblo

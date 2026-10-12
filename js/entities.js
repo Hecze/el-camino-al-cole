@@ -663,7 +663,7 @@ class CollapseHouse extends Actor {
     for (let y = -32; y < 0; y += 10) for (let x = -28; x < 28; x += 9) R('#c9a06a', x + ((y / 10) & 1) * 4, y, 1, 4);
     R('#8a6040', -30, -2, 60, 2);
     R('#3a2412', -17, -23, 11, 23); R('#6b4524', -16, -22, 9, 22); R('#e2b13c', -9, -12, 1, 2);   // puerta
-    R('#6b4524', 7, -28, 12, 11); R('#2b2030', 8, -27, 10, 9); R('#d8432f', 8, -27, 3, 9); R('#6b4524', 12, -27, 1, 9);   // ventana
+    R('#6b4524', 7, -28, 12, 11); R('#2b2030', 8, -27, 10, 9); R('#6b4524', 12, -27, 1, 9);   // ventana
     if (cracked) {   // grietas que crecen
       const n = Math.min(7, 2 + Math.floor(this.t / 25) + (this.state === 'drag' ? 4 : 0));
       for (let i = 0; i < n; i++) R('#3a2414', -1 + ((i % 2) ? 1 : 0), -35 + i * 5, 1, 5);
@@ -991,31 +991,12 @@ function studentSprites() {
   _students = STUDENT_COLORS.map(c => PIX.fromRows(KID_TOP.concat(KID_LEGS.sit), Object.assign({}, PAL, c)));
   return _students;
 }
-// Globo de diálogo (como en las historietas): fondo blanco, borde oscuro y
-// colita apuntando a quien habla. (x, y) es la punta de la colita.
-function drawBubble(ctx, lines, x, y, alpha = 1) {
-  const w = Math.max(...lines.map(l => textWidth(l))) + 8, h = lines.length * 9 + 5;
-  let bx = Math.round(x - w / 2); const by = Math.round(y - 4 - h);
-  // que no se salga de la pantalla (la colita sigue apuntando a quien habla)
-  if (typeof Game !== 'undefined' && Game.cam) bx = Math.max(Math.round(Game.cam.x) + 4, Math.min(Math.round(Game.cam.x) + VIEW.w - w - 4, bx));
-  ctx.save(); ctx.globalAlpha = alpha;
-  ctx.fillStyle = '#1d1622';
-  ctx.fillRect(bx - 1, by, w + 2, h); ctx.fillRect(bx, by - 1, w, h + 2);
-  ctx.fillStyle = '#fffaf0'; ctx.fillRect(bx, by, w, h);
-  // colita
-  ctx.fillStyle = '#1d1622'; ctx.fillRect(x - 3, by + h, 7, 1); ctx.fillRect(x - 2, by + h + 1, 5, 1); ctx.fillRect(x - 1, by + h + 2, 3, 1); ctx.fillRect(x, by + h + 3, 1, 1);
-  ctx.fillStyle = '#fffaf0'; ctx.fillRect(x - 2, by + h, 5, 1); ctx.fillRect(x - 1, by + h + 1, 3, 1); ctx.fillRect(x, by + h + 2, 1, 1);
-  lines.forEach((l, i) => drawText(ctx, l, bx + w / 2, by + 3 + i * 9, { color: '#1d1622', align: 'center' }));
-  ctx.restore();
-}
-
-// Profesores en huelga frente al colegio: marchan en el sitio con su
-// pancarta y, cuando te acercas, explican por turnos qué pasa.
+// Profesores en huelga frente al colegio: marchan en el sitio con su pancarta.
 class Striker extends Actor {
   constructor(def) {
     const base = def.y * TS;
     super(def.x * TS, base - 27, 14, 27);
-    this.base = base; this.v = def.v || 0; this.sign = def.sign; this.say = def.say; this.slot = def.slot || 0;
+    this.base = base; this.v = def.v || 0; this.sign = def.sign;
     this.flip = !!def.flip; this.animT = def.v * 17;
   }
   update(g) { this.animT++; }
@@ -1031,13 +1012,6 @@ class Striker extends Actor {
     ctx.fillStyle = '#1d1622'; ctx.fillRect(px + 1 - w / 2 - 1, py - h + 10 - 1, w + 2, h + 2);
     ctx.fillStyle = '#fffaf0'; ctx.fillRect(px + 1 - w / 2, py - h + 10, w, h);
     this.sign.forEach((l, i) => drawText(ctx, l, px + 1, py - h + 12 + i * 9, { color: '#d8432f', align: 'center' }));
-    // hablan por turnos cuando el niño está cerca
-    const p = g.player, d = Math.abs(p.cx - (this.x + 7));
-    const onScreen = x > g.cam.x + 2 && x + 14 < g.cam.x + VIEW.w - 2;
-    if (d < 170 && !p.won && onScreen) {
-      const who = Math.floor((g.T || 0) / 170) % 2;
-      if (who === this.slot) drawBubble(ctx, this.say, x + 7, py - h + 6);
-    }
   }
 }
 
