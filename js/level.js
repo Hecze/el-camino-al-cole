@@ -210,7 +210,8 @@ const LEVEL = {
   ],
   // rocas fijas en cada escalón del huaico (para subir sin caerte)
   // la primera (x 161) sirve para entrar al huaico desde la orilla sin depender del tronco justo
-  fgRocks: [[161, 111, 2, 3], [174, 109, 2, 5], [190, 107, 2, 5], [206, 105, 2, 5]],
+  // la última (x 219) es el peldaño para el salto final a la orilla del colegio
+  fgRocks: [[161, 111, 2, 3], [174, 109, 2, 5], [190, 107, 2, 5], [206, 105, 2, 5], [219, 104, 2, 4]],
   entities: [
     // la casa del niño, con mamá en la puerta
     { type: 'house', x: 0, y: G },
@@ -227,7 +228,7 @@ const LEVEL = {
     // en la cumbre crece un platanal: su hoja gigante sirve de parapente
     { type: 'leaf', x: 123, y: SUMMIT },
     ...EAGLES,
-    { type: 'huaico', x0: 160, x1: 222, interval: 135, speed: 0.75, inflow: { x: 218, top: 92 } },
+    { type: 'huaico', x0: 160, x1: 222, interval: 135, speed: 0.75, inflow: { x: 215, top: 92 } },
     // el colegio se cae a pedazos... la clase se da afuera, sentados en el suelo
     { type: 'school', x: 231, y: 103 },
     { type: 'outdoorClass', x: 243, y: 103 },

@@ -641,7 +641,7 @@ class Eagle extends Actor {
   }
   onRespawn() { this.state = 'idle'; this.x = -9999; this.y = -9999; this.t = 0; }
   get dangerous() { return this.state === 'dive'; }
-  get hitbox() { return { x: this.x + 4, y: this.y + 2, w: this.w - 8, h: this.h - 4 }; }
+  get hitbox() { return { x: this.x + 2, y: this.y + 1, w: this.w - 4, h: this.h - 2 }; }
   update(g) {
     const p = g.player; this.animT++; this.t++;
     const row = p.cy / TS;
@@ -666,8 +666,15 @@ class Eagle extends Actor {
         const vx = p.cx - this.cx, vy = p.cy - this.cy, d = Math.hypot(vx, vy) || 1;
         this.face = vx >= 0 ? 1 : -1;
         this.x -= vx / d * 0.3; this.y -= vy / d * 0.3;
-        this.aimX = p.cx; this.aimY = p.cy;
-        if (this.t > 38) { this.dx = vx / d * 4.4; this.dy = vy / d * 4.4; this.state = 'dive'; this.t = 0; g.audio('swoosh'); g.shake(2, 10); }
+        // apunta a donde ESTARÁS cuando llegue (el niño sigue cayendo al planear):
+        // si te quedas quieto, te atrapa; hay que cambiar de rumbo en el último momento
+        const T = d / 6.5;
+        const ax = p.cx + p.vx * T, ay = p.cy + p.vy * T;
+        this.aimX = ax; this.aimY = ay;
+        if (this.t > 38) {
+          const wx = ax - this.cx, wy = ay - this.cy, wd = Math.hypot(wx, wy) || 1;
+          this.dx = wx / wd * 6.5; this.dy = wy / wd * 6.5; this.state = 'dive'; this.t = 0; g.audio('swoosh'); g.shake(2, 10);
+        }
         break;
       }
       case 'dive':
