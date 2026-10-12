@@ -860,14 +860,16 @@ T.branch = spr([
   'MMMMMMMMMMMMMMMM',
   '..M.....M....M..',
 ]);
-// rama seca: gris, agrietada, sin hojas (se rompe al poco de pisarla). 48x6
+// tronco podrido colgado de dos lianas: madera blanda, musgo y hongos
+// (las lianas se cortan al poco de pisarlo). 48x7
 OBJ.dryBranch = spr([
-  '..S.........S..........S...........S........S...',
-  'DSSdSSDSSSdSSDSSKSSdSSDSSSdSSDSSSdSSKSSDSSSdSSDS',
-  'SdSSSdSSKSSSdSSSdSSSdSSKSSSdSSSdSSSdSSSdSSKSSSdS',
-  'DDDDDDDDKDDDDDDDDDDDDDDDKDDDDDDDDDDDDDDDDDDKDDDD',
-  '...D.......D.......D...........D.......D........',
-  '................................................',
+  '..ttt..k..G.......kG.........G..k.......G...ttt.',
+  '.tTTTtMkMMmGMMmMMMMGkMMmMMMmMMkGMMmMMMMmMMtTTTt.',
+  'tTtttTmjmmMmmjmmMMmmmjmmMIImmmmjmmmMmmjmmtTtttTt',
+  'tTtTtTMMmmIMMMmMMmMIMMmMMMMMmIMMmMMMmMIMMtTtTtTt',
+  'tTtttTIMMMIMMMIMMMMIIMMMMIMMMMIMMIMMMMMIMtTtttTt',
+  '.tTTTtIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIItTTTt.',
+  '..ttt..oO.........oO.................Oo..ttt....',
 ]);
 // victoria regia: hoja gigante flotante con el borde levantado. 30x5
 OBJ.lily = spr([

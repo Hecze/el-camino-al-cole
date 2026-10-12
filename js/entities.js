@@ -979,16 +979,17 @@ class LilyPad extends Actor {
   }
 }
 
-// Rama seca: cruje al pisarla y al poco se rompe y cae al agua. Vuelve a crecer.
+// Tronco podrido colgado de lianas: crujen al pisarlo, se deshilachan y se
+// cortan; el tronco cae al agua. Al rato aparece otro colgado.
 class DryBranch extends Actor {
   constructor(x, y) {
     super(x * TS, y * TS, 46, 6);
     this.isMover = true; this.dx = 0; this.dy = 0; this.hx = this.x; this.hy = this.y;
-    this.crack = 0; this.falling = false; this.goneT = 0; this.vy = 0; this.rot = 0;
+    this.crack = 0; this.falling = false; this.goneT = 0; this.vy = 0; this.rot = 0; this.animT = 0;
   }
   onRespawn() { this.crack = 0; this.falling = false; this.goneT = 0; this.x = this.hx; this.y = this.hy; this.vy = 0; this.rot = 0; }
   update(g) {
-    const py = this.y;
+    const py = this.y; this.animT++;
     if (this.falling) {
       this.goneT++; this.vy = Math.min(this.vy + 0.35, 6); this.y += this.vy; this.rot += 0.04;
       const s = SWAMP_SURFACE(g.level, this.cx);
@@ -996,14 +997,35 @@ class DryBranch extends Actor {
       if (this.goneT > 260) this.onRespawn();
     } else if (g.player.lastMover === this) {
       if (this.crack === 0) g.audio('creak');
-      if (++this.crack > 30) { this.falling = true; this.vy = 0.5; g.burst(this.cx, this.y, 'dust', 10); g.audio('rock'); }
+      if (this.crack % 8 === 4) g.burst(this.hx + (this.crack % 16 < 8 ? 7 : 39), this.y - 6, 'leaf', 1);
+      if (++this.crack > 30) { this.falling = true; this.vy = 0.5; g.burst(this.hx + 7, this.y - 4, 'leaf', 6); g.burst(this.hx + 39, this.y - 4, 'leaf', 6); g.audio('snap'); }
     } else if (this.crack > 0) this.crack = Math.max(0, this.crack - 0.5);
     this.dy = this.y - py;
   }
-  draw(ctx) {
-    if (this.falling && this.goneT > 230) { // vuelve a aparecer
-      ctx.save(); ctx.globalAlpha = (this.goneT - 230) / 30; ctx.drawImage(OBJ.dryBranch, Math.round(this.hx), Math.round(this.hy)); ctx.restore(); return;
+  // dos lianas que bajan desde las copas y sostienen el tronco
+  drawVines(ctx, len, fray) {
+    const t = this.animT;
+    for (const [i, ox] of [[0, 7], [1, 39]]) {
+      const bx = Math.round(this.hx + ox), top = Math.round(this.hy) - 170;
+      const L = len == null ? 170 : len[i];
+      for (let y = 0; y < L; y += 2) {
+        const k = y / 170, sw = Math.round(Math.sin(t * 0.04 + i * 2 + y * 0.03) * (len == null ? fray * 1.5 : 3) * k);
+        // al deshilacharse se ven huecos cerca del nudo
+        if (fray > 0 && L - y < 14 && (y >> 1) % 3 === 0) continue;
+        ctx.fillStyle = '#3f6b2c'; ctx.fillRect(bx + sw, top + y, 2, 2);
+        if (y % 14 === 6) { ctx.fillStyle = '#5f9f4a'; ctx.fillRect(bx + sw + 2, top + y, 2, 1); }
+      }
+      if (len == null) { ctx.fillStyle = '#2e4f20'; ctx.fillRect(bx - 1, top + L - 2, 4, 3); } // nudo
     }
+  }
+  draw(ctx) {
+    if (this.falling) {
+      // las lianas cortadas quedan colgando y se mecen
+      const L = Math.max(120, 168 - this.goneT * 2);
+      if (this.goneT <= 230) this.drawVines(ctx, [L, L - 10], 0);
+      else { ctx.save(); ctx.globalAlpha = (this.goneT - 230) / 30; this.drawVines(ctx, null, 0); ctx.drawImage(OBJ.dryBranch, Math.round(this.hx), Math.round(this.hy)); ctx.restore(); return; }
+    } else this.drawVines(ctx, null, this.crack / 30);
+    if (this.falling && this.goneT > 230) return;
     const sh = this.crack > 0 && !this.falling ? (this.crack % 4 < 2 ? 1 : -1) * Math.min(1, this.crack / 10) : 0;
     ctx.save(); ctx.translate(Math.round(this.cx + sh), Math.round(this.y + 3)); ctx.rotate(this.rot);
     ctx.drawImage(OBJ.dryBranch, -24, -3); ctx.restore();
