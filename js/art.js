@@ -1,473 +1,365 @@
-// art.js — TODO el pixel art, dibujado a mano (mapas de píxeles + paleta).
-// Nada de arte aleatorio: cada sprite está descrito píxel por píxel.
+// art.js — todo el pixel art, dibujado a mano (mapas de píxeles + paleta).
+// Cada sprite está descrito píxel por píxel. La tipografía vive en font.js.
 
 const TILE = 16;
 
 // ─────────────────────────────────────────────────────────────────────────────
-// PALETA MAESTRA (tonos andinos: tierras, verdes de valle, cielos de altura)
+// PALETA (tierras de altura, ichu dorado, tejidos andinos, cielos fríos)
 // ─────────────────────────────────────────────────────────────────────────────
 const PAL = {
   '.': null,
-  'K': '#2a1f33', 'k': '#4a3b52', '0': '#120c18', '1': '#ffffff', 'w': '#f7ead2',
-  'a': '#f4c9a0', 'b': '#d99b6b', 'c': '#a86f45', 'h': '#221922',
-  'r': '#e5523f', 'R': '#a72f28', 'p': '#f2917d',
-  'o': '#f0913c', 'O': '#b45f1e',
-  'y': '#f6c94a', 'Y': '#bd8a1c',
-  'g': '#4fbf58', 'G': '#2f8a3c', 'e': '#8fe06a',
-  'u': '#4f86d6', 'U': '#2f579e', 'v': '#9cc7f0',
-  'n': '#59d0d0', 'N': '#2f8f9a',
-  'q': '#8a5cc0', 'Q': '#5a3788',
-  's': '#cfc9da', 'S': '#8b8598', 'D': '#5f5a6c',
-  'm': '#a9763f', 'M': '#7a4f28',
-  't': '#caa06a', 'T': '#8a5a30',
-  'l': '#d8a45c', 'L': '#a06a30', 'f': '#f2e3c4',
-  'i': '#6b4a2c', 'I': '#412a16', 'j': '#8f6a40',
-  'z': '#ff8a3c', 'Z': '#d15a12',
+  'K': '#2a1f2d', '0': '#120c18', '1': '#ffffff',
+  'w': '#f7ead2', 'W': '#d9c8a8',
+  'a': '#e7b089', 'b': '#c4855c', 'h': '#1f1620',
+  'r': '#d8432f', 'R': '#962a22', 'p': '#f08a7a', 'x': '#c2185b', 'X': '#7f1040',
+  'o': '#f0913c', 'O': '#b45f1e', 'y': '#f6c94a', 'Y': '#bd8a1c',
+  'g': '#93a84a', 'G': '#64803a', 'e': '#c9c25e', 'E': '#e3d78a',
+  'k': '#3f6b3a', 'c': '#5f9f8a', 'C': '#3d7468',
+  'u': '#3f6fb8', 'U': '#27426e', 'v': '#9cc7f0', 'n': '#4fb6b0',
+  'q': '#8a4cc0', 'Q': '#5a3088',
+  's': '#b9b1c2', 'S': '#8a8296', 'D': '#5d5768', 'd': '#dcd6e4',
+  'm': '#9b663b', 'M': '#6e4627', 'i': '#56381f', 'I': '#3a2414', 'j': '#b98a55',
+  't': '#d9ad74', 'T': '#9a6a38',
+  'l': '#efe2c8', 'L': '#c7ad86', 'f': '#fffaf0', 'F': '#8a7253',
 };
-
 function spr(rows) { return PIX.fromRows(rows, PAL); }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// TIPOGRAFÍA 5x7 (mayúsculas + dígitos + acentos + signos)
-// ─────────────────────────────────────────────────────────────────────────────
-const GLYPHS = {
-  'A': ['.###.', '#...#', '#...#', '#####', '#...#', '#...#', '#...#'],
-  'B': ['####.', '#...#', '#...#', '####.', '#...#', '#...#', '####.'],
-  'C': ['.####', '#....', '#....', '#....', '#....', '#....', '.####'],
-  'D': ['####.', '#...#', '#...#', '#...#', '#...#', '#...#', '####.'],
-  'E': ['#####', '#....', '#....', '####.', '#....', '#....', '#####'],
-  'F': ['#####', '#....', '#....', '####.', '#....', '#....', '#....'],
-  'G': ['.###.', '#...#', '#....', '#..##', '#...#', '#...#', '.###.'],
-  'H': ['#...#', '#...#', '#...#', '#####', '#...#', '#...#', '#...#'],
-  'I': ['#####', '..#..', '..#..', '..#..', '..#..', '..#..', '#####'],
-  'J': ['....#', '....#', '....#', '....#', '#...#', '#...#', '.###.'],
-  'K': ['#...#', '#..#.', '#.#..', '##...', '#.#..', '#..#.', '#...#'],
-  'L': ['#....', '#....', '#....', '#....', '#....', '#....', '#####'],
-  'M': ['#...#', '##.##', '#.#.#', '#.#.#', '#...#', '#...#', '#...#'],
-  'N': ['#...#', '##..#', '#.#.#', '#.#.#', '#..##', '#...#', '#...#'],
-  'O': ['.###.', '#...#', '#...#', '#...#', '#...#', '#...#', '.###.'],
-  'P': ['####.', '#...#', '#...#', '####.', '#....', '#....', '#....'],
-  'Q': ['.###.', '#...#', '#...#', '#...#', '#.#.#', '#..#.', '.##.#'],
-  'R': ['####.', '#...#', '#...#', '####.', '#.#..', '#..#.', '#...#'],
-  'S': ['.####', '#....', '#....', '.###.', '....#', '....#', '####.'],
-  'T': ['#####', '..#..', '..#..', '..#..', '..#..', '..#..', '..#..'],
-  'U': ['#...#', '#...#', '#...#', '#...#', '#...#', '#...#', '.###.'],
-  'V': ['#...#', '#...#', '#...#', '#...#', '#...#', '.#.#.', '..#..'],
-  'W': ['#...#', '#...#', '#...#', '#.#.#', '#.#.#', '##.##', '#...#'],
-  'X': ['#...#', '#...#', '.#.#.', '..#..', '.#.#.', '#...#', '#...#'],
-  'Y': ['#...#', '#...#', '.#.#.', '..#..', '..#..', '..#..', '..#..'],
-  'Z': ['#####', '....#', '...#.', '..#..', '.#...', '#....', '#####'],
-  'Ñ': ['.#.#.', '#...#', '##..#', '#.#.#', '#.#.#', '#..##', '#...#'],
-  'Á': ['..#..', '.###.', '#...#', '#####', '#...#', '#...#', '#...#'],
-  'É': ['..#..', '#####', '#....', '####.', '#....', '#....', '#####'],
-  'Í': ['..#..', '#####', '..#..', '..#..', '..#..', '..#..', '#####'],
-  'Ó': ['..#..', '.###.', '#...#', '#...#', '#...#', '#...#', '.###.'],
-  'Ú': ['..#..', '#...#', '#...#', '#...#', '#...#', '#...#', '.###.'],
-  '0': ['.###.', '#...#', '#..##', '#.#.#', '##..#', '#...#', '.###.'],
-  '1': ['..#..', '.##..', '..#..', '..#..', '..#..', '..#..', '.###.'],
-  '2': ['.###.', '#...#', '....#', '...#.', '..#..', '.#...', '#####'],
-  '3': ['#####', '...#.', '..#..', '...#.', '....#', '#...#', '.###.'],
-  '4': ['...#.', '..##.', '.#.#.', '#..#.', '#####', '...#.', '...#.'],
-  '5': ['#####', '#....', '####.', '....#', '....#', '#...#', '.###.'],
-  '6': ['..##.', '.#...', '#....', '####.', '#...#', '#...#', '.###.'],
-  '7': ['#####', '....#', '...#.', '..#..', '.#...', '.#...', '.#...'],
-  '8': ['.###.', '#...#', '#...#', '.###.', '#...#', '#...#', '.###.'],
-  '9': ['.###.', '#...#', '#...#', '.####', '....#', '...#.', '.##..'],
-  ' ': ['.....', '.....', '.....', '.....', '.....', '.....', '.....'],
-  '.': ['.....', '.....', '.....', '.....', '.....', '.##..', '.##..'],
-  ',': ['.....', '.....', '.....', '.....', '.##..', '.##..', '.#...'],
-  ':': ['.....', '.##..', '.##..', '.....', '.##..', '.##..', '.....'],
-  '!': ['..#..', '..#..', '..#..', '..#..', '..#..', '.....', '..#..'],
-  '?': ['.###.', '#...#', '....#', '...#.', '..#..', '.....', '..#..'],
-  '¡': ['..#..', '.....', '..#..', '..#..', '..#..', '..#..', '..#..'],
-  '¿': ['..#..', '.....', '.#...', '#....', '#...#', '.###.', '.....'],
-  '-': ['.....', '.....', '.....', '#####', '.....', '.....', '.....'],
-  '+': ['.....', '..#..', '..#..', '#####', '..#..', '..#..', '.....'],
-  '/': ['....#', '....#', '...#.', '..#..', '.#...', '#....', '#....'],
-  "'": ['..#..', '..#..', '.....', '.....', '.....', '.....', '.....'],
-  '(': ['...#.', '..#..', '.#...', '.#...', '.#...', '..#..', '...#.'],
-  ')': ['.#...', '..#..', '...#.', '...#.', '...#.', '..#..', '.#...'],
-  '%': ['##..#', '##.#.', '..#..', '.#...', '#..##', '..###', '.....'],
-  '<': ['...#.', '..#..', '.#...', '#....', '.#...', '..#..', '...#.'],
-  '>': ['.#...', '..#..', '...#.', '....#', '...#.', '..#..', '.#...'],
-  '*': ['.....', '#.#.#', '.###.', '#####', '.###.', '#.#.#', '.....'],
-  '=': ['.....', '.....', '#####', '.....', '#####', '.....', '.....'],
-  '_': ['.....', '.....', '.....', '.....', '.....', '.....', '#####'],
-};
-
-const FONT_CACHE = {};
-function glyphCanvas(ch, color) {
-  const key = ch + '|' + color;
-  if (FONT_CACHE[key]) return FONT_CACHE[key];
-  let base = GLYPHS[ch];
-  if (!base) base = GLYPHS[ch.toUpperCase()] || GLYPHS['?'];
-  const canvas = PIX.fromRows(base, { '#': '#ffffff', '.': null });
-  const c = PIX.tinted(canvas, color);
-  FONT_CACHE[key] = c;
-  return c;
-}
-
-// dibuja texto pixel. opts: {color, scale, sp, shadow, shadowColor, align}
-function drawText(ctx, text, x, y, opts = {}) {
-  const scale = opts.scale || 1;
-  const sp = (opts.sp == null ? 1 : opts.sp) * scale;
-  const color = opts.color || '#ffffff';
-  const text2 = String(text).toUpperCase();
-  const cw = 5 * scale;
-  const total = text2.length * (cw + sp) - sp;
-  let ox = x;
-  if (opts.align === 'center') ox = Math.round(x - total / 2);
-  else if (opts.align === 'right') ox = Math.round(x - total);
-  ox = Math.round(ox); y = Math.round(y);
-  for (let i = 0; i < text2.length; i++) {
-    const ch = text2[i];
-    const gx = ox + i * (cw + sp);
-    if (opts.shadow) {
-      const gs = glyphCanvas(ch, opts.shadowColor || 'rgba(0,0,0,0.5)');
-      ctx.drawImage(gs, gx + scale, y + scale, gs.width * scale, gs.height * scale);
-    }
-    const gc = glyphCanvas(ch, color);
-    ctx.drawImage(gc, gx, y, gc.width * scale, gc.height * scale);
-  }
-  return total;
-}
-function textWidth(text, scale = 1, sp = 1) {
-  const n = String(text).length;
-  const cw = 5 * scale; const s = sp * scale;
-  return n * (cw + s) - s;
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// TILES
+// TILES 16x16
 // ─────────────────────────────────────────────────────────────────────────────
 const T = {};
 
+// tierra con ichu (paja brava dorada) arriba
 T.grass = spr([
-  'eeeeeeeeeeeeeeee', 'geegeegeegeegeee', 'gggggggggggggggg', 'GGGGGGGGGGGGGGGG',
-  'mmmmmmmmmmmmmmmm', 'mmmmmmmmmmmmmmmm', 'mmMmmmmmmmmMmmmm', 'mmmmmmmmmmmmmmmm',
-  'mmmmmmmmmmmmmmmm', 'mmmmMmmmmmmmmmmm', 'mmmmmmmmmmmmmmmm', 'mmmmmmmmmmmmmmmm',
-  'mmmMmmmmmmmMmmmm', 'mmmmmmmmmmmmmmmm', 'mmmmmmmmmmmmmmmm', 'MMMMMMMMMMMMMMMk',
+  '..E....E...E..E.',
+  '.Ee..eEe..eEe.Ee',
+  'eege.egge.eggeeg',
+  'ggggggggggggGggg',
+  'GgGGgGGGgGGgGGgG',
+  'MGMmMGMmmMGMmMGM',
+  'mmmmmmmmmmmmmmmm',
+  'mmjmmmmmmmmjmmmm',
+  'mmmmmMmmmmmmmmmm',
+  'mmmmmmmmmmMmmsmm',
+  'mjmmmmmmmmmmmmjm',
+  'mmmsmmmmMmmmmmmm',
+  'mmmMmmmmmmmmmmmm',
+  'mmmmmmmmmmmmjmmm',
+  'mmmmmmjmmmmmmmmm',
+  'MmmmmmmmmmmmmmmM',
 ]);
 T.dirt = spr([
-  'mmmmmmmmmmmmmmmm', 'mmmmmmmmmmmmmmmm', 'mmMmmmmmmmmMmmmm', 'mmmmmmmmmmmmmmmm',
-  'mmmmmmmmmmmmmmmm', 'mmmMmmmmmmmmmmmm', 'mmmmmmmmmmmmmmmm', 'mmmmmmmmmmmmmmmm',
-  'mmmmmmmmMmmmmmmm', 'mmmmmmmmmmmmmmmm', 'mmMmmmmmmmmmMmmm', 'mmmmmmmmmmmmmmmm',
-  'mmmmmmmmmmmmmmmm', 'mmmmMmmmmmmmmmmm', 'mmmmmmmmmmmmmmmm', 'MMMMMMMMMMMMMMMk',
+  'mmmmmmmmmmmmmmmm',
+  'mmjmmmmmmmmjmmmm',
+  'mmmmmMmmmmmmmmmm',
+  'mmmmmmmmmmMmmsmm',
+  'mjmmmmmmmmmmmmjm',
+  'mmmsmmmmMmmmmmmm',
+  'mmmMmmmmmmmmmmmm',
+  'mmmmmmmmmmmmjmmm',
+  'mmmmmmjmmmmmmmmm',
+  'mMmmmmmmmmmmmmMm',
+  'mmmmmmmmmsmmmmmm',
+  'mmjmmmmmmmmmmmmm',
+  'mmmmmMmmmmmjmmmm',
+  'msmmmmmmmmmmmmmm',
+  'mmmmmmmmmMmmmmmm',
+  'MmmmmmmmmmmmmmmM',
 ]);
 T.stoneTop = spr([
-  'wwwwwwwwwwwwwwww', 'wwwwwWwwwwwWwwww', 'ssSsSssssSsSssSs', 'ssssssssssssssss',
-  'ssssDsssssssssss', 'sssssssssssDssss', 'ssssssssssssssss', 'sDssssssssssssss',
-  'sssssssssDssssss', 'ssssssssssssssss', 'ssssssDsssssssss', 'ssssssssssssDsss',
-  'ssssssssssssssss', 'sDssssssssssssss', 'ssssssssssssssss', 'DDDDDDDDDDDDDDDk',
+  'dddddddddddddddd',
+  'dsssdsssssdssssd',
+  'sssssssSssssssss',
+  'ssSsssssssssSsss',
+  'ssSSsssssssSSsss',
+  'sssSDssssssSDsss',
+  'sssssssssSssssss',
+  'SsssssssSSssssSs',
+  'DSssssssDSsssSDs',
+  'sDSsssssssssssDs',
+  'ssssssSsssssssss',
+  'sssssSSsssssssss',
+  'ssssSDsssssSssss',
+  'sSsssssssssSSsss',
+  'SDssssssssssDSss',
+  'DDsssssssssssDDS',
 ]);
 T.stone = spr([
-  'ssssssssssssssss', 'ssssDsssssssssss', 'sssssssssssDssss', 'sDssssssssssssss',
-  'ssssssssssssssss', 'ssssssssDsssssss', 'ssssssssssssssss', 'sDssssssssssssss',
-  'ssssssssssssDsss', 'ssssssssssssssss', 'ssssDsssssssssss', 'ssssssssssssssss',
-  'sDssssssssssssss', 'ssssssssssssssss', 'ssssssssssssssss', 'DDDDDDDDDDDDDDDk',
+  'sssssssssSssssss',
+  'SsssssssSSssssSs',
+  'DSssssssDSsssSDs',
+  'sDSsssssssssssDs',
+  'ssssssSsssssssss',
+  'sssssSSsssssssss',
+  'ssssSDsssssSssss',
+  'sSsssssssssSSsss',
+  'SDssssssssssDSss',
+  'Dsssssssssssssss',
+  'ssssssssSsssssss',
+  'sssSsssSSsssssSs',
+  'ssSDssSDssssssDs',
+  'ssssssssssSsssss',
+  'sssssssssSDsssss',
+  'DsssssssssssssDS',
 ]);
 T.snowTop = spr([
-  'wwwwwwwwwwwwwwww', 'wwwwwwwwwwwwwwww', 'wwwwvwwwwwvwwwww', 'vvvvvvvvvvvvvvvv',
-  'ssssssssssssssss', 'ssssDsssssssssss', 'vvvvvvvvvvvvvvvv', 'ssssssssssssssss',
-  'ssssssssssssDsss', 'ssssssssssssssss', 'sDssssssssssssss', 'ssssssssssssssss',
-  'ssssssDsssssssss', 'ssssssssssssssss', 'ssssssssssssssss', 'DDDDDDDDDDDDDDDk',
+  '1111111111111111',
+  'ffff1fffffff1fff',
+  'ffffffffffffffff',
+  'dfffffddfffffffd',
+  'sdfffdssdfffffds',
+  'ssdddsssSddfddss',
+  'sssssssSssdsssss',
+  'SsssssssSSssssSs',
+  'DSssssssDSsssSDs',
+  'sDSsssssssssssDs',
+  'ssssssSsssssssss',
+  'sssssSSsssssssss',
+  'ssssSDsssssSssss',
+  'sSsssssssssSSsss',
+  'SDssssssssssDSss',
+  'DDsssssssssssDDS',
 ]);
-T.snow = spr([
-  'wwwwwwwwwwwwwwww', 'wwwwwwwwwwwwwwww', 'wwvwwwwwwvwwwwww', 'wwwwwwwwwwwwwwww',
-  'wwwwwwwwwwwwwwww', 'wwwwwwwvwwwwwwww', 'wwwwwwwwwwwwwwww', 'wwvwwwwwwwwwwwww',
-  'wwwwwwwwwwwwwwww', 'wwwwwwwwwwwwwwww', 'wwwwwwvwwwwwwwww', 'wwwwwwwwwwwwwwww',
-  'wwwvwwwwwwwwwwww', 'wwwwwwwwwwwwwwww', 'wwwwwwwwwwwwwwww', 'vvvvvvvvvvvvvvvk',
+// pirca: muro de piedra seca, piedras encajadas sin mortero
+T.pirca = spr([
+  '.KKKKK..KKKKKK..',
+  'KdssSSKKsdsssSK.',
+  'KssssSKssssssSKK',
+  'KSSSSKKSSSSSSKdK',
+  '.KKKKdsKKKKKKssK',
+  'KKdsssSSKdssKSSK',
+  'KssssSSKKsssSKKK',
+  'KSSSSKKKdssSSKdK',
+  'KKKKKdssKSSSKssK',
+  'KdssKsssSKKKKSSK',
+  'KsssKSSSSKdsssKK',
+  'KSSSKKKKKKssssSK',
+  'KKKKdssSKKSSSSSK',
+  'KdssssssSKKKKKKK',
+  'KSSSSSSSSKdssSSK',
+  'KKKKKKKKKKKKKKKK',
 ]);
-T.brick = spr([
-  'mmmmmmmmmmmmmmmm', 'mmmmmmmMmmmmmmmm', 'MMMMMMMMMMMMMMMM', 'mmmMmmmmmmmMmmmm',
-  'mmmmmmmmmmmmmmmm', 'mmmmmmmMmmmmmmmm', 'MMMMMMMMMMMMMMMM', 'mmmMmmmmmmmMmmmm',
-  'mmmmmmmmmmmmmmmm', 'mmmmmmmMmmmmmmmm', 'MMMMMMMMMMMMMMMM', 'mmmMmmmmmmmMmmmm',
-  'mmmmmmmmmmmmmmmm', 'mmmmmmmMmmmmmmmm', 'MMMMMMMMMMMMMMMM', 'kkkkkkkkkkkkkkkk',
-]);
-T.adobe = spr([
-  'tttttttttttttttt', 'ttttttTttttttttt', 'TTTTTTTTTTTTTTTT', 'tttTtttttttTtttt',
-  'tttttttttttttttt', 'ttttttTttttttttt', 'TTTTTTTTTTTTTTTT', 'tttTtttttttTtttt',
-  'tttttttttttttttt', 'ttttttTttttttttt', 'TTTTTTTTTTTTTTTT', 'tttTtttttttTtttt',
-  'tttttttttttttttt', 'ttttttTttttttttt', 'TTTTTTTTTTTTTTTT', 'kkkkkkkkkkkkkkkk',
-]);
-T.plank = spr([
-  'TTTTTTTTTTTTTTTT', 'tttttttttttttttt', 'ttTtttttTtttttTt',
-  'tttttttttttttttt', 'TTTTTTTTTTTTTTTk',
-]);
-T.bridge = spr([
-  'TTTTTTTTTTTTTTTT', 'tttTttttTtttTttt', 'tttttttttttttttt',
-  'TTTTTTTTTTTTTTTT', 'kKkkKkkKkkKkkKkk',
-]);
-T.rock = spr([
-  '................', '.....SSssS......', '...SsSsssSSs....', '..SssssssssSs...',
-  '.SsSssssssssSS..', 'SsSssssssssssSs.', 'Sssssssssssssss.', 'Sssssssssssssss.',
-  'Sssssssssssssss.', 'SsssssssssssssS.', '.SsssssssssssS..', '.SsSssssssssS...',
-  '..SSssssssSS....', '...SSSsSSS......', '.....SSSS.......', '................',
-]);
-T.spike = spr([
-  '................', '..K.....K.....K.', '..K.K...K.K...K.', '..KKaK..KKaK..KK',
-  '.KKaaaK.KaaaK.KK', '.KaaaaaKaaaaaKKK', 'KKaaaSaKaaaSaKKK', 'KaaaSSaaaSSaaKKK',
-  'KaaSSSaaSSSaaKKK', 'KaSSSSaSSSSaaKKK', 'KSSSSSSSSSSSaKKK', 'KSSSSSSSSSSSSKKK',
-  'KKKKKKKKKKKKKKKK', 'thththththththth', 'thththththththth', 'kkkkkkkkkkkkkkkk',
+// saliente de roca (plataforma de una vía, para la cabra)
+T.ledge = spr([
+  '.ddd1dddddd1ddd.',
+  'dssssssdsssssssd',
+  'sSssSssssSsssSss',
+  'SDSSDSsSSDSSsDSS',
+  '.DDSDDSDDSDDSDD.',
+  '..DDKDD.KDDDKD..',
+  '...K.K...K..K...',
 ]);
 
-// agua (cuerpo) — 16x16
-T.waterBody = spr([
-  'nnnnnnnnnnnnnnnn', 'nNnnNnnNnnNnnNnn', 'nnnnnnnnnnnnnnnn', 'nnnnnnNnnnnnNnnn',
-  'NnnNnnnnnNnnnnnn', 'nnnnnnnnnnnnnnnn', 'nnNnnnnnNnnnnnNn', 'nnnnnnnnnnnnnnnn',
-  'nnnnnnnnNnnnnnnn', 'nNnnNnnnnnnNnnnn', 'nnnnnnnnnnnnnnnn', 'nnnnnnnnnnnnnnnn',
-  'nnnnnnnnnnnnnnnn', 'nNnnnnnnNnnnnnNn', 'nnnnnnnnnnnnnnnn', 'Nnnnnnnnnnnnnnnn',
-]);
-// superficie del agua (2 frames)
-T.waterTop = [
-  spr([
-    'vvvvvnnvvnnvvvvv', 'vvvvvvvvvvvvvvvv', 'nnNnnnnnnnnnNnnn', 'vvvnnnvvvnnnvvvv',
-    'nnnnnnnnnnnnnnnn', 'nnnnnnnnnnnnnnnn', 'NnnnnnnnNnnnnnnn', 'nnnnnnnnnnnnnnnn',
-    'nnnnnnnnnnnnnnnn', 'nnnnnnnnnnnnnnnn', 'nnnnnnnnnnnnnnnn', 'nnnnnnnnnnnnnnnn',
-    'nnnnnnnnnnnnnnnn', 'nnnnnnnnnnnnnnnn', 'nnnnnnnnnnnnnnnn', 'nNnnnnnnnnnnnNnn',
-  ]),
-  spr([
-    'nnnvvvvvnnvvvvnv', 'vvvvvvvvvvvvvvvv', 'nnnnNnnnnnnnnnnn', 'vvnnnvvvnnnvvvnn',
-    'nnnnnnnnnnnnnnnn', 'nnnnnnnnnnnnnnnn', 'NnnnnnnNnnnnnnnn', 'nnnnnnnnnnnnnnnn',
-    'nnnnnnnnnnnnnnnn', 'nnnnnnnnnnnnnnnn', 'nnnnnnnnnnnnnnnn', 'nnnnnnnnnnnnnnnn',
-    'nnnnnnnnnnnnnnnn', 'nnnnnnnnnnnnnnnn', 'nnnnnnnnnnnnnnnn', 'nNnnnnnnnnnnnNnn',
-  ]),
-];
-
-// huayco: lodo (cuerpo) — 16x16
-T.mudBody = spr([
-  'iiiiiiiiiiiiiiii', 'ijiiijiijiijiiji', 'iiiiiiiiiiiiiiii', 'iiiIiiiiiiIiiiii',
-  'iiiiiiiiiiiiiiii', 'IiiiiiiiIiiiiiii', 'iiiiiiiiiiiiiiii', 'iiijiijiijiijiij',
-  'iiiiiiiiiiiiiiii', 'iiiiIiiiiiiiiIii', 'iiiiiiiiiiiiiiii', 'iiiiiiiiiiiiiiii',
-  'iIiiiiiiiiIiiiii', 'iiiiiiiiiiiiiiii', 'iiiiiiiIiiiiiiii', 'iiiiiiiiiiiiiiii',
-]);
-T.mudTop = [
-  spr([
-    'jjjijijjjijijjjj', 'jijjjjjjijjjjjij', 'ijjijjjijjijjjij', 'iijijjiijjjijjii',
-    'iiiiiiiiiiiiiiii', 'iiIiiiiiiiiIiiii', 'iiiiiiiiiiiiiiii', 'iiiiiiiiiiiiiiii',
-    'iiiiiiiiiiiiiiii', 'iiiiiiiiiiiiiiii', 'iiiiiiiiiiiiiiii', 'iiiiiiiiiiiiiiii',
-    'iiiiiiiiiiiiiiii', 'iiiiiiiiiiiiiiii', 'iiiiiiiiiiiiiiii', 'iiiiiiiiiiiiiiii',
-  ]),
-  spr([
-    'ijijjjjijijjjjij', 'jjjjijijjjjijjjj', 'jijjjijjjijjjiji', 'ijjijjjjijjijjii',
-    'iiiiiiiiiiiiiiii', 'iiiiIiiiiiiiiIii', 'iiiiiiiiiiiiiiii', 'iiiiiiiiiiiiiiii',
-    'iiiiiiiiiiiiiiii', 'iiiiiiiiiiiiiiii', 'iiiiiiiiiiiiiiii', 'iiiiiiiiiiiiiiii',
-    'iiiiiiiiiiiiiiii', 'iiiiiiiiiiiiiiii', 'iiiiiiiiiiiiiiii', 'iiiiiiiiiiiiiiii',
-  ]),
-];
-
-// tiles decorativos / meta
 T.cloud = spr([
   '.......11.......', '.....11ww11.....', '...11wwwwww11...', '..1wwwwwwwwww1..',
   '.1wwwwwwwwwwww1.', '1wwwwwwwwwwwwww1', '1wwwwwwwwwwwwww1', '.11111111111111.',
-  '................', '................', '................', '................',
-  '................', '................', '................', '................',
-]);
-T.cactus = spr([
-  '......Gg........', '.....GGGg.......', '.....GggG.......', '.....GggG.......',
-  'Gg...GggG.......', 'GGg..GggG...Gg..', 'GgG..GggG..GGg..', 'GgG.GgggG..GgG..',
-  'GgGGGgggGggGgG..', 'GggggggggggGgG..', '..GggggggggGgG..', '......GggG..GgG.',
-  '......GggG..Ggg.', '......GggG...GG.', '......GGGG......', '......GGGG......',
-]);
-T.flower = spr([
-  '................', '................', '................', '................',
-  '......y..y......', '.....yyyyy......', '.....yYyYy......', '......yyy.......',
-  '.......G........', '......eGe.......', '.....eeGee......', '......GGG.......',
-  '.......G........', '.......G........', '.......G........', '......GGG.......',
-]);
-T.tuft = spr([
-  '................', '................', '................', '................',
-  '................', '...........G....', '...G.......G....', '...G...G...G....',
-  '..gG..gG..gG....', '..ggg.ggg.ggg...', '..gGg.gGg.gGg...', '...g...g...g....',
-  '................', '................', '................', '................',
 ]);
 
-// bandera / checkpoint (wiphala)
-T.flagPole = spr([
-  '..KK............', '..KK.KKKKK......', '..KKaKKKKKK.....', '..KKaKKKKKKK....',
-  '..KKaKKKKKK.....', '..KKaKKKKKK.....', '..KKaKKKKK......', '..KKaKKKK.......',
-  '..KKaKKKK.......', '..KKaKKK........', '..KKaKK.........', '..KKa...........',
-  '..KKa...........', '..KKa...........', '..KKa...........', '..KKa...........',
-  '..KKa...........', '..KKa...........', '..KKa...........', '..KKa...........',
-  '..KKa...........', '..KKa...........', '..KKa...........', '..KKa...........',
+// ── decorado ────────────────────────────────────────────────────────────────
+// ichu: mata de paja brava
+T.ichu = spr([
+  '.......E........',
+  '...E...e...E....',
+  '...e..Ee..e.....',
+  '....e.e..ee..E..',
+  '.E..eeE.ee..e...',
+  '..e.eeeeee.e....',
+  '...eegeegee.....',
+  '..Eegggegge.....',
+  '...gggGgggG.....',
+  '....GGGGGG......',
 ]);
-T.wiphala = spr([
-  'RrRrRrRr', 'yYyYyYyY', 'RrRrRrRr', 'yYyYyYyY',
-  'RrRrRrRr', 'yYyYyYyY', 'RrRrRrRr', 'yYyYyYyY',
+// cantuta: la flor nacional del Perú, campanas fucsia colgando
+T.cantuta = spr([
+  '......k.........',
+  '.....kGk..k.....',
+  '....k..Gkk......',
+  '...xk...G..k....',
+  '..xxX...Gk.xk...',
+  '..xXX..kG.xxX...',
+  '...yy..G..xXX...',
+  '.......G...yy...',
+  '..k...GG........',
+  '...kGGG.........',
+  '.....G..........',
+  '.....G..........',
 ]);
-
-// meta: puerta del colegio
-T.door = spr([
-  '..TTTTTTTTTTTT..', '.TttttttttttttT.', 'TttttttttttttttT', 'TtTTTTTTTTTTTTtT',
-  'TtTuuuuuuuuuuTtT', 'TtTuyyyyyyyyuTtT', 'TtTuyuuyuuyuuTtT', 'TtTuyyyyyyyyuTtT',
-  'TtTuuuuuuuuuuTtT', 'TtTuuuuuuuuuuTtT', 'TtTuuuuuuuuuuTtT', 'TtTuuuuuuuuuuTtT',
-  'TtTuuuuuuuuuuTtT', 'TtTuuuuuuuuuuTtT', 'TtTuuuuuuuuuuTtT', 'TtTuuuuuuuuuuTtT',
-  'TtTuuuuuuuuuuTtT', 'TtTuuuuuuuuuuTtT', 'TtTuuuuuuuuuuTtT', 'TtTuuuuuuuuuuTtT',
-  'TtTuuuuuuuuuuTtT', 'TtTuuuuuuuuuuTtT', 'TtTuuuuuuuuuuTtT', 'TTTTTTTTTTTTTTTT',
+// maguey (agave)
+T.maguey = spr([
+  '.......c........',
+  '...c...c....c...',
+  '...cc..c...cc...',
+  '....c.cC..cC....',
+  'c...cCcCc.c...c.',
+  '.cc.cCcCcCc.cc..',
+  '..cCCcCcCcCcC...',
+  '...CcCcCcCcC....',
+  '....CCCCCCC.....',
 ]);
+// letrero de madera con flecha
 T.sign = spr([
-  '................', '..KKKKKKKKKKKK..', '..KwwwwwwwwwwK..', '..KwKwwwwKwwwK..',
-  '..KwwKwwKwwwwK..', '..KwwwwwKwwwwK..', '..KwKwwwwKwwwK..', '..KwwKwwwwwwwK..',
-  '..KwwwwwwwwwwK..', '..KKKKKKKKKKKK..', '......K..K......', '......K..K......',
-  '......K..K......', '......KKKK......', '................', '................',
+  '..KKKKKKKKKKKK..',
+  '.KttttttttttttK.',
+  '.KttTTTTTTTyttK.',
+  '.KtTTTTTTTTyytK.',
+  '.KttTTTTTTTyttK.',
+  '.KttttttttttttK.',
+  '..KKKKKKKKKKKK..',
+  '.......KTK......',
+  '.......KTK......',
+  '.......KTK......',
+  '......KKTKK.....',
 ]);
+// apacheta: montículo de piedras ofrendado al Apu (checkpoint)
+T.apacheta = spr([
+  '......KKK.......',
+  '.....KdsSK......',
+  '....KKSSSKK.....',
+  '...KdsKKdssK....',
+  '...KsSSKsSSK....',
+  '..KKKKdssKKKK...',
+  '..KdssSSSKdsSK..',
+  '.KKSSSKKKKSSSKK.',
+  '.KdssKdssSKdssK.',
+  'KKSSSKsSSSKSSSKK',
+  'KdssSKKKKKKdssSK',
+  'KKKKKKKKKKKKKKKK',
+]);
+// cinta de colores que se ata a la apacheta al activarla
+T.ribbon = [
+  spr(['K....', 'Krrr.', 'Kooo.', 'Kyyyy', 'Kggg.', 'Kuuu.', 'Kqq..']),
+  spr(['K....', 'K.rrr', 'Kooo.', 'K.yyy', 'Kggg.', 'K.uuu', 'Kqq..']),
+];
 
 // ─────────────────────────────────────────────────────────────────────────────
-// PERSONAJE: el niño andino (facing right). 14x20, más grande y legible.
+// EL NIÑO (mirando a la derecha): chullo con orejeras, poncho y mochila. 16x22
 // ─────────────────────────────────────────────────────────────────────────────
 const KID_TOP = [
-  '......yy......',
-  '.....rrrr.....',
-  '....rrrrrr....',
-  '...rrrrrrrr...',
-  '..RyyyyyyyyR..',
-  '..RyyyyyyyyR..',
-  '..KaaaaaaaaK..',
-  '..KaaaaaaaaK..',
-  '..KmmmKmmKmmK.',   // cejas / ojos (K)
-  '..KaaaaaaaaK..',
-  '...KaaaaaaK...',
-  '..KuuuuuuuuK..',
-  '.KuyyyyyyyyuK.',
-  '.KuuuuuuuuuuK.',
-  '.KRRuuuuuuRRK.',
-  '..KRRRRRRRRK..',
+  '.......yy.......',
+  '......KrrK......',
+  '.....KryrrK.....',
+  '....KrrrrwrK....',
+  '...KrwrrrrrrK...',
+  '...KyuyuyuyuK...',
+  '...KhhhaaaaaK...',
+  '..rKhhaaaaKaK...',
+  '..rKhaaaaaKaK...',
+  '..rKhaaaaaaabK..',
+  '..y.KbaaaaRaK...',
+  '.....KKaaaKK....',
+  '..TTKrrrrrrrK...',
+  '.TjtKroyoyorrK..',
+  '.TttKrrrrrrraK..',
+  '.TTTKRuRuRuRRK..',
+  '..TTKrrrrrrrK...',
 ];
-const KID_LEGS_A = ['...KbK..KbK...', '...KbK..KbK...', '...KbK..KbK...', '..KKKK..KKKK..'];
-const KID_LEGS_B = ['...KbK..KbK...', '...KbK..KbK...', '..KbK....KbK..', '..KKK....KKK..'];
-const KID_LEGS_C = ['...KbK..KbK...', '...KbK..KbK...', '...KbK..KbK...', '...KKK..KKK...'];
-const KID_LEGS_TUCK = ['....Kb.bK.....', '...Kb...bK....', '..Kb.....bK...', '..KK.....KK...'];
-const KID_LEGS_SIT = ['...KbbbK......', '...Kb..bK.....', '..Kb....Kb....', '..KK.....KK...'];
-function kid(legs) { return spr(KID_TOP.concat(legs)); }
+const KID_LEGS = {
+  stand: ['....KUUUUUUK....', '.....KUUKUUK....', '.....KUK.KUK....', '.....KaK.KaK....', '....KKKK.KKKK...'],
+  runA:  ['....KUUUUUUK....', '...KUUK..KUUK...', '..KUK.....KaK...', '..KaK.....KKKK..', '.KKKK...........'],
+  runB:  ['....KUUUUUUK....', '.....KUUUUK.....', '.....KUKKUK.....', '.....KaKKaK.....', '....KKKKKKKK....'],
+  runC:  ['....KUUUUUUK....', '...KUUK..KUUK...', '...KaK....KUK...', '..KKKK....KaK...', '.........KKKK...'],
+  jump:  ['....KUUUUUUK....', '...KUUK..KUUK...', '..KaK......KaK..', '..KK........KK..', '................'],
+  sit:   ['....KUUUUUUUK...', '....KUUK.KUUK...', '....KaK...KaK...', '....KK....KK....', '................'],
+};
+function kid(legs) { return spr(KID_TOP.concat(KID_LEGS[legs])); }
 
 const P = {};
-P.idle = [kid(KID_LEGS_A)];
-P.run = [kid(KID_LEGS_A), kid(KID_LEGS_B), kid(KID_LEGS_A), kid(KID_LEGS_C)];
-P.jump = kid(KID_LEGS_TUCK);
-P.fall = kid(KID_LEGS_B);
-P.hurt = kid(KID_LEGS_TUCK);
-P.surf = kid(KID_LEGS_B);
-P.sit = kid(KID_LEGS_SIT);
+P.idle = [kid('stand')];
+P.run = [kid('runA'), kid('runB'), kid('runC'), kid('runB')];
+P.jump = kid('jump');
+P.fall = kid('runB');
+P.surf = kid('runA');
+P.sit = kid('sit');
 
 // ─────────────────────────────────────────────────────────────────────────────
-// LLAMA (facing right). ~24x22
+// LLAMA (mirando a la derecha): borlas de colores en las orejas y manta tejida.
+// 26x24
 // ─────────────────────────────────────────────────────────────────────────────
-const L_BODY = [
-  '................KKKK....',
-  '...............KflllK...',
-  '...............KfllK....',
-  '...............KfllK....',
-  '...............KfllK....',
-  '..KKKKKKKKKKKKKffllK....',
-  'KfllllllllllllffffllK...',
-  'KfllllllllllllfffflK....',
-  'KlllllllllllllllllK.....',
-  'KlllllllllllllllllK.....',
-  'KlllllllllllllllllK.....',
-  '.KllllllllllllllllK.....',
-  '.KlllllllllllllllK......',
-  '..KlllllllllllllK.......',
-  '..KllllllllllllK........',
-  '.KKlllK.KlllK.KK........',
+const LLAMA_TOP = [
+  '...................xy.....',
+  '..................xKKq....',
+  '..................KlK.....',
+  '..................KllKK...',
+  '..................KlKllK..',
+  '..................KllllfK.',
+  '..................KlllKKK.',
+  '.................KflllK...',
+  '.................KfllK....',
+  '.................KfllK....',
+  '.................KfllK....',
+  '..KK..KKKKKKKKKKKfllK.....',
+  '.KlfKKxyrqyrxqyrKfflK.....',
+  'KllfKrrrrrrrrrrrKffK......',
+  'KlffKyqyqyqyqyqyKlfK......',
+  'KlllKRRRRRRRRRRRKllK......',
+  'KllllllllllllllllllK......',
+  '.KlllllllllllllllLK.......',
+  '.KLlllllllllllllLLK.......',
 ];
+const LLAMA_LEGS = {
+  idle: ['..KLLlK.....KlLLK.........', '..KlLK.......KlLK.........', '..KlK.........KlK.........', '..KlK.........KlK.........', '..KKK.........KKK.........'],
+  runA: ['..KLLK......KlLK..........', '.KlK.........KlK..........', 'KlK...........KlK.........', 'KK.............KK.........', '..........................'],
+  runB: ['...KLlK.....KlLK..........', '...KlK......KlK...........', '...KlK......KlK...........', '...KKK......KKK...........', '..........................'],
+  runC: ['..KLLK......KlLK..........', '...KlK......KlK...........', '....KlK...KlK.............', '....KK....KK..............', '..........................'],
+  jump: ['..KLLK.......KlLK.........', '...KlK.....KlK............', '....KK.....KK.............', '..........................', '..........................'],
+};
 const LL = {};
-LL.idle = [
-  spr(L_BODY.concat(['.KfL..K..KfL..K.....', '.KK....KK.KK...K.....', '.......K..K....K.....'])),
-  spr(L_BODY.concat(['.KfL..K..KfL..K.....', '.KK....KK.KK...K.....', '.......K..K....K.....'])),
-];
-LL.run = [
-  spr(L_BODY.concat(['.KfL..K..KfL..K.....', 'KK.....KK.KK...K.....', '......................'])),
-  spr(L_BODY.concat(['..KfLK...KfLK.......', '..KK......KK.........', '......................'])),
-  spr(L_BODY.concat(['.KfL..K..KfL..K.....', '.KK....KK.KK...K.....', '......................'])),
-  spr(L_BODY.concat(['...KfLK..KfLK........', '...KK.....KK.........', '......................'])),
-];
+const llama = (l) => spr(LLAMA_TOP.concat(LLAMA_LEGS[l]));
+LL.idle = [llama('idle')];
+LL.run = [llama('runA'), llama('runB'), llama('runC'), llama('runB')];
+LL.jump = llama('jump');
 
 // ─────────────────────────────────────────────────────────────────────────────
-// CABRA (montura auto-saltarina). 20x14
+// CABRA MONTESA: cuernos curvos, barba, patas firmes. 22x17
 // ─────────────────────────────────────────────────────────────────────────────
-const GOAT_BODY = [
-  '....K..........K....',
-  '...KLK........KLK...',
-  '...KLK.......KLLK...',
-  '....KLKKKKKKKLLK....',
-  '...KKLLlllllLLKK....',
-  '..KlllllllllllllK...',
-  '.KlllllllllllllllK..',
-  '.KlllllllllllllllK..',
-  '.KlllllllllllllllK..',
-  '.KlllllllllllllllK..',
-  '..KlllllllllllllK...',
-  '..KKlK..KlK..KlK....',
+const GOAT_TOP = [
+  '..............KKK.....',
+  '.............KSSSK....',
+  '............KSK.KSK...',
+  '............KSK..K....',
+  '............KwwwwK....',
+  '............KwwKwwK...',
+  '.............KwwwwwK..',
+  '..KK.........KwwwKK...',
+  '.KwwKKKKKKKKKKwwwK....',
+  'KwwwwwwwwwwwwwwwKsK...',
+  'KwwwwwwwwwwwwwwsKsK...',
+  'KswwwwwwwwwwwwwsK.....',
+  '.KsswwwwwwwwwwssK.....',
 ];
-const GOAT = [
-  spr(GOAT_BODY.concat(['...L...L....L.......', '...K...K....K.......'])),
-  spr(GOAT_BODY.concat(['..L....L....L.......', '..K....K....K.......'])),
-];
+const GOAT_LEGS = {
+  stand: ['..KsK.KsK..KsK.KsK....', '..KSK.KSK..KSK.KSK....', '..KKK.KKK..KKK.KKK....', '......................'],
+  jump:  ['..KsKKsK....KsKKsK....', '...KKKK......KKKK.....', '......................', '......................'],
+  land:  ['.KsK...KsKKsK...KsK...', '.KKK...KKKKKK...KKK...', '......................', '......................'],
+};
+const GOAT = {
+  stand: spr(GOAT_TOP.concat(GOAT_LEGS.stand)),
+  jump: spr(GOAT_TOP.concat(GOAT_LEGS.jump)),
+  land: spr(GOAT_TOP.concat(GOAT_LEGS.land)),
+};
 
 // ─────────────────────────────────────────────────────────────────────────────
-// ENEMIGOS
+// CÓNDOR (solo decorado: planea a lo lejos). 24x9, alas con "dedos".
 // ─────────────────────────────────────────────────────────────────────────────
-// Cuy: conejillo de indias de frente (cabeza, orejas, vientre claro). 16x12
 const E = {};
-E.cuy = [
-  spr([
-    '.....KK..KK.....',
-    '...KKmmKKmmKK...',
-    '..KmmmmmmmmmmK..',
-    '.KmmmmmmmmmmmmK.',
-    '.KmmmKmmmmKmmK..',
-    '.KmmmmmmmmmmmmK.',
-    '.KttttttttttttK.',
-    '.KttttttttttttK.',
-    '..KttttttttttK..',
-    '...KKKKKKKKKK...',
-    '....KbK..KbK....',
-    '................',
-  ]),
-  spr([
-    '.....KK..KK.....',
-    '...KKmmKKmmKK...',
-    '..KmmmmmmmmmmK..',
-    '.KmmmmmmmmmmmmK.',
-    '.KmmmKmmmmKmmK..',
-    '.KmmmmmmmmmmmmK.',
-    '.KttttttttttttK.',
-    '.KttttttttttttK.',
-    '..KttttttttttK..',
-    '...KKKKKKKKKK...',
-    '...KbK...KbK....',
-    '................',
-  ]),
-];
-// Cóndor andino: alas anchas, collar blanco, cabeza rojiza. 20x12
 E.condor = [
   spr([
-    '....................',
-    '..KK............KK..',
-    '.KhhK..........KhhK.',
-    'KhhhhK........KhhhhK',
-    'KhhhhK..KKKK..KhhhhK',
-    '.KhhhK.KwwwwK.KhhhK.',
-    '..KhhKKwwwwwwKKhhK..',
-    '...KhK.wwwwww.KhK...',
-    '....KK.KwwwwK.KK....',
-    '.......KppppK.......',
-    '........pppp........',
-    '.........KK.........',
+    '..........KK............',
+    '.........KwwK...........',
+    'K.K.KKKKKKwwKKKKKK.K.K..',
+    '.KKKKKKKKKKKKKKKKKKKKK..',
+    '..KKKKKKKKpKKKKKKKKKK...',
+    '....KKKKKKKKKKKKKKK.....',
+    '.........KKKK...........',
   ]),
   spr([
-    '..KK............KK..',
-    '.KhhK..........KhhK.',
-    'KhhhhK........KhhhhK',
-    'KhhhhK..KKKK..KhhhhK',
-    '.KhhhK.KwwwwK.KhhhK.',
-    '..KhhKKwwwwwwKKhhK..',
-    '...KhK.wwwwww.KhK...',
-    '....KK.KwwwwK.KK....',
-    '.......KppppK.......',
-    '........pppp........',
-    '.........KK.........',
-    '....................',
+    '..........KK............',
+    '.....KKKKKwwKKKKK.......',
+    '...KKKKKKKwwKKKKKKK.....',
+    '.KKKKKKKKKKKKKKKKKKKK...',
+    'K.K.K...KKpKK...K.K.K...',
+    '.........KKKK...........',
+    '..........KK............',
   ]),
 ];
 
@@ -475,25 +367,60 @@ E.condor = [
 // OBJETOS
 // ─────────────────────────────────────────────────────────────────────────────
 const OBJ = {};
-// moneda "sol" dorada (4 frames girando)
-OBJ.coin = [
-  spr(['..yyyy..', '.yYwwYy.', 'yYyooyYy', 'yYo11oYy', 'yYo11oYy', 'yYyooyYy', '.yYwwYy.', '..yyyy..']),
-  spr(['...yy...', '..yYwy..', '..yYoy..', '..yY1y..', '..yY1y..', '..yYoy..', '..yYwy..', '...yy...']),
-  spr(['...y....', '...yy...', '...ylo..', '...y1o..', '...y1o..', '...ylo..', '...yy...', '...y....']),
-  spr(['...yy...', '..ywwy..', '..yoyy..', '..y1yy..', '..y1yy..', '..yoyy..', '..ywwy..', '...yy...']),
+// choclo (maíz andino de grano grande): el coleccionable principal
+OBJ.choclo = [
+  spr(['...kk...', '..kGGk..', '.KwywyK.', '.KywywK.', '.KwywyK.', '.KywywK.', '.KwywyK.', '.kKywKk.', 'kGkKKkGk', '.kGGGGk.']),
+  spr(['...kk...', '..kGGk..', '.KywywK.', '.K1ywyK.', '.KywywK.', '.KwywyK.', '.KywywK.', '.kKwyKk.', 'kGkKKkGk', '.kGGGGk.']),
 ];
-OBJ.heart = spr([
-  '.rr..rr.', 'rpprpprr', 'rp11pprr', 'rppppprr', '.rpppRr.', '..rpRr..', '...rr...', '........',
+// hoja de tarea (hay 3 escondidas)
+OBJ.page = spr([
+  'KKKKKKKK..',
+  'K111111KK.',
+  'K1uuuu1K1K',
+  'K111111KKK',
+  'K1uuuuu11K',
+  'K1111111rK',
+  'K1uuuu11rK',
+  'K1111111rK',
+  'K1uuuuu11K',
+  'K11111111K',
+  'KKKKKKKKKK',
 ]);
-OBJ.gem = spr([
-  '..nnnn..', '.nvvvvn.', 'nv1111vn', 'nvvvvvvn', '.nvvvvn.', '..nvvn..', '...nn...', '........',
+// tronco del huaico
+OBJ.log = spr([
+  '...KKKKKKKKKKKKKKKKKKKKKKKKK..',
+  '..KjmmmjmmmmmjmmmmmmjmmmmmKtK.',
+  '.KmmMmmmmmMmmmmmmMmmmmmmmKtTtK',
+  '.KmmmmmmmmmmmmmmmmmmmmmmmKTtTK',
+  '.KMmmmmMmmmmmmMmmmmmMmmmmKtTtK',
+  '.KMMMMiMMMMMMMMiMMMMMMiMMMKtK.',
+  '..KKKKKKKKKKKKKKKKKKKKKKKKKK..',
 ]);
-OBJ.rockBall = spr([
-  '..sSss..', '.SsSssS.', 'SsssssSs', 'SssssssS', 'SssssssS', '.SssssS.', '..SSSS..', '........',
+// roca plana que flota en el lodo
+OBJ.slab = spr([
+  '....KKKKKKKKKKK.....',
+  '..KKddssdssssssKK...',
+  '.KdsssssssssSsssSK..',
+  'KsssSssssssssssSSSK.',
+  'KSSsssssSsssssSSSSK.',
+  'KDSSSSSSSSSSSSSSSDK.',
+  '.KKKKKKKKKKKKKKKKK..',
+]);
+// piedra del derrumbe (rueda)
+OBJ.boulder = spr([
+  '....KKKKKK....',
+  '..KKddsssSKK..',
+  '.KddsssssSSSK.',
+  '.KdsssSssssSK.',
+  'KdsssssssSsSSK',
+  'KssSssssssssSK',
+  'KsssssssSsssSK',
+  'KssssssssssSSK',
+  'KSsssSssssSSSK',
+  '.KSsssssssSSK.',
+  '.KSSsssSSSSDK.',
+  '..KKSSSSDDKK..',
+  '....KKKKKK....',
 ]);
 
-// ─────────────────────────────────────────────────────────────────────────────
-// FONDOS: nubes + siluetas de montañas (puntos diseñados a mano)
-// ─────────────────────────────────────────────────────────────────────────────
-
-const ART = { T, P, LL, E, OBJ };
+const ART = { T, P, LL, GOAT, E, OBJ };

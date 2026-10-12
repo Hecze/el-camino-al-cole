@@ -1,14 +1,13 @@
 // entities.js — física (coyote time, salto variable, corner correction) y entidades.
 const TS = TILE;
 
-// Curva de salto más "flotante": menos gravedad, caída más suave.
 const PHYS = {
   GRAV: 0.50, GRAV_HOLD: 0.34, MAX_FALL: 6.6,
   RUN_ACCEL: 0.60, RUN_MAX: 2.30, FRICTION: 0.30, AIR_ACCEL: 0.45,
   JUMP_V: -7.3, JUMP_CUT: 3.0, COYOTE: 7,
+  LLAMA_MAX: 3.2, LLAMA_JUMP: -7.5,
+  GOAT_MAX: 2.6, GOAT_JUMP: -9.0,
 };
-
-function solidTileAt(level, px, py) { return isSolidCode(level.tile(Math.floor(px / TS), Math.floor(py / TS))); }
 
 function moveX(a, level) {
   a.wall = 0; a.x += a.vx;
@@ -29,7 +28,6 @@ function moveY(a, level) {
   a.y += a.vy;
   const left = Math.floor(a.x / TS), right = Math.floor((a.x + a.w - 1) / TS);
   if (a.vy >= 0) {
-    // uso la fila donde caen los PIES (no la de arriba) para no atravesar plataformas
     const feetRow = Math.floor((a.y + a.h) / TS);
     for (let tx = left; tx <= right; tx++) {
       const code = level.tile(tx, feetRow);
@@ -72,28 +70,27 @@ class Player extends Actor {
   constructor(x, y) {
     super(x, y, 8, 15);
     this.facing = 1; this.coyote = 0; this.animT = 0;
-    this.hearts = 3; this.maxHearts = 3; this.invuln = 0; this.hurtT = 0;
-    this.riding = null; this.dead = false; this.deadT = 0;
+    this.riding = null; this.mountCd = 0; this.lastMover = null;
     this.dropThrough = false; this.dropT = 0; this.surfT = 0; this.mudT = 0;
-    this.surfing = false; this.won = false;
+    this.won = false; this.invuln = 0;
   }
-  get hitboxSmall() { return { x: this.x + 1, y: this.y + 1, w: this.w - 2, h: this.h - 2 }; }
   get jumpHeld() { return Input.held('jump') || Input.held('up'); }
 
   update(g) {
     const level = g.level;
-    if (this.dead) { this.deadT++; this.vy = Math.min(this.vy + 0.4, 7); this.y += this.vy; return; }
     if (this.won) { this.animT++; return; }
+    if (this.mountCd > 0) this.mountCd--;
     if (this.invuln > 0) this.invuln--;
-    if (this.hurtT > 0) this.hurtT--;
 
-    // ── montado ──
+    // ── montado: la montura se mueve en su propio update ──
     if (this.riding) {
       const l = this.riding;
-      if (Input.pressed('down')) { this.dismount(g); return; }
-      if (!l.autoJump && Input.consumeJump() && l.onGround) { l.vy = PHYS.JUMP_V; l.onGround = false; g.onPlayerJump(this); }
-      this.syncRide();
-      this.animT++;
+      if (l.canDismount && Input.pressed('down')) { this.dismount(g); return; }
+      if (l instanceof Llama) {
+        if (l.onGround) l.coyote = PHYS.COYOTE; else if (l.coyote > 0) l.coyote--;
+        if (l.coyote > 0 && Input.consumeJump()) { l.vy = PHYS.LLAMA_JUMP; l.onGround = false; l.coyote = 0; g.onPlayerJump(l); }
+      } else Input.clearJump();
+      this.syncRide(); this.animT++;
       return;
     }
 
@@ -103,13 +100,11 @@ class Player extends Actor {
     if (left && !right) { ax = -accel; this.facing = -1; }
     else if (right && !left) { ax = accel; this.facing = 1; }
     if (ax !== 0) this.vx += ax; else this.vx *= (this.onGround ? 1 - PHYS.FRICTION : 0.985);
-    if (this.vx > PHYS.RUN_MAX) this.vx = PHYS.RUN_MAX;
-    if (this.vx < -PHYS.RUN_MAX) this.vx = -PHYS.RUN_MAX;
+    this.vx = Math.max(-PHYS.RUN_MAX, Math.min(PHYS.RUN_MAX, this.vx));
     if (Math.abs(this.vx) < 0.05) this.vx = 0;
 
     if (this.onGround) this.coyote = PHYS.COYOTE; else if (this.coyote > 0) this.coyote--;
-
-    if (Input.consumeJump() && this.coyote > 0) {
+    if (this.coyote > 0 && Input.consumeJump()) {
       this.vy = PHYS.JUMP_V; this.onGround = false; this.coyote = 0;
       g.onPlayerJump(this);
     }
@@ -121,30 +116,28 @@ class Player extends Actor {
     this.dropThrough = this.dropT > 0;
     if (this.dropT > 0) this.dropT--;
 
-    if (level.wind) for (const w of level.wind) {
-      if (this.rectOverlaps(w.x * TS, w.y * TS, w.w * TS, w.h * TS)) { this.vx += w.ax; this.vy += w.ay; }
-    }
-    if (level.huayco) {
-      const hu = level.huayco;
-      const x0 = Math.min(hu.x0, hu.x1) * TS - 20, x1 = Math.max(hu.x0, hu.x1) * TS + 20;
-      if (this.x > x0 && this.x < x1) this.vx -= 0.06;
-    }
-
+    const wasGround = this.onGround;
     moveX(this, level);
     moveY(this, level);
 
+    // plataformas móviles (troncos del huaico): nos llevan con la corriente
     let onMover = null;
-    for (const m of g.movers) {
-      if (this.vy >= 0 && this.x + this.w > m.x - 1 && this.x < m.x + m.w + 1 &&
-          this.y + this.h >= m.y - 3 && this.y + this.h <= m.y + 7) {
-        this.y = m.y - this.h; this.vy = 0; this.onGround = true; onMover = m;
+    if (this.vy >= 0) for (const m of g.movers) {
+      if (m.dead) continue;
+      const reach = this.lastMover === m ? 10 : 6;
+      if (this.x + this.w > m.x + 1 && this.x < m.x + m.w - 1 &&
+          this.y + this.h >= m.y - 4 && this.y + this.h <= m.y + reach) {
+        this.y = m.y - this.h; this.vy = 0; this.onGround = true; onMover = m; break;
       }
     }
     if (onMover) {
-      this.x += onMover.dx; if (onMover.dy) this.y += onMover.dy;
-      if (onMover.isSurfRock) { this.surfing = true; this.surfT = 8; }
+      const vx = this.vx; this.vx = onMover.dx; moveX(this, level); this.vx = this.wall ? 0 : vx;
+      this.surfT = 6;
     }
-    if (this.surfT > 0) { this.surfing = true; this.surfT--; }
+    if (onMover && !this.lastMover) g.audio('land');
+    else if (this.onGround && !wasGround && this.vy === 0) g.onPlayerLand(this);
+    this.lastMover = onMover;
+    if (this.surfT > 0) this.surfT--;
 
     this.checkLiquids(g);
     this.animT++;
@@ -154,20 +147,22 @@ class Player extends Actor {
 
   syncRide() {
     const l = this.riding; if (!l) return;
-    const off = l.facing >= 0 ? l.seat.dx : (l.w - l.seat.dx - this.w);
-    this.x = l.x + off;
+    this.facing = l.facing;
+    this.x = l.x + (l.facing >= 0 ? l.seat.dx : l.w - l.seat.dx - this.w);
     this.y = l.y + l.seat.dy;
-    this.vx = l.vx; this.vy = l.vy;
+    this.vx = l.vx; this.vy = l.vy; this.onGround = l.onGround;
   }
-  dismount(g) {
+  dismount(g, hop = -3.6) {
     const l = this.riding; if (!l) return;
     this.riding = null; l.rider = null;
-    this.vy = -3.4; this.x += l.facing * 10;
+    this.vy = hop; this.vx = l.facing * 1.2; this.x += l.facing * 10;
+    this.mountCd = 50;
     g.audio('jump'); g.burst(this.cx, this.cy, 'dust', 6);
   }
-  mount(l, g) {
-    this.riding = l; l.rider = this; this.syncRide();
-    g.audio('mount'); g.burst(l.cx, l.y, 'dust', 10);
+  mount(l, g, silent) {
+    if (this.riding) { const old = this.riding; old.rider = null; old.vx = 0; }
+    this.riding = l; l.rider = this; l.facing = 1; this.syncRide();
+    if (!silent) { g.audio(l instanceof Cabra ? 'bleat' : 'mount'); g.burst(l.cx, l.y, 'dust', 10); g.onMount(l); }
   }
 
   checkLiquids(g) {
@@ -175,278 +170,345 @@ class Player extends Actor {
     const pts = [[this.x + 2, this.y + this.h - 2], [this.x + this.w - 2, this.y + this.h - 2], [this.cx, this.cy]];
     let inWater = false, inMud = false;
     for (const [px, py] of pts) {
-      const k = liquidKind(level.tile(Math.floor(px / TS), Math.floor(py / TS)));
+      const k = liquidAt(level, px, py);
       if (k === 'water') inWater = true; else if (k === 'mud') inMud = true;
-      if (isHazardCode(level.tile(Math.floor(px / TS), Math.floor(py / TS)))) { this.hurt(g, 0); return; }
     }
     if (inWater) { g.playerEnvDeath('water'); return; }
     if (inMud) {
-      this.vx *= 0.6; this.vy = Math.min(this.vy, 3.0); this.vx -= 0.25;
-      this.mudT++;
-      if (this.mudT % 12 === 0) { g.audio('mud'); g.burst(this.cx, this.y + this.h, 'mud', 5); }
+      // el lodo te traga: un instante para reaccionar y se acabó
+      this.vx *= 0.5; this.vy = Math.min(this.vy, 0.7);
+      if (this.mudT % 6 === 0) g.burst(this.cx, this.y + this.h, 'mud', 5);
+      if (++this.mudT > 16) g.playerEnvDeath('mud');
     } else this.mudT = 0;
     if (this.y > level.rows * TS + 40) g.playerEnvDeath('fall');
   }
 
-  hurt(g, dir) {
-    if (this.invuln > 0 || this.dead) return;
-    this.hearts--; this.invuln = 90; this.hurtT = 24;
-    this.vy = -3.4; this.vx = (dir || (this.facing * -1)) * 2.4;
-    g.audio('hurt'); g.shake(3, 8); g.burst(this.cx, this.cy, 'spark', 10);
-    if (this.hearts <= 0) g.playerDeath();
-  }
-
   draw(ctx, g) {
     if (this.riding) return;
-    if (this.invuln > 0 && Math.floor(this.invuln / 4) % 2 === 0 && !this.dead) return;
-    let frames, speed = 6;
-    if (this.dead || this.hurtT > 0) frames = [P.hurt];
-    else if (this.surfing) frames = [P.surf];
-    else if (!this.onGround) frames = [this.vy < 0 ? P.jump : P.fall];
-    else if (Math.abs(this.vx) > 0.25) { frames = P.run; speed = Math.max(4, 9 - Math.abs(this.vx) * 2); }
-    else frames = P.idle;
-    const idx = Math.floor(this.animT / speed) % frames.length;
-    let img = frames[idx];
-    if (this.facing < 0) img = flipS(img);
-    ctx.drawImage(img, Math.round(this.x - 3), Math.round(this.y - 5));
+    if (this.invuln > 0 && Math.floor(this.invuln / 4) % 2 === 0) return;
+    let img;
+    if (this.surfT > 0 && Math.abs(this.vx) < 0.3) img = P.surf;
+    else if (!this.onGround) img = this.vy < 0 ? P.jump : P.fall;
+    else if (Math.abs(this.vx) > 0.25) { const sp = Math.max(4, 9 - Math.abs(this.vx) * 2); img = P.run[Math.floor(this.animT / sp) % 4]; }
+    else img = P.idle[0];
+    if (this.mudT > 0) {
+      // hundiéndose: recortamos los pies
+      ctx.save(); ctx.beginPath(); ctx.rect(this.x - 8, this.y - 10, 24, 22 + 6 - this.mudT); ctx.clip();
+    }
+    ctx.drawImage(this.facing < 0 ? flipS(img) : img, Math.round(this.cx - 8), Math.round(this.y + this.h - 22 + (this.mudT > 0 ? this.mudT * 0.6 : 0)));
+    if (this.mudT > 0) ctx.restore();
   }
   drawRider(ctx) {
     if (!this.riding) return;
-    let img = P.sit;
-    if (this.riding.facing < 0) img = flipS(img);
-    ctx.drawImage(img, Math.round(this.x - 3), Math.round(this.y - 5));
+    const img = this.riding.facing < 0 ? flipS(P.sit) : P.sit;
+    ctx.drawImage(img, Math.round(this.cx - 8), Math.round(this.y + this.h - 22));
   }
 }
 
 // ── monturas ────────────────────────────────────────────────────────────────
 class Mount extends Actor {
-  constructor(x, y, w, h, seat) { super(x, y, w, h); this.facing = 1; this.rider = null; this.animT = 0; this.seat = seat; this.autoJump = false; }
+  constructor(x, y, w, h, seat) {
+    super(x, y, w, h); this.facing = 1; this.rider = null; this.animT = 0; this.seat = seat;
+    this.homeX = x; this.homeY = y; this.coyote = 0; this.retired = false; this.canDismount = true;
+  }
+  reset() { this.x = this.homeX; this.y = this.homeY; this.vx = 0; this.vy = 0; this.rider = null; this.facing = 1; }
+  hazards(g) {
+    const lv = g.level;
+    for (const px of [this.x + 3, this.x + this.w - 3]) {
+      const k = liquidAt(lv, px, this.y + this.h - 2);
+      if (k) { if (this.rider) { g.playerEnvDeath(k); } else this.reset(); return; }
+    }
+    if (this.y > lv.rows * TS + 24) { if (this.rider) g.playerEnvDeath('fall'); else this.reset(); }
+  }
 }
 
 class Llama extends Mount {
-  constructor(x, y) { super(x + 2, y - 18, 20, 18, { dx: 5, dy: -8 }); this.homeX = this.x; this.homeY = this.y; }
+  constructor(x, y) { super(x + 2, y - 20, 20, 20, { dx: 2, dy: -3 }); }
   update(g) {
     this.animT++;
     if (this.rider) {
       const left = Input.held('left'), right = Input.held('right');
-      const maxS = PHYS.RUN_MAX * 1.4;
-      if (left && !right) { this.vx -= 0.4; this.facing = -1; }
-      else if (right && !left) { this.vx += 0.4; this.facing = 1; }
-      else this.vx *= 0.82;
-      if (this.vx > maxS) this.vx = maxS; if (this.vx < -maxS) this.vx = -maxS;
-    } else this.vx *= 0.8;
-    this.vy = Math.min(this.vy + PHYS.GRAV, PHYS.MAX_FALL);
+      if (left && !right) { this.vx -= 0.42; this.facing = -1; }
+      else if (right && !left) { this.vx += 0.42; this.facing = 1; }
+      else this.vx *= 0.84;
+      this.vx = Math.max(-PHYS.LLAMA_MAX, Math.min(PHYS.LLAMA_MAX, this.vx));
+      const held = Input.held('jump') || Input.held('up');
+      if (!held && this.vy < -PHYS.JUMP_CUT) this.vy = -PHYS.JUMP_CUT;
+      this.vy = Math.min(this.vy + (held && this.vy < 0 ? PHYS.GRAV_HOLD : PHYS.GRAV), PHYS.MAX_FALL);
+    } else { this.vx *= 0.8; this.vy = Math.min(this.vy + PHYS.GRAV, PHYS.MAX_FALL); }
+    const was = this.onGround;
     moveX(this, g.level); moveY(this, g.level);
-    if (this.x < 0) this.x = 0; const mx = g.level.cols * TS - this.w; if (this.x > mx) this.x = mx;
+    if (this.rider && this.onGround && !was) g.onPlayerLand(this);
+    if (this.x < 0) this.x = 0;
     if (this.rider) this.rider.syncRide();
-    if (this.y > g.level.rows * TS + 60) { this.x = this.homeX; this.y = this.homeY; this.vx = 0; this.vy = 0; if (this.rider) this.rider.syncRide(); }
+    this.hazards(g);
   }
   draw(ctx) {
-    const moving = Math.abs(this.vx) > 0.2;
-    const frames = moving ? LL.run : LL.idle;
-    const speed = moving ? Math.max(4, 11 - Math.abs(this.vx) * 3) : 16;
-    let img = frames[Math.floor(this.animT / speed) % frames.length];
-    if (this.facing < 0) img = flipS(img);
-    ctx.drawImage(img, Math.round(this.x - 2), Math.round(this.y - 1));
+    let img;
+    if (!this.onGround) img = LL.jump;
+    else if (Math.abs(this.vx) > 0.2) img = LL.run[Math.floor(this.animT / Math.max(3, 9 - Math.abs(this.vx) * 2)) % 4];
+    else img = LL.idle[0];
+    const bob = !this.rider && this.onGround && Math.floor(this.animT / 40) % 3 === 0 ? -1 : 0; // mastica
+    ctx.drawImage(this.facing < 0 ? flipS(img) : img, Math.round(this.cx - 13 + (this.facing < 0 ? 3 : -3)), Math.round(this.y + this.h - 24 + bob));
   }
 }
 
-// Cabra montesa: auto-corre y auto-salta en las montañas.
+// Cabra montesa: rebota sola sin parar; el jugador solo la dirige.
 class Cabra extends Mount {
-  constructor(x, y) { super(x + 2, y - 14, 18, 14, { dx: 4, dy: -7 }); this.homeX = this.x; this.homeY = this.y; this.autoJump = true; this.jumpCd = 0; }
+  constructor(x, y) { super(x, y - 14, 18, 14, { dx: 4, dy: -10 }); this.canDismount = false; this.landT = 0; this.idleT = 0; }
   update(g) {
     this.animT++;
+    if (this.landT > 0) this.landT--;
     if (this.rider) {
-      this.vx = 2.4; this.facing = 1;
-      if (this.onGround && this.jumpCd <= 0) {
-        const aheadX = this.x + this.w + 7;
-        const feetRow = Math.floor((this.y + this.h + 1) / TS);
-        const col = Math.floor(aheadX / TS);
-        const groundAhead = isSolidCode(g.level.tile(col, feetRow));
-        const wallAhead = isSolidCode(g.level.tile(col, feetRow - 1)) || isSolidCode(g.level.tile(col, feetRow - 2));
-        if ((!groundAhead && wallAhead) || !groundAhead || (wallAhead && groundAhead)) {
-          this.vy = PHYS.JUMP_V * 1.02; this.jumpCd = 12; g.onPlayerJump(this);
-        }
+      const left = Input.held('left'), right = Input.held('right');
+      if (left && !right) { this.vx -= 0.4; this.facing = -1; }
+      else if (right && !left) { this.vx += 0.4; this.facing = 1; }
+      else this.vx *= 0.9;
+      this.vx = Math.max(-PHYS.GOAT_MAX, Math.min(PHYS.GOAT_MAX, this.vx));
+      if (this.onGround) {
+        if (g.level.goatEnd && this.cx > g.level.goatEnd * TS) {
+          // llegó a la cumbre: la cabra se queda pastando
+          this.retired = true; this.vx = 0; this.rider.dismount(g, -4.2); g.audio('bleat'); g.onGoatDone();
+        } else { this.vy = PHYS.GOAT_JUMP; this.onGround = false; this.landT = 5; g.audio('boing'); g.burst(this.cx, this.y + this.h, 'dust', 5); }
       }
-      if ((Input.pressed('jump') || Input.pressed('up')) && this.onGround && this.jumpCd <= 0) { this.vy = PHYS.JUMP_V * 1.06; this.jumpCd = 12; g.onPlayerJump(this); }
-      if (this.jumpCd > 0) this.jumpCd--;
-      if (Input.pressed('down')) this.rider.dismount(g);
-    } else this.vx *= 0.85;
+    } else {
+      this.vx *= 0.8;
+      if (this.onGround && ++this.idleT % 110 === 0 && !this.retired) this.vy = -3.2; // brinquito de espera
+    }
     this.vy = Math.min(this.vy + PHYS.GRAV, PHYS.MAX_FALL);
     moveX(this, g.level); moveY(this, g.level);
-    if (this.x < 0) this.x = 0; const mx = g.level.cols * TS - this.w; if (this.x > mx) this.x = mx;
     if (this.rider) this.rider.syncRide();
-    if (this.y > g.level.rows * TS + 80) { this.x = this.homeX; this.y = this.homeY; this.vx = 0; this.vy = 0; if (this.rider) this.rider.syncRide(); }
+    this.hazards(g);
   }
   draw(ctx) {
-    let img = GOAT[Math.floor(this.animT / 6) % GOAT.length];
-    if (this.facing < 0) img = flipS(img);
-    ctx.drawImage(img, Math.round(this.x - 3), Math.round(this.y - 1));
+    const img = !this.onGround ? (this.vy < 0 ? GOAT.jump : GOAT.stand) : (this.landT > 0 ? GOAT.land : GOAT.stand);
+    ctx.drawImage(this.facing < 0 ? flipS(img) : img, Math.round(this.cx - 11 + (this.facing < 0 ? 2 : -2)), Math.round(this.y + this.h - 17));
   }
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
-class Cuy extends Actor {
-  constructor(x, y, dir) { super(x + 3, y - 10, 10, 8); this.dir = dir || 1; this.animT = 0; this.alive = true; this.squish = 0; }
+// Derrumbe: piedras que caen del cerro y ruedan cuesta abajo (hacia ti).
+class Boulder extends Actor {
+  constructor(x, y) { super(x - 6, y, 12, 12); this.rot = 0; }
   update(g) {
-    if (this.squish > 0) { this.squish--; if (this.squish === 0) this.alive = false; return; }
-    this.vy = Math.min(this.vy + PHYS.GRAV, PHYS.MAX_FALL);
-    this.vx = this.dir * 0.6;
-    const before = this.vx;
+    this.vy = Math.min(this.vy + PHYS.GRAV, 7);
+    const vy0 = this.vy;
+    this.vx = -1.7;
     moveX(this, g.level);
-    if (this.vx === 0 && before !== 0) this.dir *= -1;
+    if (this.wall) { g.burst(this.cx, this.cy, 'rock', 12); this.dead = true; return; }
     moveY(this, g.level);
-    if (this.onGround) {
-      const aheadX = this.dir > 0 ? this.x + this.w + 2 : this.x - 2;
-      if (!solidTileAt(g.level, aheadX, this.y + this.h + 2)) this.dir *= -1;
+    if (this.onGround && vy0 > 2.5) {
+      this.vy = -vy0 * 0.38;
+      if (g.near(this.cx, 260)) { g.audio('rock'); g.shake(1.5, 6); }
+      g.burst(this.cx, this.y + this.h, 'dust', 6);
     }
-    this.animT++;
-    if (this.y > g.level.rows * TS + 60) this.alive = false;
+    this.rot += this.vx / 6;
+    const k = liquidAt(g.level, this.cx, this.y + this.h - 2);
+    if (k) { g.burst(this.cx, this.y + this.h, k === 'water' ? 'splash' : 'mud', 14); if (g.near(this.cx, 260)) g.audio('splash'); this.dead = true; }
+    if (this.y > g.level.rows * TS) this.dead = true;
   }
-  stomp(g) { this.squish = 12; g.audio('stomp'); g.burst(this.cx, this.y + this.h, 'dust', 8); g.addScore(100); }
   draw(ctx) {
-    let img = E.cuy[Math.floor(this.animT / 9) % 2];
-    if (this.dir < 0) img = flipS(img);
-    ctx.save();
-    if (this.squish > 0) { ctx.translate(this.cx, this.y + this.h); ctx.scale(1, 0.4); ctx.translate(-this.cx, -(this.y + this.h)); }
-    ctx.drawImage(img, Math.round(this.cx - 8), Math.round(this.y + this.h - 12));
+    ctx.save(); ctx.translate(Math.round(this.cx), Math.round(this.cy));
+    ctx.rotate(Math.round(this.rot * 4) / 4);
+    ctx.drawImage(OBJ.boulder, -7, -7); ctx.restore();
+  }
+}
+class Rockfall {
+  constructor(x, y, interval) { this.x = x * TS + 8; this.y = y * TS; this.interval = interval || 130; this.t = 70; }
+  onRespawn() { this.t = 90; }
+  update(g) {
+    if (Math.abs(g.player.cx - this.x) > 460) return;
+    this.t--;
+    // aviso: cae gravilla antes de la piedra
+    if (this.t < 40 && this.t % 3 === 0) g.particles.push({ x: this.x + (Math.random() * 12 - 6), y: g.cam.y - 2, vx: 0, vy: 1.5, life: 60, max: 60, col: '#8a8296', size: 1, grav: 0.12 });
+    if (this.t === 30 && g.near(this.x, 300)) g.audio('rumble');
+    if (this.t <= 0) { this.t = this.interval; g.addEntity(new Boulder(this.x, this.y)); }
+  }
+  draw() {}
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// HUAICO: troncos y lajas bajan con el lodo, escalón a escalón.
+class Huaico {
+  constructor(def, level) {
+    this.x0 = def.x0 * TS; this.x1 = def.x1 * TS; this.interval = def.interval || 76; this.speed = def.speed || 0.85;
+    this.level = level; this.t = this.interval; this.n = 0;
+  }
+  surfaceAt(x) {
+    for (const l of this.level.liquids) if (l.kind === 'mud' && x >= l.x * TS && x < (l.x + l.w) * TS) return l.y * TS + 4;
+    return null;
+  }
+  prefill(g) { for (let x = this.x1 - 34; x > this.x0 + 12; x -= this.interval * this.speed) this.spawn(g, x, true); }
+  spawn(g, x, instant) {
+    const d = new Debris(this.n++ % 3 === 2 ? 'slab' : 'log', x, this, instant);
+    g.addEntity(d); g.movers.push(d);
+  }
+  update(g) { if (--this.t <= 0) { this.t = this.interval; this.spawn(g, this.x1 - 32, false); } }
+  draw() {}
+}
+class Debris extends Actor {
+  constructor(kind, x, hu, instant) {
+    const w = kind === 'log' ? 28 : 18;
+    super(x, 0, w, 6);
+    this.kind = kind; this.hu = hu; this.isMover = true;
+    this.dx = 0; this.dy = 0; this.t = Math.random() * 6; this.sinkT = 0;
+    this.y = hu.surfaceAt(this.cx) - 4 + (instant ? 0 : 14);
+  }
+  update(g) {
+    const px = this.x, py = this.y;
+    this.t += 0.07;
+    this.x -= this.hu.speed;
+    const s = this.hu.surfaceAt(this.cx);
+    if (s === null || this.cx < this.hu.x0 + 10 || this.sinkT > 0) {
+      this.sinkT++; this.y += 0.45;
+      if (this.sinkT > 40) this.dead = true;
+    } else {
+      const target = s - 4 - (Math.sin(this.t) > 0.4 ? 1 : 0);
+      if (this.y < target - 1) {
+        this.vy = Math.min(this.vy + 0.45, 6); this.y = Math.min(this.y + this.vy, target);
+        if (this.y >= target) { this.vy = 0; g.burst(this.cx, s, 'mud', 10); if (g.near(this.cx, 220)) g.audio('mud'); }
+      } else if (this.y > target) this.y = Math.max(target, this.y - 0.7); // emerge del lodo
+      else { this.y = target; this.vy = 0; }
+    }
+    this.dx = this.x - px; this.dy = this.y - py;
+  }
+  draw(ctx, g) {
+    const s = this.hu.surfaceAt(this.cx) || (this.y + 4);
+    ctx.save(); ctx.beginPath(); ctx.rect(this.x - 6, this.y - 30, this.w + 12, s + 2 - (this.y - 30)); ctx.clip();
+    const img = this.kind === 'log' ? OBJ.log : OBJ.slab;
+    ctx.drawImage(img, Math.round(this.cx - img.width / 2), Math.round(this.y - 1));
     ctx.restore();
+    // ola de proa: el lodo se arremolina delante
+    ctx.fillStyle = '#e2c49a';
+    const f = Math.floor(g.T / 5) % 2;
+    ctx.fillRect(Math.round(this.x - 2 - f), Math.round(s), 2, 1);
+    ctx.fillRect(Math.round(this.x + this.w + f), Math.round(s) + 1, 2, 1);
   }
 }
 
-class Condor extends Actor {
-  constructor(x, y, span) { super(x, y, 12, 8); this.home = { x, y }; this.span = (span || 4) * TS; this.t = Math.random() * 6; this.alive = true; this.dir = 1; this.animT = 0; }
-  update() {
-    if (!this.alive) return;
-    this.t += 0.02;
-    this.x = this.home.x + Math.sin(this.t) * this.span;
-    this.y = this.home.y + Math.sin(this.t * 1.6) * 6;
-    this.dir = Math.cos(this.t) >= 0 ? 1 : -1;
-    this.animT++;
-  }
-  stomp(g) { this.alive = false; g.audio('stomp'); g.burst(this.cx, this.cy, 'feather', 10); g.addScore(150); }
-  draw(ctx) {
-    const img0 = E.condor[Math.floor(this.animT / 6) % 2];
-    const img = this.dir < 0 ? flipS(img0) : img0;
-    ctx.drawImage(img, Math.round(this.cx - 10), Math.round(this.cy - 7));
-  }
-}
-
-class SurfRock extends Actor {
-  constructor(path, speed) {
-    super(path[0][0] * TS, path[0][1] * TS, 16, 8);
-    this.path = path.map(p => ({ x: p[0] * TS + 8, y: p[1] * TS + 4 }));
-    this.speed = speed || 0.02; this.t = Math.random(); this.isSurfRock = true;
-    this.dx = 0; this.dy = 0; this.spin = 0;
-  }
-  update() {
-    this.t += this.speed;
-    let u = this.t % 2; if (u > 1) u = 2 - u;
-    const seg = this.path.length - 1;
-    const f = u * seg;
-    const i = Math.min(Math.floor(f), seg - 1);
-    const a = this.path[i], b = this.path[i + 1];
-    const lf = f - i;
-    const nx = a.x + (b.x - a.x) * lf, ny = a.y + (b.y - a.y) * lf;
-    this.dx = nx - this.cx; this.dy = ny - this.cy;
-    this.x = nx - this.w / 2; this.y = ny - this.h / 2;
-    this.spin += 0.18;
-  }
-  draw(ctx) {
-    ctx.save();
-    ctx.translate(Math.round(this.cx), Math.round(this.cy));
-    ctx.rotate(Math.sin(this.spin) * 0.1);
-    ctx.drawImage(T.rock, -8, -8);
-    ctx.restore();
-  }
-}
-
+// ═════════════════════════════════════════════════════════════════════════════
 class Pickup extends Actor {
   constructor(type, x, y) {
-    super(x * TS + 4, y * TS + 4, 8, 8);
-    this.type = type; this.animT = Math.random() * 10; this.baseY = this.y; this.taken = false;
+    super(x * TS + 4, y * TS + 3, 8, 10);
+    this.type = type; this.animT = Math.random() * 10; this.baseY = this.y;
   }
-  update(g) {
-    this.animT += 0.12;
-    this.y = this.baseY + Math.sin(this.animT) * 1.6;
-    if (!this.taken && this.overlaps(g.player, 3)) this.collect(g);
-  }
-  collect(g) {
-    this.taken = true; this.dead = true;
-    if (this.type === 'coin') { g.audio('coin'); g.addScore(50); g.coins++; g.burst(this.cx, this.cy, 'spark', 6); }
-    else if (this.type === 'heart') { g.audio('gem'); g.player.hearts = Math.min(g.player.maxHearts, g.player.hearts + 1); g.burst(this.cx, this.cy, 'heart', 8); }
-    else { g.audio('gem'); g.addScore(500); g.gems++; g.burst(this.cx, this.cy, 'spark', 14); }
-  }
-  draw(ctx) {
-    let img;
-    if (this.type === 'coin') img = OBJ.coin[Math.floor(this.animT) % 4];
-    else if (this.type === 'heart') img = OBJ.heart;
-    else img = OBJ.gem;
-    ctx.drawImage(img, Math.round(this.cx - 4), Math.round(this.cy - 4));
-  }
-}
-
-class Checkpoint extends Actor {
-  constructor(x, y) { super(x * TS + 4, y * TS - 20, 8, 22); this.on = false; this.animT = 0; this.spawn = { x: x * TS, y: y * TS }; }
   update(g) {
     this.animT += 0.1;
-    if (!this.on && g.player.overlaps(this, -2)) { this.on = true; g.setCheckpoint(this); g.audio('checkpoint'); g.burst(this.cx, this.y, 'spark', 12); }
+    this.y = this.baseY + Math.sin(this.animT) * 1.5;
+    const p = g.player;
+    if (this.overlaps(p, 3) || (p.riding && this.overlaps(p.riding, 1))) this.collect(g);
+  }
+  collect(g) {
+    this.dead = true;
+    if (this.type === 'choclo') { g.audio('choclo'); g.addScore(10); g.choclos++; g.burst(this.cx, this.cy, 'spark', 6); }
+    else { g.audio('page'); g.addScore(500); g.pages++; g.burst(this.cx, this.cy, 'paper', 16); g.showHint('¡HOJA DE TAREA ' + g.pages + ' DE 3!'); }
   }
   draw(ctx) {
-    ctx.drawImage(T.flagPole, Math.round(this.x - 4), Math.round(this.y));
-    if (this.on) { const wave = Math.sin(this.animT * 2) * 1; ctx.drawImage(T.wiphala, Math.round(this.x - 1), Math.round(this.y + 2 + wave)); }
-    else { ctx.save(); ctx.globalAlpha = 0.45; ctx.drawImage(T.wiphala, Math.round(this.x - 1), Math.round(this.y + 14)); ctx.restore(); }
+    if (this.type === 'choclo') {
+      const img = OBJ.choclo[Math.floor(this.animT * 2) % 7 === 0 ? 1 : 0];
+      ctx.drawImage(img, Math.round(this.cx - 4), Math.round(this.cy - 5));
+    } else {
+      const tilt = Math.sin(this.animT * 1.4) > 0 ? 0 : 1;
+      ctx.drawImage(OBJ.page, Math.round(this.cx - 5 + tilt), Math.round(this.cy - 6));
+    }
   }
 }
 
-class Goal extends Actor {
-  constructor(x, y, name) { const base = y * TS; super(x * TS + 4, base - 40, 10, 40); this.base = base; this.name = name || 'META'; this.animT = 0; this.done = false; }
-  update(g) { this.animT += 0.1; if (!this.done && g.player.overlaps(this, -4)) { this.done = true; g.levelComplete(); } }
+// Apacheta: montículo de piedras. Al pasar, el niño le ata una cinta: checkpoint.
+class Apacheta extends Actor {
+  constructor(x, y) { super(x * TS, y * TS - 12, 16, 12); this.on = false; this.animT = 0; this.spawn = { x: x * TS + 4, y: y * TS }; }
+  update(g) {
+    this.animT += 0.1;
+    const p = g.player;
+    if (!this.on && (p.overlaps(this, 2) || (p.riding && p.riding.overlaps(this)))) {
+      this.on = true; g.setCheckpoint(this); g.audio('apacheta'); g.burst(this.cx, this.y, 'spark', 14);
+    }
+  }
   draw(ctx) {
-    ctx.drawImage(T.flagPole, Math.round(this.x - 4), Math.round(this.base - 24));
-    ctx.drawImage(T.flagPole, Math.round(this.x - 4), Math.round(this.base - 40));
-    for (let i = 0; i < 3; i++) { const wave = Math.sin(this.animT * 2 + i) * 1.2; ctx.drawImage(T.wiphala, Math.round(this.x - 1 + (i % 2)), Math.round(this.base - 38 + i * 8 + wave)); }
-    drawText(ctx, this.name, this.x + 4, this.base - 52, { scale: 1, color: '#fff8e0', align: 'center', shadow: true, shadowColor: '#00000088' });
+    ctx.drawImage(T.apacheta, Math.round(this.x), Math.round(this.y));
+    if (this.on) ctx.drawImage(T.ribbon[Math.floor(this.animT * 1.5) % 2], Math.round(this.x + 8), Math.round(this.y - 6));
   }
 }
 
+// ═════════════════════════════════════════════════════════════════════════════
+// EL COLEGIO: escuela rural andina — paredes encaladas con zócalo azul, techo de
+// tejas, espadaña con campana y la bandera del Perú. Se entra por la puerta.
 class School extends Actor {
-  constructor(x, y, name) { const base = y * TS; super(x * TS - 44, base - 64, 88, 64); this.base = base; this.animT = 0; this.done = false; this.name = name; }
-  update(g) { this.animT += 0.1; if (!this.done && g.player.overlaps(this, -4)) { this.done = true; g.gameComplete(); } }
-  draw(ctx) {
-    const bx = Math.round(this.x), by = Math.round(this.base - 48);
-    ctx.drawImage(T.adobe, bx, by, 88, 48);
-    for (let i = 0; i < 6; i++) ctx.drawImage(T.brick, bx - 4 + i * 16, by - 12, 16, 16);
-    ctx.drawImage(T.door, Math.round(this.cx - 8), by + 36, 16, 24);
-    ctx.fillStyle = '#9bd3f0'; ctx.fillRect(bx + 8, by + 16, 12, 12); ctx.fillRect(bx + 68, by + 16, 12, 12);
-    ctx.strokeStyle = '#754a2a'; ctx.strokeRect(bx + 8.5, by + 15.5, 13, 13); ctx.strokeRect(bx + 67.5, by + 15.5, 13, 13);
-    ctx.drawImage(T.flagPole, bx + 86, by - 32);
-    const wave = Math.sin(this.animT * 2) * 1.5;
-    ctx.drawImage(T.wiphala, bx + 89, by - 30 + wave);
-    drawText(ctx, 'EL COLEGIO', this.cx, by - 22, { scale: 1, color: '#fff8e0', align: 'center', shadow: true });
+  constructor(x, y) {
+    const base = y * TS;
+    super(x * TS - 60, base - 96, 120, 96);
+    this.base = base; this.animT = 0; this.done = false; this.bell = 0;
+    this.door = { x: x * TS - 10, y: base - 28, w: 20, h: 28 };
+  }
+  update(g) {
+    this.animT += 0.1;
+    if (this.bell > 0) this.bell--;
+    const p = g.player;
+    if (!this.done && p.rectOverlaps(this.door.x + 4, this.door.y, this.door.w - 8, this.door.h)) {
+      this.done = true; this.bell = 200; p.won = true; g.gameComplete();
+    }
+  }
+  near(g) { return Math.abs(g.player.cx - (this.x + 60)) < 90; }
+  draw(ctx, g) {
+    const bx = Math.round(this.x), base = this.base;
+    const R = (c, x, y, w, h) => { ctx.fillStyle = c; ctx.fillRect(bx + x, base + y, w, h); };
+    // sombra en el suelo
+    R('rgba(40,20,10,0.25)', 2, -2, 118, 2);
+    // muro encalado
+    R('#f1e8d6', 6, -46, 108, 46);
+    for (let y = -42; y < -12; y += 6) R('#e2d6bd', 6, y, 108, 1);
+    // zócalo azul
+    R('#3d6db3', 6, -12, 108, 12); R('#2b4f86', 6, -12, 108, 1); R('#2b4f86', 6, -1, 108, 1);
+    // ventanas
+    for (const wx of [14, 34, 74, 94]) {
+      R('#2b4f86', wx - 1, -36, 14, 18); R('#9fd3f0', wx, -35, 12, 16);
+      R('#d9f1ff', wx + 1, -34, 3, 1); R('#d9f1ff', wx + 1, -33, 1, 3);
+      R('#2b4f86', wx + 5, -35, 2, 16); R('#2b4f86', wx, -28, 12, 1);
+      R('#a06a30', wx - 2, -18, 16, 2);
+      R('#d8432f', wx + 1, -20, 2, 2); R('#c2185b', wx + 5, -20, 2, 2); R('#d8432f', wx + 9, -20, 2, 2); // macetas con flores
+    }
+    // puerta (se abre cuando te acercas)
+    const open = this.near(g) || this.done;
+    R('#2b4f86', 49, -30, 22, 30);
+    if (open) { R('#3a2412', 50, -29, 20, 29); R('#8a5a30', 50, -29, 4, 29); R('#8a5a30', 66, -29, 4, 29); R('#ffd88a', 56, -24, 8, 6); }
+    else { R('#8a5a30', 50, -29, 20, 29); R('#6b4524', 59, -29, 2, 29); for (let y = -26; y < 0; y += 5) R('#6b4524', 50, y, 20, 1); R('#f6c94a', 56, -15, 2, 2); R('#f6c94a', 62, -15, 2, 2); }
+    R('#bdb5c6', 46, -1, 28, 1);
+    // letrero
+    R('#2b4f86', 36, -45, 48, 11); R('#ffffff', 37, -44, 46, 9);
+    drawText(ctx, 'COLEGIO', bx + 60, base - 43, { color: '#2b4f86', align: 'center' });
+    // techo de tejas (dos aguas visto de frente)
+    for (let i = 0; i < 18; i++) {
+      const y = -64 + i, inset = Math.round((17 - i) * 0.7);
+      R(i % 4 < 2 ? '#c4583a' : '#a3402a', -2 + inset, y, 124 - inset * 2, 1);
+      if (i % 4 === 3) for (let x = -2 + inset + ((i >> 2) % 2) * 3; x < 122 - inset; x += 6) R('#7f2f1f', x, y, 2, 1);
+    }
+    R('#7f2f1f', -2, -47, 124, 1); R('rgba(0,0,0,0.18)', 6, -46, 108, 3);
+    // espadaña con campana
+    R('#f1e8d6', 50, -86, 20, 22); R('#e2d6bd', 50, -66, 20, 2);
+    R('#f1e8d6', 54, -90, 12, 4); R('#f1e8d6', 58, -93, 4, 3);
+    R('#4a3a52', 55, -82, 10, 12);
+    const sw = this.bell > 0 ? Math.round(Math.sin(this.bell * 0.35) * 2) : 0;
+    R('#2a1f2d', 59, -82, 2, 2);
+    R('#e2b13c', 57 + sw, -80, 6, 6); R('#f6d36a', 58 + sw, -79, 2, 3); R('#9a6a18', 56 + sw, -75, 8, 1); R('#2a1f2d', 59 + sw * 2, -74, 2, 2);
+    // bandera del Perú
+    R('#d6d0e0', 128, -84, 1, 84); R('#f6c94a', 127, -86, 3, 2);
+    for (let c = 0; c < 18; c++) {
+      const wy = Math.round(Math.sin(this.animT * 1.4 - c * 0.45) * 1.2 * (c / 18));
+      R(c < 6 || c >= 12 ? '#d91023' : '#ffffff', 129 + c, -82 + wy, 1, 12);
+    }
   }
 }
 
-class SpikeRow extends Actor {
-  constructor(x, y, n) { super(x * TS, y * TS, n * TS, TS); this.hazard = true; }
-  update() {}
-  draw(ctx) { for (let i = 0; i < this.w / TS; i++) ctx.drawImage(T.spike, Math.round(this.x + i * TS), Math.round(this.y)); }
-}
-
-function makeEntity(def) {
+function makeEntity(def, level) {
   switch (def.type) {
-    case 'cuy': return new Cuy(def.x * TS, def.y * TS, def.dir);
-    case 'condor': return new Condor(def.x * TS, def.y * TS, def.span);
     case 'llama': return new Llama(def.x * TS, def.y * TS);
     case 'cabra': return new Cabra(def.x * TS, def.y * TS);
-    case 'surfRock': return new SurfRock(def.path, def.speed);
-    case 'checkpoint': return new Checkpoint(def.x, def.y);
-    case 'goal': return new Goal(def.x, def.y, def.name);
-    case 'school': return new School(def.x, def.y, def.name);
-    case 'spikeRow': return new SpikeRow(def.x, def.y, def.n);
-    case 'coin': return new Pickup('coin', def.x, def.y);
-    case 'heart': return new Pickup('heart', def.x, def.y);
-    case 'gem': return new Pickup('gem', def.x, def.y);
+    case 'rockfall': return new Rockfall(def.x, def.y, def.interval);
+    case 'huaico': return new Huaico(def, level);
+    case 'apacheta': return new Apacheta(def.x, def.y);
+    case 'school': return new School(def.x, def.y);
+    case 'choclo': return new Pickup('choclo', def.x, def.y);
+    case 'page': return new Pickup('page', def.x, def.y);
     default: return null;
   }
 }
