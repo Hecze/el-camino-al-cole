@@ -399,6 +399,7 @@
     ctx.translate(Math.round(-camx + sx), Math.round(-camy + sy));
     renderMountain(lv);
     renderHill(lv);
+    renderMist(lv);
     renderCanyon(lv);
     renderJungle(lv);
     renderBackdrop(lv);
@@ -490,11 +491,11 @@
     // solo la cabeza de la roca va delante: lo que cae del escalón pasa por detrás
     for (const r of lv.fgRocks || []) for (let x = r[0]; x < r[0] + r[2]; x++) ctx.drawImage(T.mudRock, x * TILE, r[1] * TILE);
   }
-  // el cerro de tierra cálida de donde baja el huaico
+  // el cerro verde de la ceja de selva de donde baja el huaico
   let hillTile = null;
   function renderHill(lv) {
     const Hh = lv.hill; if (!Hh) return;
-    if (!hillTile) { hillTile = PIX.createCanvas(TILE, TILE); const c = hillTile.getContext('2d'); c.drawImage(T.clayBody, 0, 0); c.globalCompositeOperation = 'source-atop'; c.fillStyle = 'rgba(60,30,40,0.38)'; c.fillRect(0, 0, TILE, TILE); }
+    if (!hillTile) { hillTile = PIX.createCanvas(TILE, TILE); const c = hillTile.getContext('2d'); c.fillStyle = '#3d6e47'; c.fillRect(0, 0, TILE, TILE); c.globalAlpha = 0.35; c.drawImage(T.jungleBody, 0, 0); c.globalAlpha = 1; for (let i = 0; i < 10; i++) { c.fillStyle = i % 2 ? '#4f8a52' : '#2f5a3c'; c.fillRect(Math.floor(hash(i * 5) * 14), Math.floor(hash(i * 9) * 15), 3, 1); } }
     const r0 = Math.max(Hh.peakRow, Math.floor(Game.cam.y / TILE) - 1), r1 = Math.min(lv.rows - 1, Math.ceil((Game.cam.y + BASE_H) / TILE));
     const c0 = Math.floor(Game.cam.x / TILE) - 1, c1 = Math.ceil((Game.cam.x + BASE_W) / TILE);
     for (let r = r0; r <= r1; r++) {
@@ -507,12 +508,27 @@
         const px = c * TILE, py = r * TILE;
         ctx.drawImage(hillTile, px, py);
         const band = Math.floor((r + Math.floor(hash(c >> 2) * 3)) / 3) % 3;
-        if (band !== 1) { ctx.fillStyle = band ? 'rgba(255,200,150,0.08)' : 'rgba(40,10,20,0.12)'; ctx.fillRect(px, py, TILE, TILE); }
+        if (band !== 1) { ctx.fillStyle = band ? 'rgba(170,230,150,0.08)' : 'rgba(10,30,20,0.14)'; ctx.fillRect(px, py, TILE, TILE); }
         const h = hash(c * 71 + r * 13);
-        if (h > 0.975) ctx.drawImage(T.cactus, px, py + 3);
-        else if (h > 0.94) { ctx.globalAlpha = 0.8; ctx.drawImage(T.ichu, px, py + 6); ctx.globalAlpha = 1; }
-        if (c > Hh.peakX) { ctx.fillStyle = 'rgba(30,10,30,0.18)'; ctx.fillRect(px, py, TILE, TILE); }
+        if (h > 0.97) ctx.drawImage(T.bamboo, px, py);
+        else if (h > 0.92) { ctx.globalAlpha = 0.85; ctx.drawImage(T.fern, px, py + 4); ctx.globalAlpha = 1; }
+        if (c > Hh.peakX) { ctx.fillStyle = 'rgba(10,30,30,0.18)'; ctx.fillRect(px, py, TILE, TILE); }
       }
+    }
+  }
+  // neblina de la ceja de selva: bancos de nube que se arrastran por el cerro
+  function renderMist(lv) {
+    const Hh = lv.hill; if (!Hh) return;
+    const mx0 = (Hh.x0 - 70) * TILE, mx1 = (Hh.peakX + 16) * TILE;
+    if (mx1 < Game.cam.x || mx0 > Game.cam.x + BASE_W) return;
+    for (let i = 0; i < 9; i++) {
+      const w = 90 + hash(i * 7) * 120, y = (Hh.peakRow - 4) * TILE + hash(i * 13) * 15 * TILE;
+      let x = mx0 + ((hash(i * 3) * (mx1 - mx0) + tick * (0.15 + hash(i) * 0.15)) % (mx1 - mx0));
+      if (x + w < Game.cam.x || x > Game.cam.x + BASE_W) continue;
+      ctx.fillStyle = 'rgba(230,240,235,0.10)';
+      ctx.fillRect(Math.round(x), Math.round(y), Math.round(w), 10);
+      ctx.fillRect(Math.round(x + w * 0.15), Math.round(y - 4), Math.round(w * 0.6), 4);
+      ctx.fillRect(Math.round(x + w * 0.3), Math.round(y + 10), Math.round(w * 0.5), 3);
     }
   }
   // el huaico baja del cerro: una cascada de lodo ancha y violenta que nace de
@@ -625,7 +641,7 @@
     const cx0 = Math.max(x0, Math.floor(Game.cam.x)), cx1 = Math.min(x1, Math.ceil(Game.cam.x + BASE_W));
     // muro de follaje al fondo, con el borde superior irregular
     // al final la selva se aclara poco a poco (el follaje se desvanece) en vez de cortarse de golpe
-    const fadeA = (x) => J.fade ? clamp((x1 - x) / (J.fade * TILE), 0, 1) : 1;
+    const fadeA = (x) => J.fade ? clamp(Math.min(x1 - x, x - x0) / (J.fade * TILE), 0, 1) : 1;
     for (let x = cx0 - (cx0 % 4); x < cx1; x += 4) {
       ctx.globalAlpha = fadeA(x);
       const top = wr - 150 + Math.round(Math.sin(x * 0.05) * 10 + hash(x >> 3) * 14) + Math.round((1 - fadeA(x)) * 80);
@@ -660,7 +676,7 @@
     }
     // lianas que cuelgan y se mecen
     for (let i = 0; i < 18; i++) {
-      const x = x0 + 40 + Math.floor(hash(i * 43) * (x1 - x0 - 80 - (J.fade || 0) * TILE)); if (x < cx0 - 10 || x > cx1 + 10) continue;
+      const x = x0 + 40 + (J.fade || 0) * TILE + Math.floor(hash(i * 43) * (x1 - x0 - 80 - 2 * (J.fade || 0) * TILE)); if (x < cx0 - 10 || x > cx1 + 10) continue;
       const len = 40 + Math.floor(hash(i * 11) * 80), y0 = wr - 162;
       for (let y = 0; y < len; y += 2) { const sw = Math.round(Math.sin(tick * 0.02 + i + y * 0.02) * (y / len) * 3); ctx.fillStyle = '#3f6b2c'; ctx.fillRect(x + sw, y0 + y, 1, 2); if (y % 12 === 6) { ctx.fillStyle = '#5f9f4a'; ctx.fillRect(x + sw + 1, y0 + y, 2, 1); } }
     }
@@ -855,7 +871,7 @@
     ctx.globalAlpha = 1;
   }
 
-  const DECOR_MAP = { cantuta: () => T.cantuta, ichu: () => T.ichu, maguey: () => T.maguey, sign: () => T.sign };
+  const DECOR_MAP = { fern: () => T.fern, bamboo: () => T.bamboo, cantuta: () => T.cantuta, ichu: () => T.ichu, maguey: () => T.maguey, sign: () => T.sign };
   function renderDecor(lv) {
     for (const d of lv.decor || []) {
       const img = (DECOR_MAP[d[0]] || (() => null))(); if (!img) continue;

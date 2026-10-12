@@ -770,7 +770,7 @@ class Eagle extends Actor {
 }
 
 // EL COLEGIO: se cae a pedazos. Tablones clausurando la puerta, grietas,
-// tejas que faltan y puntales sosteniendo la pared. Aquí no hay clases...
+// planchas de calamina oxidadas y sueltas, y puntales sosteniendo la pared. Aquí no hay clases...
 class School extends Actor {
   constructor(x, y) {
     const base = y * TS;
@@ -815,15 +815,21 @@ class School extends Actor {
     for (const [ang, oy] of [[0.5, -6], [-0.5, -6], [0.1, 6]]) { ctx.save(); ctx.rotate(ang); ctx.fillStyle = '#8a5a30'; ctx.fillRect(-15, oy - 2, 30, 4); ctx.fillStyle = '#6b4524'; ctx.fillRect(-15, oy + 1, 30, 1); ctx.restore(); }
     ctx.restore();
     R('#d8432f', 28, -25, 64, 9); drawText(ctx, 'CLAUSURADO', bx + 60, base - 24, { color: '#ffffff', align: 'center' });
-    // techo con huecos y vigas a la vista
+    // techo de calamina ondulada, oxidada, con planchas que faltan y vigas a la vista
     for (let i = 0; i < 18; i++) {
       const y = -64 + i, inset = Math.round((17 - i) * 0.7);
-      R(i % 4 < 2 ? '#b0553a' : '#8f3f2a', -2 + inset, y, 124 - inset * 2, 1);
+      R('#9aa0a8', -2 + inset, y, 124 - inset * 2, 1);
+      for (let x = -2 + inset; x < 122 - inset; x += 4) R('#7d838c', x, y, 2, 1);   // ondas
     }
+    for (const [x, y, w, h] of [[4, -60, 10, 6], [44, -55, 14, 5], [100, -62, 8, 8], [76, -52, 8, 4]]) R('rgba(150,70,30,0.75)', x, y, w, h); // óxido
     for (const [x, y, w, h] of [[20, -62, 16, 9], [64, -58, 12, 8], [88, -63, 14, 11]]) { R('#4a3a52', x, y, w, h); for (let k = 0; k < w; k += 5) R('#6b4524', x + k, y, 2, h); }
-    R('#7f2f1f', -2, -47, 124, 1);
-    // tejas caídas en el suelo
-    for (const [x, c] of [[-6, '#b0553a'], [-2, '#8f3f2a'], [112, '#b0553a'], [118, '#8f3f2a'], [4, '#8f3f2a']]) R(c, x, -3, 5, 3);
+    R('#5d636c', -2, -47, 124, 1);
+    // una plancha suelta colgando del borde
+    ctx.save(); ctx.translate(bx + 118, base - 47); ctx.rotate(0.9 + Math.sin(this.animT * 0.05) * 0.04);
+    ctx.fillStyle = '#9aa0a8'; ctx.fillRect(0, 0, 14, 3); ctx.fillStyle = '#7d838c'; for (let k = 0; k < 14; k += 4) ctx.fillRect(k, 0, 2, 3); ctx.fillStyle = 'rgba(150,70,30,0.75)'; ctx.fillRect(8, 0, 5, 3);
+    ctx.restore();
+    // pedazos de calamina caídos en el suelo
+    for (const [x, c] of [[-8, '#9aa0a8'], [-2, '#7d838c'], [110, '#9aa0a8'], [4, '#8a5a40']]) R(c, x, -2, 6, 2);
     // puntales de madera sosteniendo la pared
     ctx.save(); ctx.translate(bx + 116, base); ctx.rotate(-0.75); ctx.fillStyle = '#6b4524'; ctx.fillRect(0, -2, 40, 4); ctx.fillStyle = '#8a5a30'; ctx.fillRect(0, -2, 40, 1); ctx.restore();
     ctx.save(); ctx.translate(bx + 2, base); ctx.rotate(-2.35); ctx.fillStyle = '#6b4524'; ctx.fillRect(0, -2, 36, 4); ctx.restore();

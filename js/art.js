@@ -877,6 +877,36 @@ OBJ.lily = spr([
   '..RRgggggggggggggggggggggRR...',
   '....RRRRRRRRRRRRRRRRRRRRRR....',
 ]);
+// ── ceja de selva (selva alta) ──────────────────────────────────────────────
+// helecho
+T.fern = spr([
+  '.......k........',
+  '..k...kGk...k...',
+  '...k.kGgGk.k....',
+  'k...kGgegGk...k.',
+  '.k.kGgeeegGk.k..',
+  '..kGgeGgGegGk...',
+  '.kGgeGkGkGegGk..',
+  'kGgGk.kGk.kGgGk.',
+  '.kk...kGk...kk..',
+  '......kGk.......',
+]);
+// bambú (guadua)
+T.bamboo = spr([
+  '..k.......k.....',
+  '.kgk.....kgk..k.',
+  '.kek..k..kek.kgk',
+  '.kgk.kgk.kgk.kek',
+  '.KKK.kek.KKK.kgk',
+  '.kgk.kgk.kgk.KKK',
+  '.kek.KKK.kek.kgk',
+  '.kgk.kgk.kgk.kek',
+  '.kgk.kek.kgk.kgk',
+  '.KKK.kgk.KKK.KKK',
+  '.kgk.kgk.kgk.kgk',
+  '.kek.KKK.kek.kek',
+  '.kgk.kgk.kgk.kgk',
+]);
 // tronco caído flotando en la selva (plataforma fija, una vía)
 T.trunk = spr([
   '.e..G..e...G.e..',
