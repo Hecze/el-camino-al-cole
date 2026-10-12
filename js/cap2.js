@@ -297,9 +297,9 @@
       ctx.save(); ctx.translate(x + 48, b); ctx.rotate(0.03); ctx.translate(-48, 0);
       R(ctx, 'rgba(60,40,20,0.25)', 2, -2, 94, 3);
       R(ctx, '#f4efe4', 0, -40, 94, 32); R(ctx, '#2b4f86', 0, -14, 94, 6); R(ctx, '#d8432f', 0, -17, 94, 3);
-      for (let k = 0; k < 8; k++) { R(ctx, '#2b3a4a', 6 + k * 10, -35, 8, 11); R(ctx, '#7fa4c4', 7 + k * 10, -34, 3, 4); }
+      for (let k = 0; k < 8; k++) { R(ctx, '#2b3a4a', 6 + k * 10, -37, 8, 9); R(ctx, '#7fa4c4', 7 + k * 10, -36, 3, 3); }
       R(ctx, '#2b3a4a', 86, -35, 7, 18); R(ctx, '#7fa4c4', 87, -34, 3, 6);   // parabrisas
-      drawText(ctx, 'ICA - LIMA', 46, -24, { color: '#2b4f86', align: 'center' });
+      drawText(ctx, 'ICA - LIMA', 44, -26, { color: '#2b4f86', align: 'center' });
       R(ctx, '#3a3442', 0, -8, 94, 2);
       for (const wx of [16, 74]) { R(ctx, '#1d1622', wx - 6, -9, 12, 9); R(ctx, '#8a8296', wx - 2, -6, 4, 3); }
       // capó del motor abierto atrás
