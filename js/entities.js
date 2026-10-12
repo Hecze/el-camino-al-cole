@@ -148,8 +148,11 @@ class Player extends Actor {
     // Ayudas invisibles: el borde perdona unos píxeles (más si ya estabas
     // encima), y al aterrizar se frena el impulso y el tronco te "atrae" hacia
     // su centro durante un instante, para no resbalar al lodo.
+    // si ya pisas suelo firme (una roca, la orilla), los troncos que pasan
+    // por detrás no te enganchan ni te arrastran
+    const onSolid = this.onGround;
     let onMover = null;
-    if (this.vy >= 0) for (const m of g.movers) {
+    if (this.vy >= 0 && !onSolid) for (const m of g.movers) {
       if (m.dead || m.falling) continue;
       const on = this.lastMover === m, grace = on ? 7 : 4;
       if (this.x + this.w > m.x - grace && this.x < m.x + m.w + grace &&
