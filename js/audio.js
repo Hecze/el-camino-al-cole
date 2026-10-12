@@ -180,25 +180,43 @@ const AUDIO = (() => {
     if (musicGain) { musicGain.gain.cancelScheduledValues(now()); musicGain.gain.setValueAtTime(Math.max(0.0001, musicGain.gain.value), now()); musicGain.gain.exponentialRampToValueAtTime(0.0001, now() + 0.4); }
   }
 
-  // cuerda pulsada (Karplus-Strong): suena a madera y cuerda de verdad, no a oscilador
+  // cuerda pulsada (Karplus-Strong extendido): afinación exacta, posición de la púa
+  // y decaimiento parejo en todas las notas
   const ksCache = {};
-  function pluckBuf(f, dur, bright, decay) {
-    const key = f.toFixed(1) + '|' + bright + '|' + dur;
-    if (ksCache[key]) return ksCache[key];
-    const sr = ctx.sampleRate, len = Math.floor(sr * dur), N = Math.max(2, Math.round(sr / f));
-    const buf = ctx.createBuffer(1, len, sr), d = buf.getChannelData(0);
-    // excitación: ruido suavizado (bright = cuánto brillo tiene la púa)
-    let prev = 0;
-    for (let i = 0; i < N; i++) { const r = Math.random() * 2 - 1; prev = prev + (r - prev) * bright; d[i] = prev; }
-    for (let i = N; i < len; i++) d[i] = (d[i - N] + d[i - N + 1 < i ? i - N + 1 : i - N]) * 0.5 * decay;
-    // quitar componente continua
-    let m = 0; for (let i = 0; i < N; i++) m += d[i]; m /= N; for (let i = 0; i < len; i++) d[i] -= m * Math.pow(decay, i / N);
-    return (ksCache[key] = buf);
+  function pluckBuf(f, dur, bright, t60, S) {
+    const sr = ctx.sampleRate;
+    const N = Math.max(2, Math.floor(sr / f - S));
+    const key = N + '|' + bright + '|' + dur + '|' + t60 + '|' + S;
+    if (!ksCache[key]) {
+      const len = Math.floor(sr * dur), buf = ctx.createBuffer(1, len, sr), d = buf.getChannelData(0);
+      const exc = new Float32Array(N); let prev = 0;
+      for (let i = 0; i < N; i++) { prev += ((Math.random() * 2 - 1) - prev) * bright; exc[i] = prev; }
+      // púa cerca del puente: quita armónicos como una cuerda real
+      const pk = Math.max(1, Math.round(N * 0.14));
+      for (let i = 0; i < N; i++) d[i] = exc[i] - (i >= pk ? exc[i - pk] : 0);
+      const rho = Math.pow(0.001, 1 / (t60 * sr / (N + S)));
+      for (let i = N + 1; i < len; i++) d[i] = rho * ((1 - S) * d[i - N] + S * d[i - N - 1]);
+      let m = 0; for (let i = 0; i < len; i++) m = Math.max(m, Math.abs(d[i]));
+      if (m > 0) for (let i = 0; i < len; i++) d[i] /= m;
+      ksCache[key] = buf;
+    }
+    // el periodo real es N + S muestras: se corrige con la velocidad de reproducción
+    return { buf: ksCache[key], rate: f * (N + S) / sr };
   }
-  function playBuf(buf, vol, t, out, rate = 1) {
-    const s = ctx.createBufferSource(); s.buffer = buf; s.playbackRate.value = rate;
+  function playBuf(p, vol, t, out, detune = 1) {
+    const s = ctx.createBufferSource(); s.buffer = p.buf; s.playbackRate.value = p.rate * detune;
     const g = ctx.createGain(); g.gain.value = vol;
-    s.connect(g); g.connect(out || musicGain); s.start(t); s.stop(t + buf.duration);
+    s.connect(g); g.connect(out || musicGain); s.start(t); s.stop(t + p.buf.duration / (p.rate * detune));
+  }
+  // caja de resonancia del charango (madera): realza el cuerpo y el brillo
+  let charBus = null;
+  function getCharBus() {
+    if (charBus) return charBus;
+    const hp = ctx.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 180;
+    const body = ctx.createBiquadFilter(); body.type = 'peaking'; body.frequency.value = 520; body.Q.value = 1.2; body.gain.value = 5;
+    const air = ctx.createBiquadFilter(); air.type = 'peaking'; air.frequency.value = 3200; air.Q.value = 0.8; air.gain.value = 4;
+    hp.connect(body); body.connect(air); air.connect(musicGain);
+    return (charBus = hp);
   }
   // aire: ruido filtrado alrededor de la nota, el soplo que se oye en la quena y la zampoña
   function breath(f, dur, vol, t, q) {
@@ -246,22 +264,24 @@ const AUDIO = (() => {
     breath(f, dur, vol * 0.9, t, 4);
     breath(f * 4, 0.1, vol * 0.9, t, 1.2);
   }
-  // charango: 4 órdenes dobles de cuerda pulsada, rasgueo rápido
+  // charango: 4 órdenes dobles de cuerda brillante, rasgueo rápido
   function charango(chord, vol, t, up) {
     const notes = CHORDS[chord]; if (!notes) return;
-    const seq = up ? notes.slice().reverse() : notes;
+    const seq = up ? notes.slice().reverse() : notes, bus = getCharBus();
     seq.forEach((n, i) => {
-      const tt = t + i * 0.012, f = freq(n);
-      playBuf(pluckBuf(f, 0.7, 0.7, 0.994), vol * 2.2, tt);
-      playBuf(pluckBuf(f, 0.7, 0.7, 0.994), vol * 1.6, tt + 0.004, null, 1.003);  // cuerda doble, apenas desafinada
+      const tt = t + i * 0.014 + Math.random() * 0.003, f = freq(n);
+      const p = pluckBuf(f, 1.1, 0.92, 0.9, 0.25);
+      playBuf(p, vol * 1.5, tt, bus);
+      playBuf(p, vol * 1.1, tt + 0.003, bus, 1.0025);   // cuerda doble, apenas desafinada: da el brillo del charango
     });
+    noise(0.012, vol * 0.6, 4000, t, { type: 'highpass', out: bus });   // roce de la uña
   }
-  // bajo: guitarra pulsada grave con un poco de cuerpo
+  // bajo: bordón de guitarra, redondo y cálido
   function bass(f, dur, vol, t) {
-    playBuf(pluckBuf(f, 1.2, 0.35, 0.998), vol * 1.6, t);
+    playBuf(pluckBuf(f, 1.4, 0.5, 1.2, 0.5), vol * 0.9, t);
     const o = ctx.createOscillator(); o.type = 'sine'; o.frequency.setValueAtTime(f, t);
     const g = ctx.createGain(); g.gain.setValueAtTime(0.0001, t);
-    g.gain.exponentialRampToValueAtTime(vol * 0.45, t + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, t + Math.min(dur, 0.5));
+    g.gain.exponentialRampToValueAtTime(vol * 0.5, t + 0.008); g.gain.exponentialRampToValueAtTime(0.0001, t + Math.min(dur, 0.6));
     o.connect(g); g.connect(musicGain); o.start(t); o.stop(t + dur + 0.02);
   }
   // chajchas: sonaja de pezuñas de cabra, un racimo de golpecitos secos
