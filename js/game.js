@@ -2,19 +2,32 @@
 (function () {
   'use strict';
 
-  const BASE_W = 384, BASE_H = 216, STEP = 1000 / 60;
+  // Resolución interna variable: la escala es entera (píxeles nítidos) y se
+  // elige para que la vista tenga ~216 px de alto; el ancho y el alto se
+  // ajustan a la forma de la pantalla para llenarla entera (en el celular la
+  // vista se ensancha en vez de quedar como un rectángulo chiquito al medio).
+  let BASE_W = 384, BASE_H = 216;
+  const STEP = 1000 / 60;
+  window.VIEW = { w: BASE_W, h: BASE_H };
 
   const canvas = document.getElementById('game');
   const ctx = canvas.getContext('2d');
   ctx.imageSmoothingEnabled = false;
 
   function fit() {
-    const sw = window.innerWidth, sh = window.innerHeight;
-    const scale = Math.max(1, Math.floor(Math.min(sw / BASE_W, sh / BASE_H)));
+    const vv = window.visualViewport;
+    const sw = Math.round(vv ? vv.width : window.innerWidth), sh = Math.round(vv ? vv.height : window.innerHeight);
+    // escala entera: ~216 px de alto, pero sin dejar la vista más angosta que 180 px
+    const scale = Math.max(1, Math.min(Math.round(sh / 216), Math.floor(sw / 180)));
+    BASE_W = Math.min(800, Math.ceil(sw / scale)); BASE_H = Math.min(900, Math.ceil(sh / scale));
+    window.VIEW.w = BASE_W; window.VIEW.h = BASE_H;
+    if (canvas.width !== BASE_W || canvas.height !== BASE_H) { canvas.width = BASE_W; canvas.height = BASE_H; ctx.imageSmoothingEnabled = false; }
     canvas.style.width = BASE_W * scale + 'px';
     canvas.style.height = BASE_H * scale + 'px';
   }
-  window.addEventListener('resize', fit); fit();
+  window.addEventListener('resize', fit); window.addEventListener('orientationchange', () => setTimeout(fit, 200));
+  if (window.visualViewport) window.visualViewport.addEventListener('resize', fit);
+  fit();
 
   // ── utilidades ───────────────────────────────────────────────────────────
   const rnd = (a, b) => a + Math.random() * (b - a);
@@ -409,7 +422,7 @@
     if (E) {
       const w = clamp((camx / TILE - E.x0) / (E.x1 - E.x0), 0, 1);
       if (w > 0) {
-        if (!bgEastCanvas) bgEastCanvas = PIX.createCanvas(BASE_W, BASE_H);
+        if (!bgEastCanvas || bgEastCanvas.width !== BASE_W || bgEastCanvas.height !== BASE_H) bgEastCanvas = PIX.createCanvas(BASE_W, BASE_H);
         const ec = bgEastCanvas.getContext('2d'); ec.imageSmoothingEnabled = false;
         drawSkyAndLayers(ec, E.layers, E.anchorRow, day, camx, camy, 'e');
         ctx.globalAlpha = w; ctx.drawImage(bgEastCanvas, 0, 0); ctx.globalAlpha = 1;
@@ -984,7 +997,7 @@
     if (Game.banner < 170) {
       const a = Math.min(1, (170 - Game.banner) / 40);
       ctx.globalAlpha = a;
-      drawText(ctx, 'LA MARATÓN DE LOS ANDES', BASE_W / 2, 64, { scale: 2, color: '#ffd166', align: 'center', shadow: true, shadowColor: '#5a2a12' });
+      drawText(ctx, 'LA MARATÓN DE LOS ANDES', BASE_W / 2, 64, { scale: BASE_W < 300 ? 1 : 2, color: '#ffd166', align: 'center', shadow: true, shadowColor: '#5a2a12' });
       drawText(ctx, '¡LLEGA A TIEMPO A CLASES!', BASE_W / 2, 86, { color: '#ffffff', align: 'center', shadow: true, shadowColor: '#00000099' });
       ctx.globalAlpha = 1;
     }
@@ -1018,24 +1031,26 @@
     ctx.fillStyle = 'rgba(18,14,28,' + (0.82 * a) + ')'; ctx.fillRect(0, 0, BASE_W, BASE_H);
     ctx.globalAlpha = a;
     const bob = Math.sin(tick / 12) * 2;
-    drawText(ctx, '¡LLEGASTE A CLASES!', BASE_W / 2, 30 + bob, { scale: 2, color: '#ffd166', align: 'center', shadow: true, shadowColor: '#5a2a12' });
+    const narrow = BASE_W < 300;   // celular en vertical: textos más cortos
+    drawText(ctx, '¡LLEGASTE A CLASES!', BASE_W / 2, 30 + bob, { scale: narrow ? 1 : 2, color: '#ffd166', align: 'center', shadow: true, shadowColor: '#5a2a12' });
     const onTime = Game.arrival < CLASS_START;
-    drawText(ctx, onTime ? 'AL AIRE LIBRE, ANTES DE LAS 8:00' : 'LA CLASE YA HABÍA EMPEZADO...', BASE_W / 2, 54, { color: onTime ? '#f4e9d8' : '#f2917d', align: 'center' });
+    drawText(ctx, onTime ? (narrow ? 'ANTES DE LAS 8:00' : 'AL AIRE LIBRE, ANTES DE LAS 8:00') : (narrow ? 'LLEGASTE TARDE...' : 'LA CLASE YA HABÍA EMPEZADO...'), BASE_W / 2, 54, { color: onTime ? '#f4e9d8' : '#f2917d', align: 'center' });
     ctx.drawImage(LL.idle[0], BASE_W / 2 - 64, 74);
     ctx.drawImage(P.run[Math.floor(tick / 7) % 4], BASE_W / 2 - 8, 76);
     ctx.drawImage(GOAT.stand, BASE_W / 2 + 34, 81);
     const rows = [
-      ['HOJAS DE TAREA', Game.pages + ' / 3', '#ffffff'],
+      [narrow ? 'HOJAS' : 'HOJAS DE TAREA', Game.pages + ' / 3', '#ffffff'],
       ['LLEGADA', clockText(Game.arrival) + (onTime ? ' ¡A TIEMPO!' : ' TARDE'), onTime ? '#9be7c4' : '#f2917d'],
-      ['PASTO PARA LA CABRA', '' + Game.herbs, '#8fd062'],
+      [narrow ? 'PASTO' : 'PASTO PARA LA CABRA', '' + Game.herbs, '#8fd062'],
       ['CAÍDAS', '' + Game.deaths, '#f2917d'],
     ];
     rows.forEach((r, i) => {
-      drawText(ctx, r[0], BASE_W / 2 - 110, 112 + i * 13, { color: '#cdbde8' });
-      drawText(ctx, r[1], BASE_W / 2 + 110, 112 + i * 13, { color: r[2], align: 'right' });
+      const half = Math.min(110, BASE_W / 2 - 8);
+      drawText(ctx, r[0], BASE_W / 2 - half, 112 + i * 13, { color: '#cdbde8' });
+      drawText(ctx, r[1], BASE_W / 2 + half, 112 + i * 13, { color: r[2], align: 'right' });
     });
-    if (Game.pages === 3) drawText(ctx, '¡TAREA COMPLETA! LA PROFE ESTARÁ ORGULLOSA', BASE_W / 2, 170, { color: '#9be7c4', align: 'center' });
-    if (Game.stateT > 90 && Math.floor(tick / 24) % 2 === 0) drawText(ctx, 'PULSA ESPACIO PARA VOLVER AL MENÚ', BASE_W / 2, 194, { color: '#fff3d6', align: 'center' });
+    if (Game.pages === 3) drawText(ctx, narrow ? '¡TAREA COMPLETA!' : '¡TAREA COMPLETA! LA PROFE ESTARÁ ORGULLOSA', BASE_W / 2, 170, { color: '#9be7c4', align: 'center' });
+    if (Game.stateT > 90 && Math.floor(tick / 24) % 2 === 0) drawText(ctx, narrow ? 'PULSA A PARA SEGUIR' : 'PULSA ESPACIO PARA VOLVER AL MENÚ', BASE_W / 2, 194, { color: '#fff3d6', align: 'center' });
     ctx.globalAlpha = 1;
   }
 
@@ -1062,9 +1077,12 @@
     ctx.drawImage(sil(P.run[fr]), 100, 179);
 
     const bob = Math.sin(tick / 22) * 2;
-    drawText(ctx, 'LA MARATÓN', BASE_W / 2, 34 + bob, { scale: 3, color: '#ffd166', align: 'center', shadow: true, shadowColor: '#5a2a12' });
-    drawText(ctx, 'DE LOS ANDES', BASE_W / 2, 60 + bob, { scale: 3, color: '#ffd166', align: 'center', shadow: true, shadowColor: '#5a2a12' });
-    drawText(ctx, '¡LLEGA AL COLE ANTES DE LAS 8:00!', BASE_W / 2, 90 + bob, { color: '#fff3d6', align: 'center', shadow: true, shadowColor: '#00000088' });
+    const ts = BASE_W < 260 ? 2 : 3;   // en pantallas angostas (celular vertical) el título es más chico
+    drawText(ctx, 'LA MARATÓN', BASE_W / 2, 34 + bob, { scale: ts, color: '#ffd166', align: 'center', shadow: true, shadowColor: '#5a2a12' });
+    drawText(ctx, 'DE LOS ANDES', BASE_W / 2, (ts === 3 ? 60 : 54) + bob, { scale: ts, color: '#ffd166', align: 'center', shadow: true, shadowColor: '#5a2a12' });
+    drawText(ctx, BASE_W < 260 ? '¡ANTES DE LAS 8:00!' : '¡LLEGA AL COLE ANTES DE LAS 8:00!', BASE_W / 2, (ts === 3 ? 90 : 78) + bob, { color: '#fff3d6', align: 'center', shadow: true, shadowColor: '#00000088' });
+    // en vertical se juega mejor girando el teléfono
+    if (BASE_H > BASE_W) drawText(ctx, '¡GIRA EL TELÉFONO!', BASE_W / 2, MENU_Y + 3 * MENU_DY + 10, { color: '#ffd166', align: 'center', shadow: true, shadowColor: '#000000' });
     MENU_OPTS().forEach((o, i) => {
       const sel = i === Game.menuSel, y = MENU_Y + i * MENU_DY;
       drawText(ctx, o, BASE_W / 2, y, { color: sel ? '#ffffff' : '#e7d3c4', align: 'center', shadow: true, shadowColor: '#00000099' });

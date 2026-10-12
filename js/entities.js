@@ -245,7 +245,7 @@ class Player extends Actor {
       g.audio('splash'); g.burst(this.cx, this.y + this.h, 'mud', 14); g.shake(2, 8);
       return;
     }
-    if (this.y > Math.max(level.rows * TS + 40, 0) || this.y > g.cam.y + 216 + 80) g.playerEnvDeath('fall');
+    if (this.y > Math.max(level.rows * TS + 40, 0) || this.y > g.cam.y + VIEW.h + 80) g.playerEnvDeath('fall');
   }
 
   swampSurface(level, x) {
@@ -384,7 +384,7 @@ class Mount extends Actor {
       const k = liquidAt(lv, px, this.y + this.h - 2);
       if (k) { if (this.rider) { g.playerEnvDeath(k); } else this.reset(); return; }
     }
-    if (this.y > lv.rows * TS + 24 || (this.rider && this.y > g.cam.y + 216 + 60)) { if (this.rider) g.playerEnvDeath('fall'); else this.reset(); }
+    if (this.y > lv.rows * TS + 24 || (this.rider && this.y > g.cam.y + VIEW.h + 60)) { if (this.rider) g.playerEnvDeath('fall'); else this.reset(); }
   }
 }
 
@@ -855,7 +855,7 @@ class Eagle extends Actor {
       ctx.fillStyle = (Math.floor(this.t / 4) % 2) ? '#ffffff' : '#d9e6f2';
       for (let i = 1; i < n; i += 2) ctx.fillRect(Math.round(x0 + (x1 - x0) * i / n), Math.round(y0 + (y1 - y0) * i / n), 2, 2);
       // el "!" nunca se sale de la pantalla: si el águila está fuera, se pega al borde
-      const g = Game, cy = Math.max(g.cam.y + 4, Math.min(g.cam.y + 216 - 20, this.y - 16)), cx = Math.max(g.cam.x + 10, Math.min(g.cam.x + 374, this.cx));
+      const g = Game, cy = Math.max(g.cam.y + 4, Math.min(g.cam.y + VIEW.h - 20, this.y - 16)), cx = Math.max(g.cam.x + 10, Math.min(g.cam.x + VIEW.w - 10, this.cx));
       if (Math.floor(this.t / 5) % 2 === 0) drawText(ctx, '!', Math.round(cx), Math.round(cy), { scale: 2, color: '#ffffff', align: 'center', shadow: true, shadowColor: '#2a1f2d' });
     }
     const img = att ? E.eagle.attack : (Math.floor(this.animT / 8) % 2 ? E.eagle.flyA : E.eagle.flyB);
@@ -971,7 +971,7 @@ function drawBubble(ctx, lines, x, y, alpha = 1) {
   const w = Math.max(...lines.map(l => textWidth(l))) + 8, h = lines.length * 9 + 5;
   let bx = Math.round(x - w / 2); const by = Math.round(y - 4 - h);
   // que no se salga de la pantalla (la colita sigue apuntando a quien habla)
-  if (typeof Game !== 'undefined' && Game.cam) bx = Math.max(Math.round(Game.cam.x) + 4, Math.min(Math.round(Game.cam.x) + 384 - w - 4, bx));
+  if (typeof Game !== 'undefined' && Game.cam) bx = Math.max(Math.round(Game.cam.x) + 4, Math.min(Math.round(Game.cam.x) + VIEW.w - w - 4, bx));
   ctx.save(); ctx.globalAlpha = alpha;
   ctx.fillStyle = '#1d1622';
   ctx.fillRect(bx - 1, by, w + 2, h); ctx.fillRect(bx, by - 1, w, h + 2);
@@ -1007,7 +1007,7 @@ class Striker extends Actor {
     this.sign.forEach((l, i) => drawText(ctx, l, px + 1, py - h + 12 + i * 9, { color: '#d8432f', align: 'center' }));
     // hablan por turnos cuando el niño está cerca
     const p = g.player, d = Math.abs(p.cx - (this.x + 7));
-    const onScreen = x > g.cam.x + 2 && x + 14 < g.cam.x + 382;
+    const onScreen = x > g.cam.x + 2 && x + 14 < g.cam.x + VIEW.w - 2;
     if (d < 170 && !p.won && onScreen) {
       const who = Math.floor((g.T || 0) / 170) % 2;
       if (who === this.slot) drawBubble(ctx, this.say, x + 7, py - h + 6);
@@ -1069,8 +1069,6 @@ class OutdoorClass extends Actor {
     const near = Math.abs(g.player.cx - this.spot) < 120 && !this.done;
     ctx.drawImage(flipS(OBJ.teacher), Math.round(this.teacherX), base - 27);
     if (!near && Math.floor(this.animT / 20) % 2) { ctx.fillStyle = '#ffffff'; ctx.fillRect(this.teacherX - 1, base - 16, 2, 1); }
-    // habla mientras llegas; al acercarte a tu sitio se calla para que se vea la pizarra
-    if (Math.abs(g.player.cx - this.teacherX) < 260 && g.player.cx < this.spot - 30 && !this.done) drawBubble(ctx, ['EL COLE SE PUEDE CAER:', 'HOY LA CLASE ES AFUERA.', '¡SIÉNTATE CON TODOS!'], this.teacherX + 7, base - 30);
     // alumnos sentados en el suelo mirando la pizarra
     this.seats.forEach((sx, i) => {
       if (i === 2) {
