@@ -214,7 +214,7 @@ const SCH = SV + SWID;   // donde empieza el pueblo ribereño del colegio
 const sx = (lx) => SV + lx;
 
 const LEVEL = {
-  name: 'LA MARATÓN DE LOS ANDES', w: SCH + 48, h: 150,
+  name: 'LA MARATÓN DE LOS ANDES', w: SCH + 53, h: 150,
   anchorRow: G,
   bgLayers: [
     { kind: 'mountains', color: '#8c93c9', color2: '#6d72a6', y: G - 3.4, parallax: 0.08, vpar: 0.10, amp: 8.5, seed: 5, snow: true },
@@ -279,7 +279,7 @@ const LEVEL = {
     // parte 5: la orilla de salida, que sube suave hacia la quebrada cálida
     [sx(114), 110, 6, 40, 'jungle'],
     // ── EL PUEBLO RIBEREÑO: el colegio ──
-    [SCH, 110, 48, 40, 'jungle'],
+    [SCH, 110, 53, 40, 'jungle'],
   ],
   platforms: [
     ...MTN.up,
@@ -345,7 +345,7 @@ const LEVEL = {
     // mototaxis estacionados: el transporte del pueblo
     // paradero: los mototaxis hacen fila uno detrás de otro, pegaditos (2 px
     // entre uno y otro); el primero ya tiene el motor prendido
-    ...['azul', 'rojo', 'azul', 'azul', 'amarillo', 'rojo'].map((model, i) => ({ type: 'mototaxi', x: SCH + 34.5 + i * 30 / 16, y: 110, model, run: i === 5 })),
+    ...['azul', 'rojo', 'azul', 'azul', 'amarillo', 'rojo'].map((model, i) => ({ type: 'mototaxi', x: SCH + 37.5 + i * 36 / 16, y: 110, model, run: i === 5 })),
     { type: 'mototaxi', x: SCH - 4.8, y: 110, model: 'azul' },   // esperando pasajeros en el puerto
     ...BIRDS,
     ...HERBS,

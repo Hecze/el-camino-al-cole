@@ -1032,7 +1032,7 @@ class Mototaxi extends Actor {
   draw(ctx) {
     const sh = this.run && Math.floor(this.t / 3) % 2 ? -1 : 0, x = Math.round(this.x), drop = 5;
     ctx.fillStyle = 'rgba(30,20,20,0.25)';
-    for (let i = 0; i <= 24; i += 2) ctx.fillRect(this.flip ? x + this.w - 4 - i : x + 1 + i, this.base - 1 + Math.round(drop * i / 24), 3, 2);
+    for (let i = 0; i <= 28; i += 2) ctx.fillRect(this.flip ? x + this.w - 4 - i : x + 1 + i, this.base - 1 + Math.round(drop * i / 28), 3, 2);
     ctx.drawImage(this.flip ? flipS(this.img) : this.img, x, this.base - this.img.height + 1 + drop + sh);
   }
 }
