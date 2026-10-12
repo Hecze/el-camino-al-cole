@@ -91,10 +91,10 @@
   const Game = {
     state: 'menu', level: null, player: null, entities: [], movers: [], particles: [],
     cam: { x: 0, y: 0 }, look: 0, floorY: 0, shakeT: 0, shakeMag: 0, fade: 1,
-    choclos: 0, pages: 0, score: 0, totalChoclos: 0,
+    pages: 0, score: 0,
     menuSel: 0, pauseSel: 0, stateT: 0, T: 0,
     spawn: { x: 0, y: 0 }, spawnMount: null, zone: -1, zoneName: '',
-    hint: null, banner: 0, deaths: 0, time: 0, pointer: null,
+    banner: 0, deaths: 0, time: 0, pointer: null,
   };
   window.Game = Game;
 
@@ -110,14 +110,10 @@
       Game.particles.push({ x, y, vx: Math.cos(a) * sp, vy: (heavy ? -Math.abs(Math.sin(a)) * sp * 1.4 : Math.sin(a) * sp) - 0.6, life: rnd(16, 32), max: 32, col: COL[type] || '#fff', size: Math.random() < 0.3 ? 2 : 1, grav: heavy ? 0.2 : 0.05 });
     }
   };
-  Game.showHint = (text) => { Game.hint = { text, t: 0 }; };
   Game.onPlayerJump = (a) => { Game.burst(a.cx, a.y + a.h, 'dust', 6); AUDIO.play('jump'); };
   Game.onPlayerLand = (a) => { Game.burst(a.cx, a.y + a.h, 'dust', 4); };
-  Game.onMount = (m) => {
-    if (m instanceof Llama) Game.showHint('SALTA CON ESPACIO. ¡LA LLAMA CORRE MÁS!');
-    else Game.showHint('LA CABRA SALTA SOLA. GUÍALA CON IZQUIERDA Y DERECHA');
-  };
-  Game.onGoatDone = () => Game.showHint('¡CUMBRE! LA CABRA SE QUEDA A PASTAR');
+  Game.onMount = () => {};
+  Game.onGoatDone = () => {};
   Game.setCheckpoint = (cp) => {
     Game.spawn = { x: cp.spawn.x, y: cp.spawn.y };
     Game.spawnMount = Game.player.riding instanceof Llama ? Game.player.riding : null;
@@ -155,14 +151,13 @@
     const lv = LEVELS[0];
     Game.level = lv;
     Game.entities = []; Game.movers = []; Game.particles = [];
-    Game.choclos = 0; Game.pages = 0; Game.score = 0; Game.deaths = 0; Game.time = 0;
-    Game.totalChoclos = lv.entities.filter(d => d.type === 'choclo').length;
+    Game.pages = 0; Game.score = 0; Game.deaths = 0; Game.time = 0;
     for (const def of lv.entities) { const e = makeEntity(def, lv); if (e) Game.entities.push(e); }
     for (const e of Game.entities.slice()) if (e instanceof Huaico) e.prefill(Game);
     const px = lv.spawn.x * TILE + 4, py = lv.spawn.y * TILE - 15;
     Game.player = new Player(px, py);
     Game.spawn = { x: px, y: lv.spawn.y * TILE }; Game.spawnMount = null;
-    Game.zone = -1; Game.hint = null; Game.banner = 0;
+    Game.zone = -1; Game.banner = 0;
     Game.look = LOOK_X * 0.6; Game.floorY = Game.player.cy;
     updateCamera(true);
     Game.state = 'play'; Game.stateT = 0; Game.fade = 1;
@@ -202,7 +197,7 @@
     cam.y = clamp(cam.y, 0, lv.rows * TILE - BASE_H);
   }
 
-  // ── zonas: música y pistas por tramo ─────────────────────────────────────
+  // ── zonas: la música cambia por tramo ─────────────────────────────────────
   function updateZone() {
     const lv = Game.level, x = Game.player.cx / TILE;
     let z = 0;
@@ -211,7 +206,6 @@
       Game.zone = z; const Z = lv.zones[z];
       Game.zoneName = Z.name;
       AUDIO.playMusic(SONGS[Z.music]);
-      Game.showHint(Z.hint);
     }
   }
 
@@ -221,7 +215,6 @@
     Input.update();
     if (Game.shakeT > 0) { Game.shakeT--; if (Game.shakeT === 0) Game.shakeMag = 0; }
     Game.fade = Math.max(0, Game.fade - 0.05);
-    if (Game.hint) Game.hint.t++;
 
     const tap = Game.pointer; Game.pointer = null;
     switch (Game.state) {
@@ -535,23 +528,11 @@
   // ── HUD ──────────────────────────────────────────────────────────────────
   function panel(x, y, w, h) { ctx.fillStyle = 'rgba(28,18,30,0.55)'; ctx.fillRect(x + 1, y, w - 2, h); ctx.fillRect(x, y + 1, w, h - 2); }
   function renderHUD() {
-    panel(6, 6, 104, 16);
-    ctx.drawImage(OBJ.choclo[0], 10, 9);
-    drawText(ctx, Game.choclos + '/' + Game.totalChoclos, 21, 11, { color: '#ffe27a' });
-    ctx.drawImage(OBJ.page, 64, 8);
-    drawText(ctx, Game.pages + '/3', 77, 11, { color: '#ffffff' });
+    panel(6, 6, 46, 16);
+    ctx.drawImage(OBJ.page, 10, 8);
+    drawText(ctx, Game.pages + '/3', 24, 11, { color: '#ffffff' });
     if (Game.zoneName) drawText(ctx, Game.zoneName, BASE_W - 8, 9, { color: '#fff3d6', align: 'right', shadow: true, shadowColor: '#00000088' });
 
-    // pista contextual
-    const h = Game.hint;
-    if (h && h.t < 260) {
-      const a = Math.min(1, h.t / 12, (260 - h.t) / 30);
-      ctx.globalAlpha = a;
-      const w = textWidth(h.text) + 16;
-      panel(BASE_W / 2 - w / 2, 30, w, 15);
-      drawText(ctx, h.text, BASE_W / 2, 34, { color: '#fff3d6', align: 'center' });
-      ctx.globalAlpha = 1;
-    }
     // título al empezar
     if (Game.banner < 170) {
       const a = Math.min(1, (170 - Game.banner) / 40);
@@ -596,7 +577,6 @@
     ctx.drawImage(GOAT.stand, BASE_W / 2 + 34, 81);
     const secs = Math.floor(Game.time / 60);
     const rows = [
-      ['CHOCLOS', Game.choclos + ' / ' + Game.totalChoclos, '#ffe27a'],
       ['HOJAS DE TAREA', Game.pages + ' / 3', '#ffffff'],
       ['TIEMPO', Math.floor(secs / 60) + ':' + String(secs % 60).padStart(2, '0'), '#9be7c4'],
       ['CAÍDAS', '' + Game.deaths, '#f2917d'],

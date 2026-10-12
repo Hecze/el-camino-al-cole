@@ -83,7 +83,6 @@ const AUDIO = (() => {
   const SFX = {
     jump:    () => { tone(380, 0.14, 'triangle', 0.26, 0, 720); noise(0.06, 0.06, 2000, 0, { type: 'highpass' }); },
     land:    () => { noise(0.08, 0.16, 600); },
-    choclo:  () => { tone(988, 0.06, 'triangle', 0.24); tone(1480, 0.12, 'triangle', 0.2, now() + 0.05); },
     page:    () => { [784, 988, 1175, 1568].forEach((f, i) => tone(f, 0.16, 'triangle', 0.22, now() + i * 0.06)); noise(0.25, 0.08, 5000, now(), { type: 'highpass' }); },
     death:   () => { [523, 440, 392, 330].forEach((f, i) => tone(f, 0.2, 'triangle', 0.22, now() + i * 0.1)); },
     fall:    () => { tone(700, 0.6, 'sine', 0.2, 0, 140); },

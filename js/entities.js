@@ -389,28 +389,22 @@ class Debris extends Actor {
 // ═════════════════════════════════════════════════════════════════════════════
 class Pickup extends Actor {
   constructor(type, x, y) {
-    super(x * TS + 4, y * TS + 3, 8, 10);
+    super(x * TS + 3, y * TS + 5, 10, 11);
     this.type = type; this.animT = Math.random() * 10; this.baseY = this.y;
   }
   update(g) {
     this.animT += 0.1;
-    this.y = this.baseY + Math.sin(this.animT) * 1.5;
     const p = g.player;
     if (this.overlaps(p, 3) || (p.riding && this.overlaps(p.riding, 1))) this.collect(g);
   }
   collect(g) {
     this.dead = true;
-    if (this.type === 'choclo') { g.audio('choclo'); g.addScore(10); g.choclos++; g.burst(this.cx, this.cy, 'spark', 6); }
-    else { g.audio('page'); g.addScore(500); g.pages++; g.burst(this.cx, this.cy, 'paper', 16); g.showHint('¡HOJA DE TAREA ' + g.pages + ' DE 3!'); }
+    g.audio('page'); g.pages++; g.burst(this.cx, this.cy, 'paper', 16);
   }
   draw(ctx) {
-    if (this.type === 'choclo') {
-      const img = OBJ.choclo[Math.floor(this.animT * 2) % 7 === 0 ? 1 : 0];
-      ctx.drawImage(img, Math.round(this.cx - 4), Math.round(this.cy - 5));
-    } else {
-      const tilt = Math.sin(this.animT * 1.4) > 0 ? 0 : 1;
-      ctx.drawImage(OBJ.page, Math.round(this.cx - 5 + tilt), Math.round(this.cy - 6));
-    }
+    // la hoja aletea con el viento, apoyada en el suelo
+    const tilt = Math.sin(this.animT * 1.4) > 0 ? 0 : 1;
+    ctx.drawImage(OBJ.page, Math.round(this.cx - 5 + tilt), Math.round(this.y + this.h - 11));
   }
 }
 
@@ -507,7 +501,6 @@ function makeEntity(def, level) {
     case 'huaico': return new Huaico(def, level);
     case 'apacheta': return new Apacheta(def.x, def.y);
     case 'school': return new School(def.x, def.y);
-    case 'choclo': return new Pickup('choclo', def.x, def.y);
     case 'page': return new Pickup('page', def.x, def.y);
     default: return null;
   }

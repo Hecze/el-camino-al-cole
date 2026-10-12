@@ -88,10 +88,6 @@ function buildLevel(def) {
   return Object.assign({}, def, { grid, cols, rows, liquids, tile: (x, y) => (x >= 0 && x < cols && y >= 0 && y < rows ? grid[y][x] : null) });
 }
 
-const choclos = (pts) => pts.map(p => ({ type: 'choclo', x: p[0], y: p[1] }));
-function choRow(x, y, n) { const a = []; for (let i = 0; i < n; i++) a.push([x + i, y]); return a; }
-function choArc(x, y, n, h) { const a = []; for (let i = 0; i < n; i++) a.push([x + i, y - Math.round(Math.sin((i + 0.5) / n * Math.PI) * (h - 1))]); return a; }
-
 // ─────────────────────────────────────────────────────────────────────────────
 //  EL CAMINO AL COLE — un solo nivel, de izquierda a derecha.
 //
@@ -114,11 +110,11 @@ const LEVEL = {
   spawn: { x: 3, y: 34 },
   goatEnd: 117,
   zones: [
-    { x: 0,   name: 'EL VALLE',  music: 'valle',  hint: 'SÚBETE A LA LLAMA: SOLO TÓCALA' },
-    { x: 86,  name: 'EL APU',    music: 'apu',    hint: 'LA CABRA SALTA SOLA. GUÍALA CON IZQUIERDA Y DERECHA' },
-    { x: 120, name: 'LA CUMBRE', music: 'apu',    hint: 'ABAJO RUGE EL HUAICO...' },
-    { x: 140, name: 'EL HUAICO', music: 'huayco', hint: '¡SALTA DE TRONCO EN TRONCO! EL LODO TE TRAGA' },
-    { x: 205, name: 'EL COLEGIO', music: 'huayco', hint: '¡YA SE VE EL COLEGIO! ENTRA POR LA PUERTA' },
+    { x: 0,   name: 'EL VALLE',  music: 'valle' },
+    { x: 86,  name: 'EL APU',    music: 'apu' },
+    { x: 120, name: 'LA CUMBRE', music: 'apu' },
+    { x: 140, name: 'EL HUAICO', music: 'huayco' },
+    { x: 205, name: 'EL COLEGIO', music: 'huayco' },
   ],
   rects: [
     // ── EL VALLE ──
@@ -158,17 +154,10 @@ const LEVEL = {
     { type: 'rockfall', x: 82, y: 21, interval: 130 },
     { type: 'huaico', x0: 151, x1: 205, interval: 76, speed: 0.85 },
     { type: 'school', x: 222, y: 20 },
-    { type: 'page', x: 47, y: 27 },
-    { type: 'page', x: 93, y: 22 },
-    { type: 'page', x: 186, y: 18 },
-    ...choclos([
-      ...choRow(4, 32, 3), ...choArc(20, 32, 6, 4), ...choArc(29, 31, 5, 3),
-      ...choArc(53, 30, 9, 4), ...choRow(68, 32, 4), ...choRow(74, 31, 3),
-      [98, 30], [103, 27], [100, 24], [105, 21], [110, 18], [107, 15], [112, 12],
-      ...choRow(124, 9, 4), [136, 13], [140, 17], [144, 21],
-      [156, 25], [161, 25], [170, 23], [175, 23], [184, 21], [197, 19], [201, 19],
-      ...choRow(208, 18, 4),
-    ]),
+    // las 3 hojas de tarea que se le volaron al niño, enganchadas en el camino
+    { type: 'page', x: 47, y: 29 },   // sobre la pirca alta
+    { type: 'page', x: 93, y: 23 },   // en la saliente escondida del risco
+    { type: 'page', x: 139, y: 18 },  // en la bajada hacia el huaico
   ],
   decor: [
     ['sign', 1, 33], ['cantuta', 6, 33], ['ichu', 11, 33], ['ichu', 19, 33], ['maguey', 27, 33],

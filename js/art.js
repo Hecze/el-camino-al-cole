@@ -367,11 +367,6 @@ E.condor = [
 // OBJETOS
 // ─────────────────────────────────────────────────────────────────────────────
 const OBJ = {};
-// choclo (maíz andino de grano grande): el coleccionable principal
-OBJ.choclo = [
-  spr(['...kk...', '..kGGk..', '.KwywyK.', '.KywywK.', '.KwywyK.', '.KywywK.', '.KwywyK.', '.kKywKk.', 'kGkKKkGk', '.kGGGGk.']),
-  spr(['...kk...', '..kGGk..', '.KywywK.', '.K1ywyK.', '.KywywK.', '.KwywyK.', '.KywywK.', '.kKwyKk.', 'kGkKKkGk', '.kGGGGk.']),
-];
 // hoja de tarea (hay 3 escondidas)
 OBJ.page = spr([
   'KKKKKKKK..',
