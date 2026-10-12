@@ -214,7 +214,7 @@ const SCH = SV + SWID;   // donde empieza el pueblo ribereño del colegio
 const sx = (lx) => SV + lx;
 
 const LEVEL = {
-  name: 'LA MARATÓN DE LOS ANDES', w: SCH + 44, h: 150,
+  name: 'LA MARATÓN DE LOS ANDES', w: SCH + 48, h: 150,
   anchorRow: G,
   bgLayers: [
     { kind: 'mountains', color: '#8c93c9', color2: '#6d72a6', y: G - 3.4, parallax: 0.08, vpar: 0.10, amp: 8.5, seed: 5, snow: true },
@@ -279,7 +279,7 @@ const LEVEL = {
     // parte 5: la orilla de salida, que sube suave hacia la quebrada cálida
     [sx(114), 110, 6, 40, 'jungle'],
     // ── EL PUEBLO RIBEREÑO: el colegio ──
-    [SCH, 110, 44, 40, 'jungle'],
+    [SCH, 110, 48, 40, 'jungle'],
   ],
   platforms: [
     ...MTN.up,
@@ -343,11 +343,14 @@ const LEVEL = {
     { type: 'school', x: SCH + 14, y: 110 },
     { type: 'outdoorClass', x: SCH + 22, y: 110 },
     // mototaxis estacionados: el transporte del pueblo
-    // paradero: los mototaxis hacen fila uno detrás de otro; el primero ya tiene el motor prendido
-    { type: 'mototaxi', x: SCH + 34.5, y: 110, model: 'azul' },
-    { type: 'mototaxi', x: SCH + 36.6, y: 110, model: 'rojo' },
+    // paradero: los mototaxis hacen fila uno detrás de otro, sin mucho orden;
+    // el primero ya tiene el motor prendido
+    { type: 'mototaxi', x: SCH + 34.4, y: 110, model: 'azul' },
+    { type: 'mototaxi', x: SCH + 36.4, y: 110, model: 'rojo' },
     { type: 'mototaxi', x: SCH + 38.7, y: 110, model: 'azul' },
-    { type: 'mototaxi', x: SCH + 40.8, y: 110, model: 'rojo', run: true },
+    { type: 'mototaxi', x: SCH + 40.6, y: 110, model: 'azul' },
+    { type: 'mototaxi', x: SCH + 42.8, y: 110, model: 'amarillo' },
+    { type: 'mototaxi', x: SCH + 44.9, y: 110, model: 'rojo', run: true },
     { type: 'mototaxi', x: SCH - 4.8, y: 110, model: 'azul' },   // esperando pasajeros en el puerto
     ...BIRDS,
     ...HERBS,

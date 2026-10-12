@@ -948,6 +948,8 @@ const TORITO_PAL_BASE = { w: '#f7f7f9', W: '#dfdfdf', g: '#1e2a38', K: '#18151c'
 OBJ.torito = {
   azul: PIX.fromRows(TORITO_ROWS, Object.assign({ '.': null, B: '#0178d2', b: '#014f99', n: '#0a3560' }, TORITO_PAL_BASE)),
   rojo: PIX.fromRows(TORITO_ROWS, Object.assign({ '.': null, B: '#c31c14', b: '#8f1a12', n: '#4f1718' }, TORITO_PAL_BASE)),
+  // amarillo: el de la foto está en sombra (#a07010); este es el mismo tono a pleno sol
+  amarillo: PIX.fromRows(TORITO_ROWS, Object.assign({ '.': null, B: '#f0b419', b: '#a07010', n: '#5e4208' }, TORITO_PAL_BASE)),
 };
 // victoria regia: hoja gigante flotante con el borde levantado. 30x5
 OBJ.lily = spr([
