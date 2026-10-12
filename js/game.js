@@ -201,6 +201,7 @@
     Game.level = lv;
     Game.entities = []; Game.movers = []; Game.particles = []; Game.huaico = null;
     Game.pages = 0; Game.herbs = 0; Game.score = 0; Game.deaths = 0; Game.time = 0;
+    if (ch.onStart) ch.onStart(Game);   // contadores propios del capítulo
     for (const def of lv.entities) { const e = makeEntity(def, lv); if (e) { Game.entities.push(e); if (e.isMover) Game.movers.push(e); } }
     for (const e of Game.entities.slice()) if (e instanceof Huaico) { Game.huaico = e; e.prefill(Game); }
     const px = lv.spawn.x * TILE + 4, py = lv.spawn.y * TILE - 15;
@@ -1039,7 +1040,7 @@
     const lf = Game.entities.find(e => e instanceof Leaf), pl = Game.player;
     if (lf && !lf.taken && Math.abs(pl.cx - lf.cx) < 90 && Math.abs(pl.cy - lf.cy) < 60 && !pl.riding) hintBox(['TOMA LA HOJA DE PLÁTANO']);
     else if (pl.gliding && pl.onGround && pl.y < 100 * TILE) hintBox(['¡SALTA AL VACÍO PARA PLANEAR!']);
-    else for (const e of Game.entities) { const h = e.hint && e.hint(Game); if (h) { hintBox(h); break; } }   // ayudas de otros capítulos
+    else if (!Game.toastMsg) for (const e of Game.entities) { const h = e.hint && e.hint(Game); if (h) { hintBox(h); break; } }   // ayudas de otros capítulos
     // aviso breve (p. ej. al tocar un punto de control)
     if (Game.toastMsg) {
       const tm = Game.toastMsg, w = textWidth(tm.text) + 14;
