@@ -806,6 +806,45 @@ class OutdoorClass extends Actor {
   }
 }
 
+// LA CASA: casita andina de adobe con techo de ichu. Mamá mira desde la
+// puerta y se despide con la mano mientras el niño sale hacia el colegio.
+class House extends Actor {
+  constructor(x, y) { const base = y * TS; super(x * TS, base - 70, 100, 70); this.base = base; this.animT = 0; }
+  update(g) {
+    this.animT++;
+    // humo del fogón saliendo por el techo
+    if (this.animT % 18 === 0) g.particles.push({ x: this.x + 72 + Math.random() * 4, y: this.base - 66, vx: 0.15 + Math.random() * 0.1, vy: -0.35, life: 90, max: 90, col: '#d8d0c8', size: 2, grav: -0.002 });
+  }
+  draw(ctx, g) {
+    const bx = Math.round(this.x), base = this.base;
+    const R = (c, x, y, w, h) => { ctx.fillStyle = c; ctx.fillRect(bx + x, base + y, w, h); };
+    // muro de adobe con hiladas de bloques
+    R('#c99a62', 4, -40, 92, 40);
+    for (let y = -36, k = 0; y < 0; y += 5, k++) { R('#a87a46', 4, y, 92, 1); for (let x = 4 + (k % 2) * 6; x < 96; x += 12) R('#a87a46', x, y - 4, 1, 4); }
+    R('#8a5a30', 4, -2, 92, 2);
+    // ventanita con maceta de cantutas
+    R('#5a3a1e', 66, -30, 16, 14); R('#2a1f2d', 68, -28, 12, 10); R('#ffd88a', 69, -27, 4, 4);
+    R('#9a5a30', 66, -16, 16, 3); R('#c2185b', 69, -19, 2, 2); R('#c2185b', 75, -19, 2, 2); R('#64803a', 72, -19, 2, 2);
+    // puerta abierta con luz cálida del interior
+    R('#5a3a1e', 34, -30, 20, 30); R('#3a2412', 36, -28, 16, 28); R('#e8a85a', 38, -26, 12, 26); R('#ffd88a', 40, -24, 8, 24);
+    R('#8a5a30', 30, -28, 5, 28); for (let y = -26; y < 0; y += 6) R('#6b4524', 30, y, 5, 1); // hoja de la puerta abierta
+    // techo de ichu a dos aguas, con el borde deshilachado
+    for (let i = 0; i < 26; i++) {
+      const y = -66 + i, inset = Math.max(0, Math.round((25 - i) * 1.9));
+      R(i % 3 === 0 ? '#b88f3a' : i % 3 === 1 ? '#d9b45a' : '#c9a24a', -4 + inset, y, 108 - inset * 2, 1);
+    }
+    for (let x = -4; x < 104; x += 3) R(x % 2 ? '#b88f3a' : '#a07a2e', x, -40, 2, 2 + (x % 5 === 0 ? 2 : 0));
+    // banquito de madera y olla de barro junto a la puerta
+    R('#6b4524', 8, -8, 16, 2); R('#6b4524', 9, -6, 2, 6); R('#6b4524', 21, -6, 2, 6);
+    R('#8a4a2a', 84, -9, 10, 9); R('#a85a32', 85, -8, 8, 2); R('#2a1f2d', 86, -10, 6, 1);
+    // mamá en la puerta: mira al niño y se despide con la mano
+    const p = g.player, near = Math.abs(p.cx - (bx + 44)) < 170;
+    const wave = near && Math.floor(this.animT / 14) % 2 === 0;
+    const img = OBJ.mom[wave ? 1 : 0];
+    ctx.drawImage(p.cx < bx + 44 ? flipS(img) : img, bx + 36, base - 25);
+  }
+}
+
 function makeEntity(def, level) {
   switch (def.type) {
     case 'llama': return new Llama(def.x * TS, def.y * TS);
@@ -813,6 +852,7 @@ function makeEntity(def, level) {
     case 'rockfall': return new Rockfall(def.x, def.y, def.interval);
     case 'huaico': return new Huaico(def, level);
     case 'checkpoint': return new Checkpoint(def.x, def.y);
+    case 'house': return new House(def.x, def.y);
     case 'school': return new School(def.x, def.y);
     case 'outdoorClass': return new OutdoorClass(def.x, def.y);
     case 'leaf': return new Leaf(def.x, def.y);

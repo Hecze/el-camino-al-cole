@@ -164,7 +164,7 @@ const LEVEL = {
     { kind: 'hills', color: '#a8a356', color2: '#7f8a44', y: G + 0.4, parallax: 0.52, vpar: 0.62, amp: 2.2, seed: 3 },
     { kind: 'clouds', color: '#fff6e6', parallax: 0.06, count: 9, seed: 11 },
   ],
-  spawn: { x: 3, y: G },
+  spawn: { x: 6, y: G },
   // la gran montaña: silueta de fondo con nieve en lo alto
   mountain: { peakX: 121, peakRow: 10, snowRow: 78, shape: mountainShape(121, 10, 150) },
   // cerro del que baja el huaico (tierra cálida)
@@ -206,7 +206,9 @@ const LEVEL = {
   // rocas fijas en cada escalón del huaico (para subir sin caerte)
   fgRocks: [[174, 109, 2, 5], [190, 107, 2, 5], [206, 105, 2, 5]],
   entities: [
-    { type: 'llama', x: 9, y: G },
+    // la casa del niño, con mamá en la puerta
+    { type: 'house', x: 0, y: G },
+    { type: 'llama', x: 10, y: G },
     { type: 'cabra', x: 91, y: G },
     // puntos de control invisibles
     { type: 'checkpoint', x: 39, y: G - 2 },
@@ -231,7 +233,7 @@ const LEVEL = {
     { type: 'page', x: 154, y: 109 },                                             // en la orilla del huaico
   ],
   decor: [
-    ['sign', 1, G - 1], ['cantuta', 6, G - 1], ['ichu', 11, G - 1], ['ichu', 19, G - 1], ['maguey', 27, G - 1],
+    ['cantuta', 7, G - 1], ['ichu', 12, G - 1], ['ichu', 19, G - 1], ['maguey', 27, G - 1],
     ['cantuta', 35, G - 1], ['ichu', 41, G - 3], ['cantuta', 51, G - 3], ['ichu', 63, G - 1], ['maguey', 70, G - 1],
     ['ichu', 78, G - 1], ['cantuta', 85, G - 1],
     ['cactus', 146, 109], ['maguey', 149, 109],

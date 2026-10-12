@@ -108,7 +108,7 @@
     pages: 0, herbs: 0, score: 0, huaico: null,
     menuSel: 0, pauseSel: 0, stateT: 0, T: 0,
     spawn: { x: 0, y: 0 }, spawnMount: null, zone: -1, zoneName: '',
-    banner: 0, deaths: 0, time: 0, pointer: null,
+    banner: 0, deaths: 0, time: 0,
   };
   window.Game = Game;
 
@@ -240,20 +240,19 @@
     if (Game.shakeT > 0) { Game.shakeT--; if (Game.shakeT === 0) Game.shakeMag = 0; }
     Game.fade = Math.max(0, Game.fade - 0.05);
 
-    const tap = Game.pointer; Game.pointer = null;
     switch (Game.state) {
-      case 'menu': updateMenu(tap); break;
-      case 'controls': if (tap || Input.pressed('confirm') || Input.pressed('jump') || Input.pressed('pause')) { AUDIO.play('select'); Game.state = 'menu'; } break;
+      case 'menu': updateMenu(); break;
+      case 'controls': if (Input.pressed('confirm') || Input.pressed('jump') || Input.pressed('pause')) { AUDIO.play('select'); Game.state = 'menu'; } break;
       case 'play': updatePlay(); break;
-      case 'pause': updatePause(tap); break;
+      case 'pause': updatePause(); break;
       case 'respawn':
         Game.stateT++; updateParticles();
-        if (Game.stateT > 30 && (tap || Input.pressed('confirm') || Input.pressed('jump') || Input.pressed('up'))) { AUDIO.play('select'); Game.respawn(); }
+        if (Game.stateT > 30 && (Input.pressed('confirm') || Input.pressed('jump') || Input.pressed('up'))) { AUDIO.play('select'); Game.respawn(); }
         break;
       case 'win':
         Game.stateT++; updateParticles();
         for (const e of Game.entities) if (e instanceof School) e.update(Game);
-        if (Game.stateT > 90 && (tap || Input.pressed('confirm') || Input.pressed('jump'))) { AUDIO.play('select'); Game.state = 'menu'; AUDIO.playMusic(SONGS.menu); }
+        if (Game.stateT > 90 && (Input.pressed('confirm') || Input.pressed('jump'))) { AUDIO.play('select'); Game.state = 'menu'; AUDIO.playMusic(SONGS.menu); }
         break;
     }
     let rv = 0, mv = 0;
@@ -282,15 +281,9 @@
     else if (i === 1) { AUDIO.play('select'); Game.state = 'controls'; }
     else { AUDIO.toggleMute(); AUDIO.play('select'); }
   }
-  function updateMenu(tap) {
+  function updateMenu() {
     if (Input.pressed('up')) { Game.menuSel = (Game.menuSel + 2) % 3; AUDIO.play('select'); }
     if (Input.pressed('down')) { Game.menuSel = (Game.menuSel + 1) % 3; AUDIO.play('select'); }
-    if (tap) {
-      // un clic sobre una opción la ejecuta; un clic en cualquier otro sitio = JUGAR
-      const i = Math.round((tap.y - MENU_Y - 3) / MENU_DY);
-      menuActivate(i >= 0 && i < 3 && Math.abs(tap.x - BASE_W / 2) < 80 ? i : 0);
-      return;
-    }
     if (Input.pressed('confirm') || Input.pressed('jump')) menuActivate(Game.menuSel);
   }
   const PAUSE_OPTS = ['CONTINUAR', 'REINICIAR', 'MENÚ'];
@@ -300,11 +293,10 @@
     else if (i === 1) startGame();
     else { Game.state = 'menu'; AUDIO.playMusic(SONGS.menu); }
   }
-  function updatePause(tap) {
+  function updatePause() {
     if (Input.pressed('up')) { Game.pauseSel = (Game.pauseSel + 2) % 3; AUDIO.play('select'); }
     if (Input.pressed('down')) { Game.pauseSel = (Game.pauseSel + 1) % 3; AUDIO.play('select'); }
     if (Input.pressed('pause')) { Game.state = 'play'; AUDIO.play('select'); return; }
-    if (tap) { const i = Math.round((tap.y - 104 - 3) / 20); if (i >= 0 && i < 3) pauseActivate(i); return; }
     if (Input.pressed('confirm') || Input.pressed('jump')) pauseActivate(Game.pauseSel);
   }
 
@@ -720,7 +712,7 @@
   }
 
   function renderEntities() {
-    const back = e => e instanceof School;
+    const back = e => e instanceof School || e instanceof House;
     for (const e of Game.entities) if (back(e)) e.draw(ctx, Game);
     for (const e of Game.entities) if (!back(e) && !(e instanceof Mount)) e.draw(ctx, Game);
     for (const e of Game.entities) if (e instanceof Mount) e.draw(ctx, Game);
@@ -783,7 +775,7 @@
       const a = Math.min(1, Game.stateT / 16);
       ctx.fillStyle = 'rgba(11,10,18,' + (a * 0.85) + ')'; ctx.fillRect(0, 0, BASE_W, BASE_H);
       drawText(ctx, '¡ACHACHÁU!', BASE_W / 2, BASE_H / 2 - 14, { scale: 2, color: '#ffd166', align: 'center', shadow: true });
-      if (Game.stateT > 30) drawText(ctx, 'PULSA PARA SEGUIR', BASE_W / 2, BASE_H / 2 + 14, { color: '#fff3d6', align: 'center' });
+      if (Game.stateT > 30) drawText(ctx, 'PULSA ESPACIO PARA SEGUIR', BASE_W / 2, BASE_H / 2 + 14, { color: '#fff3d6', align: 'center' });
     }
   }
 
@@ -819,7 +811,7 @@
       drawText(ctx, r[1], BASE_W / 2 + 110, 112 + i * 13, { color: r[2], align: 'right' });
     });
     if (Game.pages === 3) drawText(ctx, '¡TAREA COMPLETA! LA PROFE ESTARÁ ORGULLOSA', BASE_W / 2, 170, { color: '#9be7c4', align: 'center' });
-    if (Game.stateT > 90 && Math.floor(tick / 24) % 2 === 0) drawText(ctx, 'PULSA PARA VOLVER AL MENÚ', BASE_W / 2, 194, { color: '#fff3d6', align: 'center' });
+    if (Game.stateT > 90 && Math.floor(tick / 24) % 2 === 0) drawText(ctx, 'PULSA ESPACIO PARA VOLVER AL MENÚ', BASE_W / 2, 194, { color: '#fff3d6', align: 'center' });
     ctx.globalAlpha = 1;
   }
 
@@ -866,7 +858,7 @@
     });
     const tips = ['LLAMA: TÓCALA PARA MONTARLA. CORRE Y SALTA MÁS.', 'CABRA: SALTA SOLA. TÚ SOLO LA GUÍAS.', 'EL PASTO LE DA A LA CABRA UN SÚPER SALTO.', 'HUAICO: SI CAES, PULSA SALTO PARA AGARRARTE.'];
     tips.forEach((t, i) => drawText(ctx, t, BASE_W / 2, 132 + i * 12, { color: '#cdbde8', align: 'center' }));
-    drawText(ctx, 'PULSA PARA VOLVER', BASE_W / 2, 196, { color: '#fff3d6', align: 'center' });
+    drawText(ctx, 'PULSA ESPACIO PARA VOLVER', BASE_W / 2, 196, { color: '#fff3d6', align: 'center' });
   }
 
   // ── fluidez ──────────────────────────────────────────────────────────────
@@ -920,21 +912,9 @@
     const boot = document.getElementById('boot');
     if (boot) { boot.classList.add('hidden'); setTimeout(() => boot.remove(), 600); }
     if ('ontouchstart' in window) { const t = document.getElementById('touch'); if (t) t.classList.add('on'); }
-    canvas.addEventListener('pointerdown', (e) => {
-      AUDIO.resume();
-      const r = canvas.getBoundingClientRect();
-      Game.pointer = { x: (e.clientX - r.left) / r.width * BASE_W, y: (e.clientY - r.top) / r.height * BASE_H };
-    });
-    canvas.addEventListener('pointermove', (e) => {
-      if (Game.state !== 'menu') return;
-      const r = canvas.getBoundingClientRect();
-      const x = (e.clientX - r.left) / r.width * BASE_W, y = (e.clientY - r.top) / r.height * BASE_H;
-      const i = Math.round((y - MENU_Y - 3) / MENU_DY);
-      if (i >= 0 && i < 3 && Math.abs(x - BASE_W / 2) < 80) Game.menuSel = i;
-    });
-    const firstGesture = () => { AUDIO.resume(); if (Game.state === 'menu') AUDIO.playMusic(SONGS.menu); window.removeEventListener('keydown', firstGesture); window.removeEventListener('pointerdown', firstGesture); };
+    // solo teclado (y los botones táctiles en móvil): el ratón no hace nada
+    const firstGesture = () => { AUDIO.resume(); if (Game.state === 'menu') AUDIO.playMusic(SONGS.menu); window.removeEventListener('keydown', firstGesture); };
     window.addEventListener('keydown', firstGesture);
-    window.addEventListener('pointerdown', firstGesture);
     requestAnimationFrame(frame);
   }
   Game.debugStep = update;
