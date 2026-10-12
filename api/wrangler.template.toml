@@ -1,0 +1,14 @@
+# Plantilla: ./run.sh genera wrangler.toml (ignorado por git) con los valores de .env
+name = "maraton-andes-api"
+main = "src/index.js"
+compatibility_date = "2025-09-01"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "maraton-andes"
+database_id = "${D1_DATABASE_ID}"
+
+[vars]
+ALLOWED_ORIGINS = "${ALLOWED_ORIGINS}"
+MIN_TIME_MS = "${MIN_TIME_MS}"
+# IP_SALT es secreto: npx wrangler@4 secret put IP_SALT  (local: en .dev.vars)
