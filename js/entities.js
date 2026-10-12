@@ -669,6 +669,12 @@ class CollapseHouse extends Actor {
       for (let i = 0; i < n; i++) R('#3a2414', -1 + ((i % 2) ? 1 : 0), -35 + i * 5, 1, 5);
       if (this.state !== 'erode') for (let i = 0; i < 4; i++) R('#3a2414', 22 - i * 2, -10 - i * 5, 1, 5);
     }
+    // cartelito de cartón clavado en una estaca al lado de la casa: "SE VENDE"
+    R('#6b4524', 48, -22, 2, 22);
+    R('#8a6a4a', 31, -40, 37, 21); R('#d9c19a', 32, -39, 35, 19);
+    drawText(ctx, 'SE', 49, -38, { color: '#5a3b22', align: 'center' });
+    drawText(ctx, 'VENDE', 49, -30, { color: '#5a3b22', align: 'center' });
+    R('#6b4524', 47, -41, 4, 2);   // clavo
     // techo de calamina a dos aguas (hasta que la corriente lo arranca)
     if (this.roofOn) {
       for (let i = 0; i < 11; i++) { const w = 76 - (10 - i) * 6; R(i % 2 ? '#9aa0a8' : '#8a9098', Math.round(-w / 2), i - 46, w, 1); }
