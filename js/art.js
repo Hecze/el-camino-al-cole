@@ -913,6 +913,42 @@ OBJ.dryBranch = spr([
   '.tTTTtIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIItTTTt.',
   '..ttt..oO.........oO.................Oo..ttt....',
 ]);
+// Mototaxi (torito) en tres cuartos, pixel art hecho a partir del dibujo de
+// referencia. La rueda delantera queda más abajo que la trasera: está más
+// cerca de la cámara. 28x26
+const TORITO_ROWS = [
+  '.............WWWWWWWWW......',
+  '.......WWWWWWwwwwwwwwwWWW...',
+  '....WWWwwwwwwwwWBBBBBBBBBWW.',
+  '...WwwwwwwwwwwWbKKKKKKKKKB..',
+  '..WgwgggWwgggWBKgsgggggggK..',
+  '..gTggggWwggKKBKgsgggggggK..',
+  '.WgwggggWwggKKBKggsKKggggK.K',
+  '.WgwggggWwgggKBKggsgKKggggKK',
+  '.WwwggggWwgggWBKgggsggKgggK.',
+  '.WwwwwwwWwgggWbBKKKKKKKKKKK.',
+  '.WwwggwwWwwwwWbBByYoBBBKBBBY',
+  '.WWWwwwwWggwwWbBBBBBBBBBBBB.',
+  '.BBBWwwwWwwwwWbBKKKKKKBBBBKK',
+  '.BBBBwwwWwwwWWbBKKKHhKKKKKKh',
+  '.BBBBwwwWwwwWWbBKKKhHKKKRKKH',
+  '.BBBBwwwWwWWWWbBBbKKKKKKKKKK',
+  '.bbbBBwwWWwWWWbBBBbBbKKKKKbB',
+  'bBBBbBwwWwWWWWbBBBBBBbKKKKB.',
+  'BgtBbBwwWWwWWWbBBBBBBbKbbbB.',
+  'gtTtbBWWWWwWWWWbBBBBBbbBBBb.',
+  'gtRtKK.WWWWWWWWbBBBBbbBBBBBb',
+  '.tTtK.....WWWWWbBBBBbBnsKKn.',
+  '..tK..........BBbbbb.nKsTtK.',
+  '.....................ttRRtK.',
+  '......................tTTtK.',
+  '.......................ttK..',
+];
+const TORITO_PAL_BASE = { w: '#f7f7f9', W: '#dfdfdf', g: '#1e2a38', K: '#18151c', t: '#363638', T: '#6b6b6d', R: '#939395', s: '#4f5962', h: '#9fa8af', H: '#d3dce1', y: '#ffd217', Y: '#f0b617', o: '#ea9610' };
+OBJ.torito = {
+  azul: PIX.fromRows(TORITO_ROWS, Object.assign({ '.': null, B: '#0178d2', b: '#014f99', n: '#0a3560' }, TORITO_PAL_BASE)),
+  rojo: PIX.fromRows(TORITO_ROWS, Object.assign({ '.': null, B: '#c31c14', b: '#8f1a12', n: '#4f1718' }, TORITO_PAL_BASE)),
+};
 // victoria regia: hoja gigante flotante con el borde levantado. 30x5
 OBJ.lily = spr([
   '....RRRRRRRRRRRRRRRRRRRRRR....',

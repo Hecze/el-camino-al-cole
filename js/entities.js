@@ -1015,84 +1015,25 @@ class Striker extends Actor {
   }
 }
 
-// Mototaxi (torito) estacionado, en vista tres cuartos como en las fotos:
-// el costado (cabina blanca con puertas y ventanas) se aleja hacia atrás y el
-// frente mira a la cámara (parabrisas, direccionales ámbar, panel oscuro con
-// dos faros, trompa y rueda delantera centrada). Colores tomados de fotos
-// reales (modelo rojo y modelo azul). Se dibuja una vez por modelo.
-const TORITO = {
-  rojo: { body: '#c31c14', mid: '#b82a20', dark: '#741114', panel: '#221f26', glass: '#283136', glassHi: '#3c4850', stripe: '#c31c14' },
-  azul: { body: '#1268a1', mid: '#0b5489', dark: '#144472', panel: '#4b5262', glass: '#7a879a', glassHi: '#a4b2c2', stripe: '#4e8bc1' },
-};
-const TORITO_WHITE = '#eef2f2', TORITO_WHITE2 = '#cfcfcf', TORITO_SHADE = '#a4adac', TORITO_TIRE = '#232429', TORITO_RIM = '#88929c';
-const toritoCache = {};
-function toritoSprite(model) {
-  if (toritoCache[model]) return toritoCache[model];
-  const c = TORITO[model] || TORITO.rojo, W = 48, H = 48, G = H - 1;   // G: fila del suelo
-  const cv = PIX.createCanvas(W, H), g = cv.getContext('2d');
-  const P = (col, x, y, w = 1, h = 1) => { g.fillStyle = col; g.fillRect(x, G + y, w, h); };
-  const disc = (col, cx, cy, rx, ry) => { for (let y = -ry; y <= ry; y++) { const w = Math.round(rx * Math.sqrt(1 - (y * y) / (ry * ry))); P(col, Math.round(cx - w), Math.round(cy + y), w * 2 + 1, 1); } };
-  // sombra en el piso
-  g.fillStyle = 'rgba(30,20,20,0.28)'; g.fillRect(2, G - 1, 44, 2);
-  // rueda trasera (lado visible), algo más chica: está más lejos
-  disc(TORITO_TIRE, 7, -5, 4, 5); P(TORITO_RIM, 6, -6, 3, 3);
-  // ── costado: corto y en perspectiva (se achica hacia atrás) ──
-  const X0 = 1, X1 = 25;
-  const top = (x) => Math.round(-37 - 3 * (x - X0) / (X1 - X0)), bot = (x) => Math.round(-9 + 2 * (x - X0) / (X1 - X0));
-  for (let x = X0; x < X1; x++) {
-    const t = top(x), b = bot(x), u = (x - X0) / (X1 - X0);
-    for (let y = t; y < b; y++) {
-      const v = (y - t) / (b - t);
-      let col = TORITO_WHITE;
-      if (u < 0.06) col = TORITO_WHITE2;                                             // esquina trasera
-      if (Math.abs(u - 0.4) < 0.03 || u > 0.95) col = TORITO_SHADE;                 // junta de la puerta / arista
-      if (u > 0.1 && u < 0.34 && v > 0.08 && v < 0.42) col = v < 0.22 && u < 0.17 ? c.glassHi : c.glass;   // ventana trasera
-      if (u > 0.47 && u < 0.9 && v > 0.08 && v < 0.46) col = v < 0.22 && u < 0.56 ? c.glassHi : c.glass;   // ventana de la puerta
-      if (u > 0.1 && u < 0.34 && v > 0.5 && v < 0.64 && Math.round(v * 28) % 2 === 0) col = TORITO_WHITE2;   // rejilla
-      if (v > 0.74) col = v > 0.92 ? c.mid : c.body;                                 // franja baja de color
-      P(col, x, y);
-    }
-  }
-  P(c.body, 14, -22, 2, 1); P(c.body, 4, -23, 2, 1);                               // manijas
-  // ── techo: borde del costado y visera sobre el frente ──
-  for (let x = X0 + 1; x <= X1; x++) { const t = top(x); P(TORITO_WHITE, x, t - 3, 1, 3); P(TORITO_SHADE, x, t - 1, 1, 1); }
-  for (let x = X0 + 4; x < X1 - 3; x++) P(c.stripe, x, top(x) - 4, 1, 1);
-  P(TORITO_WHITE, 24, -45, 22, 3); P('#ffffff', 25, -45, 20, 1); P(TORITO_SHADE, 24, -42, 22, 1);
-  // ── frente ancho, mirando a la cámara ──
-  P(c.body, 25, -42, 20, 31);
-  P(c.dark, 25, -42, 1, 34);                                                       // arista entre costado y frente
-  P(c.glass, 27, -40, 16, 15);                                                     // parabrisas
-  for (let i = 0; i < 7; i++) P(c.glassHi, 29 + i, -39 + i, 1, 2);                // reflejo
-  for (let i = 0; i < 6; i++) P(TORITO_TIRE, 33 + i, -28 - i, 1, 1);              // plumilla
-  P('#be6023', 27, -24, 3, 2); P('#be6023', 40, -24, 3, 2);                        // direccionales
-  // panel oscuro con dos faros, logo y rejilla
-  P(c.panel, 28, -21, 14, 7); P(c.panel, 27, -20, 16, 5);
-  for (const hx of [28, 39]) { P('#8a949c', hx, -19, 3, 3); P('#d3dce1', hx, -19, 2, 2); P('#ffffff', hx, -19); }
-  P(TORITO_RIM, 34, -20, 2, 2);
-  for (let x = 33; x < 37; x++) P(c.panel === '#221f26' ? '#3a3640' : '#3a404c', x, -16);
-  // trompa que baja hacia la rueda delantera
-  for (let y = -13; y < -7; y++) { const w = Math.max(3, 8 - (y + 13)); P(y > -10 ? c.mid : c.body, 35 - w, y, w * 2, 1); }
-  // rueda delantera de frente (angosta) y su guardafango
-  disc(TORITO_TIRE, 34.5, -5, 3, 5); P(TORITO_RIM, 34, -7, 1, 4);
-  P(c.body, 30, -11, 10, 2); P(c.mid, 30, -9, 2, 1); P(c.mid, 38, -9, 2, 1);
-  // espejo retrovisor
-  P(TORITO_TIRE, 46, -34, 1, 4); P(TORITO_TIRE, 45, -31, 2, 1);
-  return (toritoCache[model] = cv);
-}
+// Mototaxi (torito) estacionado, en tres cuartos (sprite OBJ.torito). El que
+// tiene el motor encendido tiembla y echa humito por el escape.
 class Mototaxi extends Actor {
   constructor(def) {
-    const base = def.y * TS;
-    super(def.x * TS, base - 47, 48, 47);
-    this.base = base; this.model = def.model || 'rojo'; this.flip = !!def.flip; this.t = Math.floor(def.x * 7) % 300; this.run = !!def.run;
+    const base = def.y * TS, img = OBJ.torito[def.model] || OBJ.torito.rojo;
+    super(def.x * TS, base - img.height, img.width, img.height);
+    this.base = base; this.img = img; this.flip = !!def.flip; this.t = Math.floor(def.x * 7) % 300; this.run = !!def.run;
   }
   update(g) {
     this.t++;
-    if (this.run && this.t % 40 === 0) g.particles.push({ x: this.flip ? this.x + 46 : this.x + 1, y: this.base - 5, vx: this.flip ? 0.25 : -0.25, vy: -0.2, life: 50, max: 50, col: '#c8c2cc', size: 2, grav: -0.004 });
+    if (this.run && this.t % 40 === 0) g.particles.push({ x: this.flip ? this.x + this.w - 1 : this.x + 1, y: this.base - 9, vx: this.flip ? 0.25 : -0.25, vy: -0.2, life: 50, max: 50, col: '#c8c2cc', size: 2, grav: -0.004 });
   }
   draw() {}
   drawBack(ctx) {
-    const img = toritoSprite(this.model), sh = this.run && Math.floor(this.t / 3) % 2 ? -1 : 0;
-    ctx.drawImage(this.flip ? flipS(img) : img, Math.round(this.x), this.base - img.height + 1 + sh);
+    const sh = this.run && Math.floor(this.t / 3) % 2 ? -1 : 0, x = Math.round(this.x);
+    // sombra en diagonal: de la rueda trasera (más arriba) a la delantera
+    ctx.fillStyle = 'rgba(30,20,20,0.25)';
+    for (let i = 0; i <= 24; i += 2) ctx.fillRect(this.flip ? x + this.w - 4 - i : x + 1 + i, this.base - Math.round(5 * (1 - i / 24)), 3, 2);
+    ctx.drawImage(this.flip ? flipS(this.img) : this.img, x, this.base - this.img.height + 1 + sh);
   }
 }
 
