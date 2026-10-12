@@ -144,7 +144,7 @@ function buildLevel(def) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-//  EL CAMINO AL COLE — un solo nivel, de izquierda a derecha.
+//  LA MARATÓN DE LOS ANDES — un solo nivel, de izquierda a derecha.
 //
 //   x 0–96     EL VALLE    · montado en la llama: pircas, cascadas y un derrumbe
 //   x 82–156   EL APU      · una montaña gigante: la cabra salta sola, tú la
@@ -214,7 +214,7 @@ const SCH = SV + SWID;   // donde empieza el pueblo ribereño del colegio
 const sx = (lx) => SV + lx;
 
 const LEVEL = {
-  name: 'EL CAMINO AL COLE', w: SCH + 30, h: 150,
+  name: 'LA MARATÓN DE LOS ANDES', w: SCH + 30, h: 150,
   anchorRow: G,
   bgLayers: [
     { kind: 'mountains', color: '#8c93c9', color2: '#6d72a6', y: G - 3.4, parallax: 0.08, vpar: 0.10, amp: 8.5, seed: 5, snow: true },

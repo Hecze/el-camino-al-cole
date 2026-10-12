@@ -983,7 +983,7 @@
     if (Game.banner < 170) {
       const a = Math.min(1, (170 - Game.banner) / 40);
       ctx.globalAlpha = a;
-      drawText(ctx, 'EL CAMINO AL COLE', BASE_W / 2, 64, { scale: 2, color: '#ffd166', align: 'center', shadow: true, shadowColor: '#5a2a12' });
+      drawText(ctx, 'LA MARATÓN DE LOS ANDES', BASE_W / 2, 64, { scale: 2, color: '#ffd166', align: 'center', shadow: true, shadowColor: '#5a2a12' });
       drawText(ctx, '¡LLEGA A TIEMPO A CLASES!', BASE_W / 2, 86, { color: '#ffffff', align: 'center', shadow: true, shadowColor: '#00000099' });
       ctx.globalAlpha = 1;
     }
@@ -1061,9 +1061,9 @@
     ctx.drawImage(sil(P.run[fr]), 100, 179);
 
     const bob = Math.sin(tick / 22) * 2;
-    drawText(ctx, 'EL CAMINO', BASE_W / 2, 34 + bob, { scale: 3, color: '#ffd166', align: 'center', shadow: true, shadowColor: '#5a2a12' });
-    drawText(ctx, 'AL COLE', BASE_W / 2, 60 + bob, { scale: 3, color: '#ffd166', align: 'center', shadow: true, shadowColor: '#5a2a12' });
-    drawText(ctx, 'UNA AVENTURA EN LOS ANDES', BASE_W / 2, 90 + bob, { color: '#fff3d6', align: 'center', shadow: true, shadowColor: '#00000088' });
+    drawText(ctx, 'LA MARATÓN', BASE_W / 2, 34 + bob, { scale: 3, color: '#ffd166', align: 'center', shadow: true, shadowColor: '#5a2a12' });
+    drawText(ctx, 'DE LOS ANDES', BASE_W / 2, 60 + bob, { scale: 3, color: '#ffd166', align: 'center', shadow: true, shadowColor: '#5a2a12' });
+    drawText(ctx, '¡LLEGA AL COLE ANTES DE LAS 8:00!', BASE_W / 2, 90 + bob, { color: '#fff3d6', align: 'center', shadow: true, shadowColor: '#00000088' });
     MENU_OPTS().forEach((o, i) => {
       const sel = i === Game.menuSel, y = MENU_Y + i * MENU_DY;
       drawText(ctx, o, BASE_W / 2, y, { color: sel ? '#ffffff' : '#e7d3c4', align: 'center', shadow: true, shadowColor: '#00000099' });
