@@ -140,6 +140,11 @@ const AUDIO = (() => {
     select:  () => { tone(660, 0.07, 'triangle', 0.22); },
     start:   () => { [440, 523, 659, 880].forEach((f, i) => tone(f, 0.14, 'triangle', 0.24, now() + i * 0.06)); },
     bell:    () => { const t = now(); [0, 0.55, 1.1].forEach(d => { tone(880, 1.6, 'sine', 0.22, t + d); tone(2200, 0.7, 'sine', 0.07, t + d); tone(1318, 1.1, 'triangle', 0.08, t + d); }); },
+    // capítulo 2: claxon de combi, ¡ay!, ladrido de perro chusco y "no se puede"
+    honk:    () => { const t = now(); [0, 0.16].forEach(d => { tone(415, 0.13, 'square', 0.12, t + d); tone(523, 0.13, 'square', 0.1, t + d); }); },
+    ouch:    () => { tone(900, 0.18, 'triangle', 0.22, 0, 500); noise(0.08, 0.2, 3000, 0, { type: 'highpass' }); },
+    bark:    () => { const t = now(); [0, 0.2].forEach(d => { tone(520, 0.09, 'sawtooth', 0.2, t + d, 260); noise(0.08, 0.25, 900, t + d, { type: 'bandpass', q: 1.5 }); }); },
+    nope:    () => { tone(220, 0.12, 'square', 0.12); tone(165, 0.18, 'square', 0.12, now() + 0.1); },
     win:     () => { [523, 659, 784, 1046, 784, 1046, 1318].forEach((f, i) => tone(f, 0.3, 'triangle', 0.24, now() + 0.15 + i * 0.13)); },
   };
   function play(name) { if (!enabled) return; resume(); const f = SFX[name]; if (f) f(); }

@@ -41,7 +41,9 @@
   // ── la hora del día ──────────────────────────────────────────────────────
   // Sales de casa a las 6:20 con el sol saliendo; la clase empieza a las 8:00.
   // Cada segundo de juego son 18 segundos del reloj (≈5 min 30 s para llegar).
-  const DAY_START = 6 * 60 + 20, CLASS_START = 8 * 60, CLOCK_RATE = 0.3;
+  // (cada capítulo puede salir a otra hora con dayStart)
+  const DAY_START_DEFAULT = 6 * 60 + 20, CLASS_START = 8 * 60, CLOCK_RATE = 0.3;
+  let DAY_START = DAY_START_DEFAULT;
   const SKY_DAWN = ['#2e2f63', '#c46f8a', '#ffb877'], SKY_MORNING = ['#4f86c6', '#9cc8e8', '#f6dcb0'];
   function clockMinutes() { return DAY_START + (Game.time / 60) * CLOCK_RATE; }
   function clockText(m) { m = Math.floor(m == null ? clockMinutes() : m); return Math.floor(m / 60) + ':' + String(m % 60).padStart(2, '0'); }
@@ -58,6 +60,8 @@
     const W = 768, H = BASE_H;
     const c = document.createElement('canvas'); c.width = W; c.height = H;
     const g = c.getContext('2d');
+    // capas con dibujo propio (la ciudad de Lima, el oasis...): se dibujan solas
+    if (def.build) { def.build(g, W, H); return c; }
     const s = def.seed || 1;
     function ridge(x) {
       let n = 0, amp = 1, norm = 0, fr = 1;
@@ -126,6 +130,7 @@
     menuSel: 0, pauseSel: 0, stateT: 0, T: 0,
     spawn: { x: 0, y: 0 }, spawnMount: null, zone: -1, zoneName: '',
     banner: 0, deaths: 0, time: 0,
+    chapterIdx: 0, chapter: CHAPTERS[0], menuChapter: 0, winSel: 0,
   };
   window.Game = Game;
 
@@ -159,13 +164,16 @@
     else if (kind === 'caiman') { AUDIO.play('snap'); AUDIO.play('splash'); Game.shake(3, 10); Game.burst(a.cx, a.cy, 'swampSplash', 20); }
     else if (kind === 'bird') { AUDIO.play('crush'); Game.shake(3, 10); Game.burst(a.cx, a.cy, 'feather', 16); }
     else if (kind === 'rock') { AUDIO.play('crush'); Game.shake(4, 12); Game.burst(a.cx, a.cy, 'rock', 14); }
+    else if (kind === 'combi' || kind === 'buggy') { AUDIO.play('crush'); AUDIO.play('honk'); Game.shake(4, 12); Game.burst(a.cx, a.cy, 'dust', 18); }
+    else if (kind === 'cactus' || kind === 'rebar') { AUDIO.play('ouch'); Game.shake(2, 8); Game.burst(a.cx, a.cy, 'spark', 12); }
+    else if (kind === 'dog') { AUDIO.play('bark'); AUDIO.play('crush'); Game.shake(3, 10); Game.burst(a.cx, a.cy, 'dust', 14); }
     else AUDIO.play('fall');
     Game.deaths++; Game.lastDeath = kind; Game.state = 'respawn'; Game.stateT = 0;
   };
   Game.gameComplete = () => {
     if (Game.state !== 'play') return;
     Game.arrival = clockMinutes();
-    Game.state = 'win'; Game.stateT = 0;
+    Game.state = 'win'; Game.stateT = 0; Game.winSel = 0;
     AUDIO.stopMusic(); AUDIO.play('bell'); AUDIO.play('win');
   };
 
@@ -185,10 +193,13 @@
   };
 
   // ── cargar ───────────────────────────────────────────────────────────────
-  function startGame() {
-    const lv = LEVELS[0];
+  function startGame(ci) {
+    if (ci == null) ci = Game.chapterIdx;
+    const ch = CHAPTERS[ci], lv = ch.level;
+    Game.chapterIdx = ci; Game.chapter = ch; Game.menuChapter = ci;
+    DAY_START = ch.dayStart || DAY_START_DEFAULT;
     Game.level = lv;
-    Game.entities = []; Game.movers = []; Game.particles = [];
+    Game.entities = []; Game.movers = []; Game.particles = []; Game.huaico = null;
     Game.pages = 0; Game.herbs = 0; Game.score = 0; Game.deaths = 0; Game.time = 0;
     for (const def of lv.entities) { const e = makeEntity(def, lv); if (e) { Game.entities.push(e); if (e.isMover) Game.movers.push(e); } }
     for (const e of Game.entities.slice()) if (e instanceof Huaico) { Game.huaico = e; e.prefill(Game); }
@@ -209,7 +220,7 @@
     const lv = Game.level, p = Game.player, cam = Game.cam;
     const body = p.riding || p;
     const own = p.riding ? p.riding.vx : p.vx;
-    const maxV = p.riding instanceof Llama ? PHYS.LLAMA_MAX : PHYS.RUN_MAX;
+    const maxV = p.riding instanceof Llama ? PHYS.LLAMA_MAX : (p.riding && p.riding.camMax) || PHYS.RUN_MAX;
     let want = Game.look;
     if (Math.abs(own) > 0.5) want = Math.sign(own) * LOOK_X * Math.min(1, 0.6 + Math.abs(own) / maxV * 0.4);
     if (p.riding instanceof Cabra) want = clamp(want, -36, 36);
@@ -275,7 +286,7 @@
       case 'win':
         Game.stateT++; updateParticles();
         for (const e of Game.entities) if (e instanceof School) e.update(Game);
-        if (Game.stateT > 90 && (Input.pressed('confirm') || Input.pressed('jump'))) { AUDIO.play('select'); Game.state = 'menu'; AUDIO.playMusic(SONGS.menu); }
+        updateWin();
         break;
     }
     let rv = 0, mv = 0, jv = 0;
@@ -296,18 +307,39 @@
     return [clamp(r, 0, 1), clamp(m, 0, 1), clamp(j, 0, 1)];
   }
 
+  // la primera fila del menú es el selector de capítulo (izquierda/derecha elige)
   const MENU_OPTS = () => ['JUGAR', 'CONTROLES', AUDIO.isEnabled() ? 'SONIDO: SÍ' : 'SONIDO: NO'];
-  const MENU_Y = 142, MENU_DY = 16;
+  const MENU_Y = 150, MENU_DY = 16, CARDS_Y = 104;
   function menuActivate(i) {
     AUDIO.resume();
-    if (i === 0) { AUDIO.play('start'); startGame(); }
+    if (i === 0) {
+      if (CHAPTERS[Game.menuChapter]) { AUDIO.play('start'); startGame(Game.menuChapter); }
+      else { AUDIO.play('nope'); Game.lockedT = 24; }   // aún no existe: la tarjeta tiembla
+    }
     else if (i === 1) { AUDIO.play('select'); Game.state = 'controls'; }
     else { AUDIO.toggleMute(); AUDIO.play('select'); }
   }
   function updateMenu() {
+    if (Game.lockedT > 0) Game.lockedT--;
     if (Input.pressed('up')) { Game.menuSel = (Game.menuSel + 2) % 3; AUDIO.play('select'); }
     if (Input.pressed('down')) { Game.menuSel = (Game.menuSel + 1) % 3; AUDIO.play('select'); }
+    if (Game.menuSel === 0) {
+      const d = (Input.pressed('right') ? 1 : 0) - (Input.pressed('left') ? 1 : 0);
+      if (d) { Game.menuChapter = mod(Game.menuChapter + d, CHAPTER_SLOTS); Game.lockedT = 0; AUDIO.play('select'); }
+    }
     if (Input.pressed('confirm') || Input.pressed('jump')) menuActivate(Game.menuSel);
+  }
+  // pantalla final: pasar al siguiente capítulo o volver al menú
+  function winOptions() { return CHAPTERS[Game.chapterIdx + 1] ? ['next', 'menu'] : ['menu']; }
+  function updateWin() {
+    const opts = winOptions();
+    if (Game.stateT <= 90) return;
+    if (opts.length > 1 && (Input.pressed('left') || Input.pressed('right') || Input.pressed('up') || Input.pressed('down'))) { Game.winSel = 1 - Game.winSel; AUDIO.play('select'); }
+    if (Input.pressed('confirm') || Input.pressed('jump')) {
+      AUDIO.play('select');
+      if (opts[Math.min(Game.winSel, opts.length - 1)] === 'next') { AUDIO.play('start'); startGame(Game.chapterIdx + 1); }
+      else { Game.state = 'menu'; AUDIO.playMusic(SONGS.menu); }
+    }
   }
   const PAUSE_OPTS = ['CONTINUAR', 'REINICIAR', 'MENÚ'];
   function pauseActivate(i) {
@@ -363,6 +395,10 @@
         if (p.invuln <= 0 && aabb(hb, e.hitbox)) { Game.playerEnvDeath('bird'); return; }
       } else if (e instanceof Boulder) {
         if (p.invuln <= 0 && aabb(hb, { x: e.x + 1, y: e.y + 1, w: e.w - 2, h: e.h - 2 })) { Game.playerEnvDeath('rock'); return; }
+      } else if (e.hazardBox) {
+        // peligros genéricos de los otros capítulos: dicen su caja y cómo te matan
+        const hz = e.hazardBox(Game);
+        if (hz && p.invuln <= 0 && aabb(hb, hz)) { Game.playerEnvDeath(e.hazardKind || 'hit'); return; }
       }
     }
   }
@@ -378,18 +414,22 @@
 
   // cielo, sol y capas de parallax en el canvas dado (se usa también para el fondo de la selva)
   let bgEastCanvas = null;
-  function drawSkyAndLayers(ctx, layers, anchorRow, day, camx, camy, tag) {
+  // sky (opcional): { dawn, morning, sun: false } para cielos de otros capítulos
+  function drawSkyAndLayers(ctx, layers, anchorRow, day, camx, camy, tag, sky) {
     const gr = ctx.createLinearGradient(0, 0, 0, BASE_H);
-    for (let i = 0; i < 3; i++) gr.addColorStop([0, 0.6, 1][i], lerpColor(SKY_DAWN[i], SKY_MORNING[i], day));
+    const dawn = sky ? sky.dawn : SKY_DAWN, morning = sky ? sky.morning : SKY_MORNING;
+    for (let i = 0; i < 3; i++) gr.addColorStop([0, 0.6, 1][i], lerpColor(dawn[i], morning[i], day));
     ctx.fillStyle = gr; ctx.fillRect(0, 0, BASE_W, BASE_H);
     const anchor = anchorRow * TILE - BASE_H * 0.62;
-    // sol naciente por el este, detrás de los cerros
-    const sunX = 78 + day * 40, sunY = 112 - day * 82 - (camy - anchor) * 0.03;
-    const sunCol = lerpColor('#ffb066', '#fff3cf', day);
-    const glow = ctx.createRadialGradient(sunX, sunY, 4, sunX, sunY, 150 - day * 90);
-    glow.addColorStop(0, 'rgba(255,200,130,' + (0.75 - day * 0.45) + ')'); glow.addColorStop(1, 'rgba(255,170,110,0)');
-    ctx.fillStyle = glow; ctx.fillRect(0, 0, BASE_W, BASE_H);
-    ctx.fillStyle = sunCol; ctx.beginPath(); ctx.arc(sunX, sunY, 15, 0, Math.PI * 2); ctx.fill();
+    if (!sky || sky.sun !== false) {
+      // sol naciente por el este, detrás de los cerros
+      const sunX = 78 + day * 40, sunY = 112 - day * 82 - (camy - anchor) * 0.03;
+      const sunCol = lerpColor('#ffb066', '#fff3cf', day);
+      const glow = ctx.createRadialGradient(sunX, sunY, 4, sunX, sunY, 150 - day * 90);
+      glow.addColorStop(0, 'rgba(255,200,130,' + (0.75 - day * 0.45) + ')'); glow.addColorStop(1, 'rgba(255,170,110,0)');
+      ctx.fillStyle = glow; ctx.fillRect(0, 0, BASE_W, BASE_H);
+      ctx.fillStyle = sunCol; ctx.beginPath(); ctx.arc(sunX, sunY, 15, 0, Math.PI * 2); ctx.fill();
+    }
     for (let i = 0; i < layers.length; i++) {
       const L = layers[i];
       if (L.kind === 'clouds') { drawClouds(L, camx, -(camy - anchor) * 0.05, tag + 'c' + i, ctx); if (tag === 'w') drawSkyCondors(-(camy - anchor) * 0.06); continue; }
@@ -416,7 +456,7 @@
     // el día avanza con el reloj: amanece al empezar, mañana clara al llegar
     const day = dayProgress();
     const camx = Game.cam.x, camy = Game.cam.y;
-    drawSkyAndLayers(ctx, lv.bgLayers, lv.anchorRow, day, camx, camy, 'w');
+    drawSkyAndLayers(ctx, lv.bgLayers, lv.anchorRow, day, camx, camy, 'w', lv.sky);
     // al bajar a la selva amazónica el fondo andino se funde con lomas de selva brumosas
     const E = lv.bgEast;
     if (E) {
@@ -428,6 +468,16 @@
         ctx.globalAlpha = w; ctx.drawImage(bgEastCanvas, 0, 0); ctx.globalAlpha = 1;
       }
     }
+    // otros capítulos: varios fondos que se funden uno tras otro a lo largo del nivel
+    (lv.bgZones || []).forEach((Z, i) => {
+      const w = clamp((camx / TILE - Z.x0) / (Z.x1 - Z.x0), 0, 1);
+      if (w <= 0) return;
+      if (w >= 1) { drawSkyAndLayers(ctx, Z.layers, Z.anchorRow, day, camx, camy, 'z' + i, Z.sky); return; }
+      if (!bgEastCanvas || bgEastCanvas.width !== BASE_W || bgEastCanvas.height !== BASE_H) bgEastCanvas = PIX.createCanvas(BASE_W, BASE_H);
+      const ec = bgEastCanvas.getContext('2d'); ec.imageSmoothingEnabled = false;
+      drawSkyAndLayers(ec, Z.layers, Z.anchorRow, day, camx, camy, 'z' + i, Z.sky);
+      ctx.globalAlpha = w; ctx.drawImage(bgEastCanvas, 0, 0); ctx.globalAlpha = 1;
+    });
 
     ctx.save();
     ctx.translate(Math.round(-camx + sx), Math.round(-camy + sy));
@@ -437,6 +487,7 @@
     renderCanyon(lv);
     renderJungle(lv);
     renderBackdrop(lv);
+    if (lv.renderBack) lv.renderBack(ctx, Game);   // terreno y decorado propios de otros capítulos
     for (const e of Game.entities) if (e.drawBack) e.drawBack(ctx, Game);
     renderTiles(lv);
     renderInflow(lv);
@@ -446,9 +497,11 @@
     const p = Game.player;
     if (Game.state !== 'respawn' && !p.won) { p.draw(ctx, Game); p.drawRider(ctx); }
     renderFront(lv);
+    for (const e of Game.entities) if (e.drawFront) e.drawFront(ctx, Game);
     renderParticles();
     ctx.restore();
     renderSnowfall(lv, camy);
+    if (lv.renderScreen) lv.renderScreen(ctx, Game);   // efectos de pantalla (garúa...)
     renderAttackAlert();
     // luz fría y violácea del amanecer que se va disipando
     if (day < 1) { ctx.fillStyle = 'rgba(70,40,110,' + (0.22 * (1 - day)) + ')'; ctx.fillRect(0, 0, BASE_W, BASE_H); }
@@ -986,6 +1039,7 @@
     const lf = Game.entities.find(e => e instanceof Leaf), pl = Game.player;
     if (lf && !lf.taken && Math.abs(pl.cx - lf.cx) < 90 && Math.abs(pl.cy - lf.cy) < 60 && !pl.riding) hintBox(['TOMA LA HOJA DE PLÁTANO']);
     else if (pl.gliding && pl.onGround && pl.y < 100 * TILE) hintBox(['¡SALTA AL VACÍO PARA PLANEAR!']);
+    else for (const e of Game.entities) { const h = e.hint && e.hint(Game); if (h) { hintBox(h); break; } }   // ayudas de otros capítulos
     // aviso breve (p. ej. al tocar un punto de control)
     if (Game.toastMsg) {
       const tm = Game.toastMsg, w = textWidth(tm.text) + 14;
@@ -997,8 +1051,9 @@
     if (Game.banner < 170) {
       const a = Math.min(1, (170 - Game.banner) / 40);
       ctx.globalAlpha = a;
-      drawText(ctx, 'LA MARATÓN DE LOS ANDES', BASE_W / 2, 64, { scale: BASE_W < 300 ? 1 : 2, color: '#ffd166', align: 'center', shadow: true, shadowColor: '#5a2a12' });
-      drawText(ctx, '¡LLEGA A TIEMPO A CLASES!', BASE_W / 2, 86, { color: '#ffffff', align: 'center', shadow: true, shadowColor: '#00000099' });
+      const bn = Game.chapter.banner;
+      drawText(ctx, bn[0], BASE_W / 2, 64, { scale: BASE_W < 300 ? 1 : 2, color: '#ffd166', align: 'center', shadow: true, shadowColor: '#5a2a12' });
+      drawText(ctx, bn[1], BASE_W / 2, 86, { color: '#ffffff', align: 'center', shadow: true, shadowColor: '#00000099' });
       ctx.globalAlpha = 1;
     }
   }
@@ -1011,8 +1066,11 @@
     if (Game.state === 'respawn') {
       const a = Math.min(1, Game.stateT / 16);
       ctx.fillStyle = 'rgba(11,10,18,' + (a * 0.85) + ')'; ctx.fillRect(0, 0, BASE_W, BASE_H);
-      drawText(ctx, '¡ACHACHÁU!', BASE_W / 2, BASE_H / 2 - 14, { scale: 2, color: '#ffd166', align: 'center', shadow: true });
-      if (Game.stateT > 30) drawText(ctx, 'PULSA ESPACIO PARA SEGUIR', BASE_W / 2, BASE_H / 2 + 14, { color: '#fff3d6', align: 'center' });
+      const ch = Game.chapter, msg = ch.deathMsgs && (ch.deathMsgs[Game.lastDeath] || ch.deathMsgs.default);
+      drawText(ctx, ch.deathTitle || '¡ACHACHÁU!', BASE_W / 2, BASE_H / 2 - 14, { scale: 2, color: '#ffd166', align: 'center', shadow: true });
+      // la causa, con jerga (solo en los capítulos que la traen)
+      if (msg) drawText(ctx, msg, BASE_W / 2, BASE_H / 2 + 8, { color: '#f2917d', align: 'center', shadow: true });
+      if (Game.stateT > 30) drawText(ctx, 'PULSA ESPACIO PARA SEGUIR', BASE_W / 2, BASE_H / 2 + (msg ? 26 : 14), { color: '#fff3d6', align: 'center' });
     }
   }
 
@@ -1032,15 +1090,22 @@
     ctx.globalAlpha = a;
     const bob = Math.sin(tick / 12) * 2;
     const narrow = BASE_W < 300;   // celular en vertical: textos más cortos
-    drawText(ctx, '¡LLEGASTE A CLASES!', BASE_W / 2, 30 + bob, { scale: narrow ? 1 : 2, color: '#ffd166', align: 'center', shadow: true, shadowColor: '#5a2a12' });
+    // cada capítulo puede traer sus propios textos, personajes y filas (win)
+    const W = Game.chapter.win || {};
+    drawText(ctx, W.title || '¡LLEGASTE A CLASES!', BASE_W / 2, 30 + bob, { scale: narrow ? 1 : 2, color: '#ffd166', align: 'center', shadow: true, shadowColor: '#5a2a12' });
     const onTime = Game.arrival < CLASS_START;
-    drawText(ctx, onTime ? (narrow ? 'ANTES DE LAS 8:00' : 'AL AIRE LIBRE, ANTES DE LAS 8:00') : (narrow ? 'LLEGASTE TARDE...' : 'LA CLASE YA HABÍA EMPEZADO...'), BASE_W / 2, 54, { color: onTime ? '#f4e9d8' : '#f2917d', align: 'center' });
-    ctx.drawImage(LL.idle[0], BASE_W / 2 - 64, 74);
-    ctx.drawImage(P.run[Math.floor(tick / 7) % 4], BASE_W / 2 - 8, 76);
-    ctx.drawImage(GOAT.stand, BASE_W / 2 + 34, 81);
-    const rows = [
+    const sub = onTime ? (W.onTime || ['ANTES DE LAS 8:00', 'AL AIRE LIBRE, ANTES DE LAS 8:00']) : (W.late || ['LLEGASTE TARDE...', 'LA CLASE YA HABÍA EMPEZADO...']);
+    drawText(ctx, narrow ? sub[0] : sub[1], BASE_W / 2, 54, { color: onTime ? '#f4e9d8' : '#f2917d', align: 'center' });
+    if (W.drawCast) W.drawCast(ctx, BASE_W / 2, tick);
+    else {
+      ctx.drawImage(LL.idle[0], BASE_W / 2 - 64, 74);
+      ctx.drawImage(P.run[Math.floor(tick / 7) % 4], BASE_W / 2 - 8, 76);
+      ctx.drawImage(GOAT.stand, BASE_W / 2 + 34, 81);
+    }
+    const arrival = ['LLEGADA', clockText(Game.arrival) + (onTime ? ' ¡A TIEMPO!' : ' TARDE'), onTime ? '#9be7c4' : '#f2917d'];
+    const rows = W.rows ? W.rows(Game, narrow, arrival) : [
       [narrow ? 'HOJAS' : 'HOJAS DE TAREA', Game.pages + ' / 3', '#ffffff'],
-      ['LLEGADA', clockText(Game.arrival) + (onTime ? ' ¡A TIEMPO!' : ' TARDE'), onTime ? '#9be7c4' : '#f2917d'],
+      arrival,
       [narrow ? 'PASTO' : 'PASTO PARA LA CABRA', '' + Game.herbs, '#8fd062'],
       ['CAÍDAS', '' + Game.deaths, '#f2917d'],
     ];
@@ -1049,9 +1114,29 @@
       drawText(ctx, r[0], BASE_W / 2 - half, 112 + i * 13, { color: '#cdbde8' });
       drawText(ctx, r[1], BASE_W / 2 + half, 112 + i * 13, { color: r[2], align: 'right' });
     });
-    if (Game.pages === 3) drawText(ctx, narrow ? '¡TAREA COMPLETA!' : '¡TAREA COMPLETA! LA PROFE ESTARÁ ORGULLOSA', BASE_W / 2, 170, { color: '#9be7c4', align: 'center' });
-    if (Game.stateT > 90 && Math.floor(tick / 24) % 2 === 0) drawText(ctx, narrow ? 'PULSA A PARA SEGUIR' : 'PULSA ESPACIO PARA VOLVER AL MENÚ', BASE_W / 2, 194, { color: '#fff3d6', align: 'center' });
+    const done = W.allPages || ['¡TAREA COMPLETA!', '¡TAREA COMPLETA! LA PROFE ESTARÁ ORGULLOSA'];
+    if (Game.pages === 3) drawText(ctx, narrow ? done[0] : done[1], BASE_W / 2, 170, { color: '#9be7c4', align: 'center' });
+    renderWinOptions(narrow);
     ctx.globalAlpha = 1;
+  }
+  // al pie: ir al siguiente capítulo (si ya existe) o volver al menú
+  function renderWinOptions(narrow) {
+    if (Game.stateT <= 90) return;
+    const opts = winOptions();
+    if (opts.length === 1) {
+      if (Game.chapterIdx + 1 < CHAPTER_SLOTS) drawText(ctx, 'CAPÍTULO ' + (Game.chapterIdx + 2) + ': ¡PRÓXIMAMENTE!', BASE_W / 2, 182, { color: '#cdbde8', align: 'center' });
+      if (Math.floor(tick / 24) % 2 === 0) drawText(ctx, narrow ? 'PULSA A PARA SEGUIR' : 'PULSA ESPACIO PARA VOLVER AL MENÚ', BASE_W / 2, 194, { color: '#fff3d6', align: 'center' });
+      return;
+    }
+    const labels = [narrow ? 'SIGUIENTE' : 'SIGUIENTE CAPÍTULO', 'MENÚ'], gap = 26;
+    const ws = labels.map(l => textWidth(l)), total = ws[0] + ws[1] + gap;
+    let x = BASE_W / 2 - total / 2;
+    labels.forEach((l, i) => {
+      const sel = i === Game.winSel;
+      drawText(ctx, l, x, 194, { color: sel ? '#ffffff' : '#b9b3d6' });
+      if (sel && Math.floor(tick / 16) % 2 === 0) { drawText(ctx, '>', x - 10, 194, { color: '#ffd166' }); drawText(ctx, '<', x + ws[i] + 4, 194, { color: '#ffd166' }); }
+      x += ws[i] + gap;
+    });
   }
 
   // ── menú principal: amanecer en los Andes, el niño va con su llama ────────
@@ -1080,14 +1165,54 @@
     const ts = BASE_W < 260 ? 2 : 3;   // en pantallas angostas (celular vertical) el título es más chico
     drawText(ctx, 'LA MARATÓN', BASE_W / 2, 34 + bob, { scale: ts, color: '#ffd166', align: 'center', shadow: true, shadowColor: '#5a2a12' });
     drawText(ctx, 'DE LOS ANDES', BASE_W / 2, (ts === 3 ? 60 : 54) + bob, { scale: ts, color: '#ffd166', align: 'center', shadow: true, shadowColor: '#5a2a12' });
-    drawText(ctx, BASE_W < 260 ? '¡ANTES DE LAS 8:00!' : '¡LLEGA AL COLE ANTES DE LAS 8:00!', BASE_W / 2, (ts === 3 ? 90 : 78) + bob, { color: '#fff3d6', align: 'center', shadow: true, shadowColor: '#00000088' });
+    // el objetivo del capítulo elegido
+    const chSel = CHAPTERS[Game.menuChapter];
+    const goal = chSel ? (BASE_W < 260 ? chSel.goalShort : chSel.goal) : '¡MUY PRONTO!';
+    drawText(ctx, goal, BASE_W / 2, (ts === 3 ? 90 : 78) + bob, { color: '#fff3d6', align: 'center', shadow: true, shadowColor: '#00000088' });
     // en vertical se juega mejor girando el teléfono
-    if (BASE_H > BASE_W) drawText(ctx, '¡GIRA EL TELÉFONO!', BASE_W / 2, MENU_Y + 3 * MENU_DY + 10, { color: '#ffd166', align: 'center', shadow: true, shadowColor: '#000000' });
+    if (BASE_H > BASE_W) drawText(ctx, '¡GIRA EL TELÉFONO!', BASE_W / 2, MENU_Y + 2 * MENU_DY + 10, { color: '#ffd166', align: 'center', shadow: true, shadowColor: '#000000' });
+    renderChapterCards(ts === 3 ? CARDS_Y : CARDS_Y - 10);
     MENU_OPTS().forEach((o, i) => {
-      const sel = i === Game.menuSel, y = MENU_Y + i * MENU_DY;
+      if (i === 0) return;   // "JUGAR" es el selector de capítulos
+      const sel = i === Game.menuSel, y = MENU_Y + (i - 1) * MENU_DY;
       drawText(ctx, o, BASE_W / 2, y, { color: sel ? '#ffffff' : '#e7d3c4', align: 'center', shadow: true, shadowColor: '#00000099' });
       if (sel) { const w = textWidth(o); drawText(ctx, '>', BASE_W / 2 - w / 2 - 12, y, { color: '#ffd166' }); drawText(ctx, '<', BASE_W / 2 + w / 2 + 6, y, { color: '#ffd166' }); }
     });
+  }
+  // SELECTOR DE CAPÍTULO: una tarjeta por capítulo (los que faltan, con candado).
+  // En pantallas angostas se ve solo la elegida, con flechas a los lados.
+  function renderChapterCards(y) {
+    const active = Game.menuSel === 0, narrow = BASE_W < 320;
+    const cw = narrow ? Math.min(130, BASE_W - 44) : 100, chh = 30, gap = 8;
+    const idx = narrow ? [Game.menuChapter] : [...Array(CHAPTER_SLOTS).keys()];
+    let x = Math.round(BASE_W / 2 - (idx.length * cw + (idx.length - 1) * gap) / 2);
+    for (const i of idx) {
+      const ch = CHAPTERS[i], sel = i === Game.menuChapter;
+      const shake = sel && Game.lockedT > 0 ? Math.round(Math.sin(Game.lockedT * 1.6) * 2) : 0;
+      const cy = y - (sel && active ? 2 : 0), cx = x + shake;
+      // borde: dorado si está elegida, tenue si no
+      ctx.fillStyle = sel ? (active && Math.floor(tick / 20) % 2 ? '#fff3d6' : '#ffd166') : 'rgba(255,240,210,0.25)';
+      ctx.fillRect(cx - 1, cy - 1, cw + 2, chh + 2);
+      ctx.fillStyle = ch ? 'rgba(28,18,30,0.86)' : 'rgba(20,16,28,0.9)'; ctx.fillRect(cx, cy, cw, chh);
+      ctx.fillStyle = ch ? ch.color : '#4a4458'; ctx.fillRect(cx, cy, cw, 3);   // franja de color del capítulo
+      drawText(ctx, 'CAPÍTULO ' + (i + 1), cx + cw / 2, cy + 7, { color: ch ? '#ffd166' : '#8a8296', align: 'center' });
+      if (ch) drawText(ctx, ch.short, cx + cw / 2, cy + 18, { color: sel ? '#ffffff' : '#e7d3c4', align: 'center' });
+      else {
+        // candado + PRÓXIMAMENTE
+        const lx = Math.round(cx + cw / 2 - textWidth('PRÓXIMAMENTE') / 2 - 9);
+        ctx.fillStyle = '#8a8296'; ctx.fillRect(lx + 1, cy + 17, 5, 1); ctx.fillRect(lx, cy + 18, 1, 2); ctx.fillRect(lx + 6, cy + 18, 1, 2);
+        ctx.fillStyle = '#b9b1c2'; ctx.fillRect(lx - 1, cy + 20, 9, 6); ctx.fillStyle = '#5d5768'; ctx.fillRect(lx + 3, cy + 22, 1, 2);
+        drawText(ctx, 'PRÓXIMAMENTE', cx + cw / 2 + 5, cy + 19, { color: '#8a8296', align: 'center' });
+      }
+      x += cw + gap;
+    }
+    if (active) {
+      // flechas: izquierda/derecha cambia de capítulo
+      const L = narrow ? Math.round(BASE_W / 2 - cw / 2) : Math.round(BASE_W / 2 - (CHAPTER_SLOTS * cw + (CHAPTER_SLOTS - 1) * gap) / 2);
+      const R = BASE_W - L, ay = y + 11 + (Math.floor(tick / 16) % 2);
+      drawText(ctx, '<', L - 12, ay, { color: '#ffd166', shadow: true, shadowColor: '#00000099' });
+      drawText(ctx, '>', R + 6, ay, { color: '#ffd166', shadow: true, shadowColor: '#00000099' });
+    }
   }
 
   function renderControls() {
@@ -1098,7 +1223,8 @@
       drawText(ctx, r[0], 30, 50 + i * 15, { color: '#9be7c4' });
       drawText(ctx, r[1], BASE_W - 30, 50 + i * 15, { color: '#f4e9d8', align: 'right' });
     });
-    const tips = ['LLAMA: TÓCALA PARA MONTARLA. CORRE Y SALTA MÁS.', 'CABRA: SALTA SOLA. TÚ SOLO LA GUÍAS.', 'EL PASTO LE DA A LA CABRA UN SÚPER SALTO.', 'HUAICO: SI CAES, PULSA SALTO MUY SEGUIDO.'];
+    const chSel = CHAPTERS[Game.menuChapter];
+    const tips = (chSel && chSel.tips) || ['LLAMA: TÓCALA PARA MONTARLA. CORRE Y SALTA MÁS.', 'CABRA: SALTA SOLA. TÚ SOLO LA GUÍAS.', 'EL PASTO LE DA A LA CABRA UN SÚPER SALTO.', 'HUAICO: SI CAES, PULSA SALTO MUY SEGUIDO.'];
     tips.forEach((t, i) => drawText(ctx, t, BASE_W / 2, 132 + i * 12, { color: '#cdbde8', align: 'center' }));
     drawText(ctx, 'PULSA ESPACIO PARA VOLVER', BASE_W / 2, 196, { color: '#fff3d6', align: 'center' });
   }
@@ -1157,8 +1283,24 @@
     // solo teclado (y los botones táctiles en móvil): el ratón no hace nada
     const firstGesture = () => { AUDIO.resume(); if (Game.state === 'menu') AUDIO.playMusic(SONGS.menu); window.removeEventListener('keydown', firstGesture); };
     window.addEventListener('keydown', firstGesture);
+    debugFromURL();
     requestAnimationFrame(frame);
   }
+  // modo de prueba solo por URL: ?cap=2 entra directo al capítulo 2 y
+  // &x=NNN (&y=NN) te deja en esa columna (y fila), con punto de control ahí
+  function debugFromURL() {
+    const q = new URLSearchParams(location.search), cap = parseInt(q.get('cap'), 10);
+    if (!(cap >= 1 && CHAPTERS[cap - 1])) return;
+    startGame(cap - 1);
+    if (q.has('x')) Game.debugTeleport(+q.get('x'), q.has('y') ? +q.get('y') : null);
+  }
+  Game.debugTeleport = (tx, ty) => {
+    const lv = Game.level, p = Game.player;
+    if (ty == null) { ty = 0; while (ty < lv.rows - 1 && !isSolidCode(lv.tile(tx, ty)) && !isOnewayCode(lv.tile(tx, ty))) ty++; }
+    p.riding = null; p.x = tx * TILE + 4; p.y = ty * TILE - p.h; p.vx = 0; p.vy = 0;
+    Game.spawn = { x: p.x, y: ty * TILE }; Game.spawnMount = null;
+    Game.floorY = p.cy; updateCamera(true);
+  };
   Game.debugStep = update;
   Game.debugRender = render;
   Game.startGame = startGame;

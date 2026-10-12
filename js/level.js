@@ -364,4 +364,17 @@ const LEVEL = {
   ],
 };
 
-const LEVELS = [buildLevel(LEVEL)];
+// ── Capítulos ───────────────────────────────────────────────────────────────
+// Cada capítulo tiene su título, su objetivo (siempre llegar antes de las 8:00,
+// cada uno con su razón) y su nivel. Los siguientes se agregan en orden con
+// CHAPTERS.push desde su propio archivo (js/cap2.js, js/cap3.js...). Los huecos
+// hasta CHAPTER_SLOTS aparecen en el menú como "PRÓXIMAMENTE".
+// Campos opcionales (si faltan, se usa lo del Capítulo 1): dayStart (minutos),
+// deathTitle, deathMsgs {tipo: texto}, win {...}, tips [...] (ver game.js).
+const CHAPTER_SLOTS = 3;
+const CHAPTERS = [{
+  num: 1, title: 'LA MARATÓN DE LOS ANDES', short: 'LOS ANDES', color: '#8a6fa6',
+  goal: '¡LLEGA AL COLE ANTES DE LAS 8:00!', goalShort: '¡ANTES DE LAS 8:00!',
+  banner: ['LA MARATÓN DE LOS ANDES', '¡LLEGA A TIEMPO A CLASES!'],
+  level: buildLevel(LEVEL),
+}];

@@ -365,7 +365,7 @@ class Player extends Actor {
     }
   }
   drawRider(ctx) {
-    if (!this.riding) return;
+    if (!this.riding || this.riding.drawsRider) return;   // algunas monturas dibujan al niño ellas mismas
     const img = this.riding.facing < 0 ? flipS(P.sit) : P.sit;
     ctx.drawImage(img, Math.round(this.cx - 8), Math.round(this.y + this.h - 22));
   }
@@ -1368,6 +1368,8 @@ class Bridge extends Actor {
   }
 }
 
+// entidades de otros capítulos: cada archivo de capítulo registra las suyas aquí
+const EXTRA_ENTITIES = {};
 function makeEntity(def, level) {
   switch (def.type) {
     case 'llama': return new Llama(def.x * TS, def.y * TS);
@@ -1391,6 +1393,6 @@ function makeEntity(def, level) {
     case 'page': return new Pickup('page', def.x, def.y);
     case 'herb': return new Pickup('herb', def.x, def.y);
     case 'condor': return new Condor(def);
-    default: return null;
+    default: return EXTRA_ENTITIES[def.type] ? EXTRA_ENTITIES[def.type](def, level) : null;
   }
 }
