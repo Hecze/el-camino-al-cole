@@ -157,7 +157,7 @@
     p.riding = null; p.x = Game.spawn.x; p.y = Game.spawn.y - p.h;
     p.vx = 0; p.vy = 0; p.dragged = false; p.overEdge = false; p.stickT = 0; p.gliding = false; p.glideAir = 0; p.fallFrom = null;
     Game.entities = Game.entities.filter(e => !(e instanceof FallingLeaf)); p.mountCd = 0; p.invuln = 50; p.lastMover = null;
-    const m = Game.spawnMount;
+    const m = Game.spawnMount && !Game.spawnMount.retired ? Game.spawnMount : null;
     if (m) { m.x = p.cx - m.w / 2; m.y = Game.spawn.y - m.h; m.vx = 0; m.vy = 0; p.mount(m, Game, true); }
     Game.floorY = p.cy;
     updateCamera(true);
