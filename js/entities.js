@@ -574,12 +574,12 @@ class Debris extends Actor {
   }
 }
 
-// Casa de adobe al fondo, sobre un barranco al borde del huaico. Un segundo
-// después de verla entera en pantalla, el lodo empieza a comerse el barranco:
+// Casa de adobe al fondo, sobre un barranco al borde del huaico. Apenas se
+// ve la mitad en pantalla, el lodo empieza a comerse el barranco:
 // el terreno baja y se desmorona, la casa baja con él hasta que su piso toca
 // el lodo; la corriente la golpea, la ladea y se la lleva aguas abajo mientras
 // se hunde. El techo de calamina se suelta y sigue flotando como balsa (se
-// puede pisar), junto con dos vigas. La casa se dibuja detrás del lodo, así
+// puede pisar), junto con dos vigas. Todo dura unos 5 segundos. La casa se dibuja detrás del lodo, así
 // que lo que se hunde queda tapado por la corriente.
 class CollapseHouse extends Actor {
   constructor(x, y) {
@@ -597,34 +597,34 @@ class CollapseHouse extends Actor {
     const hu = g.huaico, cam = g.cam;
     const surf = () => (hu && hu.surfaceAt(this.hx + this.dx)) || this.base;
     if (this.state === 'stand') {
-      // un segundo después de que la casa entra entera en la pantalla
-      const inView = this.hx - 46 >= cam.x && this.hx + 46 <= cam.x + VIEW.w && this.base - 70 >= cam.y && this.base <= cam.y + VIEW.h;
+      // apenas se ve la mitad de la casa en la pantalla
+      const inView = this.hx <= cam.x + VIEW.w && this.hx - 46 >= cam.x - 40 && this.base <= cam.y + VIEW.h;   // ya se ve la mitad
       this.seen = inView ? this.seen + 1 : 0;
-      if (this.seen > 60 && g.state === 'play') { this.state = 'erode'; this.t = 0; g.audio('rumble'); }
+      if (this.seen > 10 && g.state === 'play') { this.state = 'erode'; this.t = 0; g.audio('rumble'); }
     } else if (this.state === 'erode') {
       // el lodo se come el barranco: baja de a pocos y se desprenden terrones
-      this.bank = Math.min(2, this.bank + 0.12);
-      this.tilt = -Math.min(0.12, this.t * 0.0012);
-      if (this.t % 7 === 0) {
+      this.bank = Math.min(2, this.bank + 0.26);
+      this.tilt = -Math.min(0.12, this.t * 0.0026);
+      if (this.t % 4 === 0) {
         const side = Math.random() < 0.5 ? -1 : 1, x = this.hx + side * (30 + Math.random() * 14);
         g.particles.push({ x, y: this.base + this.bank - 2, vx: side * 0.3, vy: -0.4, life: 30, max: 30, col: Math.random() < 0.5 ? '#6e4627' : '#5a3b22', size: 2, grav: 0.2 });
         g.burst(x, this.base, 'mud', 3);
       }
-      if (this.t % 50 === 0) { g.audio('mud'); g.audio('creak'); }
+      if (this.t % 30 === 0) { g.audio('mud'); g.audio('creak'); }
       if (this.bank >= 2) { this.state = 'hit'; this.t = 0; g.audio('crush'); g.audio('splash'); g.shake(2, 14); }
     } else if (this.state === 'hit') {
       // la corriente golpea las paredes: salpica y la empieza a ladear
-      this.tilt = -0.12 - Math.min(0.18, this.t * 0.005);
-      this.dy = Math.min(6, this.t * 0.15);
+      this.tilt = -0.12 - Math.min(0.18, this.t * 0.008);
+      this.dy = Math.min(6, this.t * 0.25);
       if (this.t % 4 === 0) g.burst(this.hx + 30 - Math.random() * 10, this.base - 2, 'foam', 4);
-      if (this.t > 40) { this.state = 'drag'; this.t = 0; g.audio('creak'); }
+      if (this.t > 25) { this.state = 'drag'; this.t = 0; g.audio('creak'); }
     } else if (this.state === 'drag') {
       // aguas abajo (hacia la izquierda), cada vez más hundida y ladeada
-      this.dx -= (hu ? hu.speed : 0.75) * Math.min(1, this.t / 60) * 0.9;
-      this.dy = Math.min(64, 6 + this.t * 0.11) + (surf() - this.base);
-      this.tilt = -0.3 - Math.min(0.45, this.t * 0.0018) + Math.sin(this.t * 0.08) * 0.04;
+      this.dx -= (hu ? hu.speed : 0.75) * Math.min(1, this.t / 30) * 1.1;
+      this.dy = Math.min(64, 6 + this.t * 0.32) + (surf() - this.base);
+      this.tilt = -0.3 - Math.min(0.45, this.t * 0.0055) + Math.sin(this.t * 0.1) * 0.04;
       if (this.t % 5 === 0) g.burst(this.hx + this.dx + 28, surf() - 2, 'foam', 3);
-      if (this.roofOn && this.t === 150) {
+      if (this.roofOn && this.t === 55) {
         // el techo se suelta y se lo lleva la corriente, flotando
         this.roofOn = false; g.audio('snap');
         if (hu) for (const [kind, ox] of [['roof', 0], ['log', -60], ['log', 58]]) {
@@ -632,7 +632,7 @@ class CollapseHouse extends Actor {
         }
         g.burst(this.hx + this.dx, surf() - 4, 'mud', 16);
       }
-      if (this.t > 120 && 6 + this.t * 0.11 >= 64) { this.state = 'gone'; this.t = 0; }
+      if (this.t > 55 && 6 + this.t * 0.32 >= 64) { this.state = 'gone'; this.t = 0; }
     }
   }
   draw() {}
