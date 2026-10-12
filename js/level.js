@@ -214,7 +214,7 @@ const SCH = SV + SWID;   // donde empieza el pueblo ribereño del colegio
 const sx = (lx) => SV + lx;
 
 const LEVEL = {
-  name: 'LA MARATÓN DE LOS ANDES', w: SCH + 30, h: 150,
+  name: 'LA MARATÓN DE LOS ANDES', w: SCH + 44, h: 150,
   anchorRow: G,
   bgLayers: [
     { kind: 'mountains', color: '#8c93c9', color2: '#6d72a6', y: G - 3.4, parallax: 0.08, vpar: 0.10, amp: 8.5, seed: 5, snow: true },
@@ -279,7 +279,7 @@ const LEVEL = {
     // parte 5: la orilla de salida, que sube suave hacia la quebrada cálida
     [sx(114), 110, 6, 40, 'jungle'],
     // ── EL PUEBLO RIBEREÑO: el colegio ──
-    [SCH, 110, 30, 40, 'jungle'],
+    [SCH, 110, 44, 40, 'jungle'],
   ],
   platforms: [
     ...MTN.up,
@@ -337,8 +337,11 @@ const LEVEL = {
     // casa al borde del huaico: se derrumba cuando pasas y la corriente se lleva su techo y sus vigas
     { type: 'collapseHouse', x: 213, y: 107 },
     // el colegio se cae a pedazos... la clase se da afuera, sentados en el suelo
-    { type: 'school', x: SCH + 8, y: 110 },
-    { type: 'outdoorClass', x: SCH + 16, y: 110 },
+    // profesores en huelga delante del colegio que está por caerse
+    { type: 'striker', x: SCH + 1.5, y: 110, v: 0, slot: 0, sign: ['¡HUELGA!'], say: ['¡EL COLE SE PUEDE', 'CAER EN CUALQUIER', 'MOMENTO!'] },
+    { type: 'striker', x: SCH + 6.5, y: 110, v: 1, slot: 1, flip: true, sign: ['¡ARREGLEN', 'EL COLE!'], say: ['¡HACE AÑOS PEDIMOS', 'QUE LO ARREGLEN!'] },
+    { type: 'school', x: SCH + 14, y: 110 },
+    { type: 'outdoorClass', x: SCH + 22, y: 110 },
     ...BIRDS,
     ...HERBS,
     // las 3 hojas de tarea que se le volaron al niño, enganchadas en el camino
@@ -354,7 +357,7 @@ const LEVEL = {
     ['fern', 146, 109], ['bamboo', 149, 109], ['fern', 154, 109],
     ['bamboo', 247, 102], ['fern', 250, 102], ['fern', 254, 102], ['bamboo', 262, 107],
     // pueblo ribereño
-    ['fern', SCH + 1, 109], ['bamboo', SCH + 3, 109], ['fern', SCH + 27, 109]
+    ['fern', SCH + 1, 109], ['bamboo', SCH + 3, 109], ['fern', SCH + 41, 109]
   ],
 };
 

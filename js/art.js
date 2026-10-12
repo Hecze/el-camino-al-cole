@@ -738,6 +738,37 @@ OBJ.teacher = spr([
   '..KKKK.KKKK...',
   '..............',
 ]);
+// profesora en huelga: chompa naranja y pelo largo
+OBJ.teacher2 = spr([
+  '....KKKKK.....',
+  '...KhhhhhK....',
+  '..KhhhhhhhK...',
+  '.KhhhaaaaahK..',
+  '.KhhaKKaKKhK..',
+  '.KhhaK1K1ahK..',
+  '.KhKaaaaaaKhK.',
+  '.KhKaaRaaaKhK.',
+  '....KKaaKK....',
+  '...KooooooK...',
+  '..KoooyooooK..',
+  '..KoooyooooaK.',
+  '..KoooyoooK1K.',
+  '..KoooyoooK...',
+  '..KaooyoooK...',
+  '...KooyooK....',
+  '...KQQQQQK....',
+  '...KQQQQQK....',
+  '...KQQKQQK....',
+  '...KQQKQQK....',
+  '...KQQKQQK....',
+  '...KQQKQQK....',
+  '...KQQKQQK....',
+  '...KQQKQQK....',
+  '...KQQKQQK....',
+  '...KKKKKKKK...',
+  '..KKKK.KKKK...',
+  '..............',
+]);
 // cóndor que cruza el risco (obstáculo): colores reales, 28x12
 E.condorBig = [
   spr([

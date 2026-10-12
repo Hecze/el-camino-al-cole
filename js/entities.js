@@ -915,7 +915,10 @@ class School extends Actor {
     ctx.save(); ctx.translate(bx + 60, base - 15);
     for (const [ang, oy] of [[0.5, -6], [-0.5, -6], [0.1, 6]]) { ctx.save(); ctx.rotate(ang); ctx.fillStyle = '#8a5a30'; ctx.fillRect(-15, oy - 2, 30, 4); ctx.fillStyle = '#6b4524'; ctx.fillRect(-15, oy + 1, 30, 1); ctx.restore(); }
     ctx.restore();
-    R('#d8432f', 28, -25, 64, 9); drawText(ctx, 'CLAUSURADO', bx + 60, base - 24, { color: '#ffffff', align: 'center' });
+    // cinta de peligro cruzando la puerta
+    ctx.save(); ctx.translate(bx + 60, base - 18); ctx.rotate(-0.25);
+    for (let k = -18; k < 18; k += 4) { ctx.fillStyle = (k / 4) & 1 ? '#1d1622' : '#f6c94a'; ctx.fillRect(k, -2, 4, 3); }
+    ctx.restore();
     // techo de calamina ondulada, oxidada, con planchas que faltan y vigas a la vista
     for (let i = 0; i < 18; i++) {
       const y = -64 + i, inset = Math.round((17 - i) * 0.7);
@@ -940,6 +943,16 @@ class School extends Actor {
     ctx.fillStyle = '#e2b13c'; ctx.fillRect(-2, -14, 5, 6); ctx.fillStyle = '#3a2414'; ctx.fillRect(4, -22, 1, 6); ctx.fillRect(-9, -8, 1, 5);
     ctx.restore();
     ctx.restore();
+    // letrero de Defensa Civil clavado delante: explica por qué no hay clases adentro
+    const sx0 = bx + 70, sy0 = base - 52;
+    ctx.fillStyle = '#6b4524'; ctx.fillRect(sx0 + 8, sy0 + 40, 3, 12); ctx.fillRect(sx0 + 55, sy0 + 40, 3, 12);
+    ctx.fillStyle = '#1d1622'; ctx.fillRect(sx0 - 1, sy0 - 1, 68, 43);
+    ctx.fillStyle = '#d8432f'; ctx.fillRect(sx0, sy0, 66, 41);
+    ctx.fillStyle = '#f6c94a'; ctx.fillRect(sx0 + 2, sy0 + 11, 62, 28);
+    drawText(ctx, '¡PELIGRO!', sx0 + 33, sy0 + 2, { color: '#ffffff', align: 'center' });
+    drawText(ctx, 'RIESGO DE', sx0 + 33, sy0 + 13, { color: '#1d1622', align: 'center' });
+    drawText(ctx, 'COLAPSO', sx0 + 33, sy0 + 22, { color: '#1d1622', align: 'center' });
+    drawText(ctx, 'INMINENTE', sx0 + 33, sy0 + 31, { color: '#962a22', align: 'center' });
   }
 }
 
@@ -952,6 +965,56 @@ function studentSprites() {
   _students = STUDENT_COLORS.map(c => PIX.fromRows(KID_TOP.concat(KID_LEGS.sit), Object.assign({}, PAL, c)));
   return _students;
 }
+// Globo de diálogo (como en las historietas): fondo blanco, borde oscuro y
+// colita apuntando a quien habla. (x, y) es la punta de la colita.
+function drawBubble(ctx, lines, x, y, alpha = 1) {
+  const w = Math.max(...lines.map(l => textWidth(l))) + 8, h = lines.length * 9 + 5;
+  let bx = Math.round(x - w / 2); const by = Math.round(y - 4 - h);
+  // que no se salga de la pantalla (la colita sigue apuntando a quien habla)
+  if (typeof Game !== 'undefined' && Game.cam) bx = Math.max(Math.round(Game.cam.x) + 4, Math.min(Math.round(Game.cam.x) + 384 - w - 4, bx));
+  ctx.save(); ctx.globalAlpha = alpha;
+  ctx.fillStyle = '#1d1622';
+  ctx.fillRect(bx - 1, by, w + 2, h); ctx.fillRect(bx, by - 1, w, h + 2);
+  ctx.fillStyle = '#fffaf0'; ctx.fillRect(bx, by, w, h);
+  // colita
+  ctx.fillStyle = '#1d1622'; ctx.fillRect(x - 3, by + h, 7, 1); ctx.fillRect(x - 2, by + h + 1, 5, 1); ctx.fillRect(x - 1, by + h + 2, 3, 1); ctx.fillRect(x, by + h + 3, 1, 1);
+  ctx.fillStyle = '#fffaf0'; ctx.fillRect(x - 2, by + h, 5, 1); ctx.fillRect(x - 1, by + h + 1, 3, 1); ctx.fillRect(x, by + h + 2, 1, 1);
+  lines.forEach((l, i) => drawText(ctx, l, bx + w / 2, by + 3 + i * 9, { color: '#1d1622', align: 'center' }));
+  ctx.restore();
+}
+
+// Profesores en huelga frente al colegio: marchan en el sitio con su
+// pancarta y, cuando te acercas, explican por turnos qué pasa.
+class Striker extends Actor {
+  constructor(def) {
+    const base = def.y * TS;
+    super(def.x * TS, base - 27, 14, 27);
+    this.base = base; this.v = def.v || 0; this.sign = def.sign; this.say = def.say; this.slot = def.slot || 0;
+    this.flip = !!def.flip; this.animT = def.v * 17;
+  }
+  update(g) { this.animT++; }
+  draw(ctx, g) {
+    const img = this.v ? OBJ.teacher2 : OBJ.teacher;
+    const step = Math.floor(this.animT / 18) % 2;          // marcha en el sitio
+    const x = Math.round(this.x), y = this.base - 27 - step;
+    ctx.drawImage(this.flip ? flipS(img) : img, x, y);
+    // pancarta en alto, se mueve con el ritmo de la marcha
+    const px = x + 7, py = y - 22 + (Math.floor(this.animT / 18) % 2 ? 1 : 0);
+    ctx.fillStyle = '#6b4524'; ctx.fillRect(px, py + 10, 2, 24);
+    const w = Math.max(...this.sign.map(l => textWidth(l))) + 6, h = this.sign.length * 9 + 3;
+    ctx.fillStyle = '#1d1622'; ctx.fillRect(px + 1 - w / 2 - 1, py - h + 10 - 1, w + 2, h + 2);
+    ctx.fillStyle = '#fffaf0'; ctx.fillRect(px + 1 - w / 2, py - h + 10, w, h);
+    this.sign.forEach((l, i) => drawText(ctx, l, px + 1, py - h + 12 + i * 9, { color: '#d8432f', align: 'center' }));
+    // hablan por turnos cuando el niño está cerca
+    const p = g.player, d = Math.abs(p.cx - (this.x + 7));
+    const onScreen = x > g.cam.x + 2 && x + 14 < g.cam.x + 382;
+    if (d < 170 && !p.won && onScreen) {
+      const who = Math.floor((g.T || 0) / 170) % 2;
+      if (who === this.slot) drawBubble(ctx, this.say, x + 7, py - h + 6);
+    }
+  }
+}
+
 class OutdoorClass extends Actor {
   constructor(x, y) {
     const base = y * TS;
@@ -984,6 +1047,8 @@ class OutdoorClass extends Actor {
     const near = Math.abs(g.player.cx - this.spot) < 120 && !this.done;
     ctx.drawImage(flipS(OBJ.teacher), Math.round(this.teacherX), base - 27);
     if (!near && Math.floor(this.animT / 20) % 2) { ctx.fillStyle = '#ffffff'; ctx.fillRect(this.teacherX - 1, base - 16, 2, 1); }
+    // habla mientras llegas; al acercarte a tu sitio se calla para que se vea la pizarra
+    if (Math.abs(g.player.cx - this.teacherX) < 260 && g.player.cx < this.spot - 30 && !this.done) drawBubble(ctx, ['EL COLE SE PUEDE CAER:', 'HOY LA CLASE ES AFUERA.', '¡SIÉNTATE CON TODOS!'], this.teacherX + 7, base - 30);
     // alumnos sentados en el suelo mirando la pizarra
     this.seats.forEach((sx, i) => {
       if (i === 2) {
@@ -1289,6 +1354,7 @@ function makeEntity(def, level) {
     case 'rockfall': return new Rockfall(def.x, def.y, def.interval);
     case 'huaico': return new Huaico(def, level);
     case 'collapseHouse': return new CollapseHouse(def.x, def.y);
+    case 'striker': return new Striker(def);
     case 'checkpoint': return new Checkpoint(def.x, def.y, def.w, def.h);
     case 'house': return new House(def.x, def.y);
     case 'school': return new School(def.x, def.y);
