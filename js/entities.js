@@ -1027,13 +1027,13 @@ class Mototaxi extends Actor {
     this.t++;
     if (this.run && this.t % 40 === 0) g.particles.push({ x: this.flip ? this.x + this.w - 1 : this.x + 1, y: this.base - 9, vx: this.flip ? 0.25 : -0.25, vy: -0.2, life: 50, max: 50, col: '#c8c2cc', size: 2, grav: -0.004 });
   }
-  draw() {}
-  drawBack(ctx) {
-    const sh = this.run && Math.floor(this.t / 3) % 2 ? -1 : 0, x = Math.round(this.x);
-    // sombra en diagonal: de la rueda trasera (más arriba) a la delantera
+  // se dibuja delante del suelo: la rueda trasera apoya en el borde del suelo y
+  // la delantera, más cerca de la cámara, baja un poco sobre el pasto
+  draw(ctx) {
+    const sh = this.run && Math.floor(this.t / 3) % 2 ? -1 : 0, x = Math.round(this.x), drop = 5;
     ctx.fillStyle = 'rgba(30,20,20,0.25)';
-    for (let i = 0; i <= 24; i += 2) ctx.fillRect(this.flip ? x + this.w - 4 - i : x + 1 + i, this.base - Math.round(5 * (1 - i / 24)), 3, 2);
-    ctx.drawImage(this.flip ? flipS(this.img) : this.img, x, this.base - this.img.height + 1 + sh);
+    for (let i = 0; i <= 24; i += 2) ctx.fillRect(this.flip ? x + this.w - 4 - i : x + 1 + i, this.base - 1 + Math.round(drop * i / 24), 3, 2);
+    ctx.drawImage(this.flip ? flipS(this.img) : this.img, x, this.base - this.img.height + 1 + drop + sh);
   }
 }
 
