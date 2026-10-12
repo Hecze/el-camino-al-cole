@@ -117,7 +117,8 @@ class Player extends Actor {
     if (left && !right) { ax = -accel; this.facing = -1; }
     else if (right && !left) { ax = accel; this.facing = 1; }
     if (ax !== 0) this.vx += ax; else this.vx *= (this.onGround ? 1 - PHYS.FRICTION : 0.985);
-    this.vx = Math.max(-PHYS.RUN_MAX, Math.min(PHYS.RUN_MAX, this.vx));
+    // planeando no hay límite de carrera: se aplica el del parapente más abajo
+    if (!(this.gliding && !this.onGround)) this.vx = Math.max(-PHYS.RUN_MAX, Math.min(PHYS.RUN_MAX, this.vx));
     if (Math.abs(this.vx) < 0.05) this.vx = 0;
 
     if (this.onGround) this.coyote = PHYS.COYOTE; else if (this.coyote > 0) this.coyote--;
@@ -130,7 +131,9 @@ class Player extends Actor {
     if (this.gliding && !this.onGround && this.vy > 0) {
       // planeando: caída lenta y constante; solo te mueves a los lados
       this.vy += (1.3 - this.vy) * 0.12;
-      this.vx = Math.max(-2.0, Math.min(2.0, this.vx));
+      // a los lados se mueve más rápido que caminando
+      if (Input.held('left') && !Input.held('right')) this.vx -= 0.2; else if (Input.held('right') && !Input.held('left')) this.vx += 0.2;
+      this.vx = Math.max(-3.0, Math.min(3.0, this.vx));
       const G = level.glide;
       if (G) { if (this.x < G.x0 * TS) { this.x = G.x0 * TS; this.vx = Math.max(0, this.vx); } if (this.x > G.x1 * TS) { this.x = G.x1 * TS; this.vx = Math.min(0, this.vx); } }
     } else {
@@ -640,10 +643,14 @@ class Pickup extends Actor {
 
 // Punto de control invisible: al pasar por aquí, reapareces aquí.
 class Checkpoint extends Actor {
-  constructor(x, y) { super(x * TS - 24, y * TS - 64, 64, 64); this.on = false; this.spawn = { x: x * TS + 4, y: y * TS }; }
+  constructor(x, y, w = 4, h = 4) { super(x * TS + 8 - w * TS / 2, y * TS - h * TS, w * TS, h * TS); this.on = false; this.spawn = { x: x * TS + 4, y: y * TS }; }
   update(g) {
     const p = g.player;
-    if (!this.on && (p.overlaps(this) || (p.riding && p.riding.overlaps(this)))) { this.on = true; g.setCheckpoint(this); }
+    if (!this.on && (p.overlaps(this) || (p.riding && p.riding.overlaps(this)))) {
+      this.on = true; g.setCheckpoint(this);
+      // que se note: campanita, destellos y un aviso breve
+      g.audio('checkpoint'); g.burst(p.cx, p.cy, 'spark', 18); g.toast('AVANCE GUARDADO');
+    }
   }
   draw() {}
 }
@@ -1050,9 +1057,10 @@ class Caiman extends Actor {
         if (!inRange || p.swimming || this.t > 360) { this.state = 'patrol'; this.cool = 90; }
         break;
       case 'aim':
-        // burbujas: va a saltar
-        if (this.t % 4 === 0) g.particles.push({ x: this.cx + (Math.random() * 16 - 8), y: this.s, vx: 0, vy: -0.6, life: 20, max: 20, col: '#c8ebd2', size: Math.random() < 0.4 ? 2 : 1, grav: -0.02 });
-        if (this.t > 34) {
+        // el agua hierve: burbujas grandes y salpicaduras; va a saltar
+        if (this.t % 2 === 0) g.particles.push({ x: this.cx + (Math.random() * 22 - 11), y: this.s, vx: (Math.random() - 0.5) * 0.6, vy: -0.8 - Math.random() * 1.2, life: 22, max: 22, col: Math.random() < 0.5 ? '#ffffff' : '#c8ebd2', size: Math.random() < 0.5 ? 2 : 1, grav: 0.05 });
+        if (this.t === 20) g.audio('gurgle');
+        if (this.t > 46) {
           this.state = 'leap'; this.t = 0;
           this.vy = -7.4; this.vx = Math.max(-1.6, Math.min(1.6, (p.cx + p.vx * 22 - this.cx) / 23));
           g.audio('snap'); g.burst(this.cx, this.s, 'swampSplash', 16);
@@ -1075,7 +1083,7 @@ class Caiman extends Actor {
     }
     // en el agua solo asoman los ojos, el hocico y la cresta del lomo
     const s = this.s, x = Math.round(this.cx), d = this.dir;
-    const sink = this.state === 'aim' ? Math.min(2, Math.floor(this.t / 10)) : 0;   // se hunde un poco antes de saltar
+    const sink = 0;
     // la silueta oscura del cuerpo bajo el agua: se le ve venir
     ctx.save(); ctx.globalAlpha = 0.45; ctx.beginPath(); ctx.rect(x - 30, s + 1, 60, 20); ctx.clip();
     if (!Caiman.shadow) Caiman.shadow = PIX.tinted(E.caiman.shut, '#0d1f14');
@@ -1086,6 +1094,21 @@ class Caiman extends Actor {
     for (let i = -14; i <= 6; i += 5) ctx.fillRect(x - i * d - 1, s - 1 + sink, 3, 1);                  // cresta
     ctx.fillStyle = '#3f6b3a'; ctx.fillRect(x + d * 8 - 3, s - 3 + sink, 6, 3); ctx.fillRect(x + d * 15 - 1, s - 2 + sink, 4, 2); // ojos y hocico
     ctx.fillStyle = '#f6c94a'; ctx.fillRect(x + d * 8 - 2, s - 3 + sink, 1, 1); ctx.fillRect(x + d * 8 + 1, s - 3 + sink, 1, 1);
+    if (this.state === 'aim') {
+      // va a saltar: los ojos asoman y brillan, anillos de ondas y un "!" blanco
+      const rise = Math.min(3, Math.floor(this.t / 6));
+      ctx.fillStyle = '#3f6b3a'; ctx.fillRect(x + d * 8 - 4, s - 4 - rise, 8, 3 + rise);
+      ctx.fillStyle = Math.floor(this.t / 4) % 2 ? '#fff6b0' : '#f6c94a';
+      ctx.fillRect(x + d * 8 - 3, s - 4 - rise, 2, 2); ctx.fillRect(x + d * 8 + 1, s - 4 - rise, 2, 2);
+      for (let k = 0; k < 2; k++) {
+        const ph = (this.t * 1.2 + k * 14) % 28, r = 6 + ph, a = 1 - ph / 28;
+        ctx.fillStyle = 'rgba(230,250,235,' + (0.8 * a).toFixed(2) + ')';
+        ctx.fillRect(Math.round(x - r), s, 4, 1); ctx.fillRect(Math.round(x + r - 4), s, 4, 1);
+        ctx.fillRect(Math.round(x - r * 0.6), s + 1, Math.round(r * 1.2), 1);
+      }
+      // "!" fijo (no parpadea) y que sube un poco: imposible no verlo
+      drawText(ctx, '!', x, s - 26 - Math.min(4, Math.floor(this.t / 8)), { scale: 2, color: Math.floor(this.t / 6) % 2 ? '#ffffff' : '#fff6b0', align: 'center', shadow: true, shadowColor: '#2a1f2d' });
+    }
     ctx.fillStyle = 'rgba(200,235,210,0.6)';                                                          // estela en V
     const w = 4 + (this.animT % 20) / 2;
     ctx.fillRect(x - d * 10 - d * w, s, 3, 1); ctx.fillRect(x - d * 10 - d * w, s + 2, 3, 1);
@@ -1136,7 +1159,7 @@ function makeEntity(def, level) {
     case 'cabra': return new Cabra(def.x * TS, def.y * TS);
     case 'rockfall': return new Rockfall(def.x, def.y, def.interval);
     case 'huaico': return new Huaico(def, level);
-    case 'checkpoint': return new Checkpoint(def.x, def.y);
+    case 'checkpoint': return new Checkpoint(def.x, def.y, def.w, def.h);
     case 'house': return new House(def.x, def.y);
     case 'school': return new School(def.x, def.y);
     case 'lily': return new LilyPad(def.x, level);

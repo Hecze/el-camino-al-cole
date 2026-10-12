@@ -117,6 +117,7 @@
   Game.shake = (mag, t) => { Game.shakeMag = Math.max(Game.shakeMag, mag); Game.shakeT = Math.max(Game.shakeT, t); };
   Game.near = (x, r) => Game.player && Math.abs(Game.player.cx - x) < r;
   Game.addEntity = (e) => Game.entities.push(e);
+  Game.toast = (text) => { Game.toastMsg = { text, t: 0 }; };
   Game.burst = (x, y, type, n) => {
     for (let i = 0; i < n; i++) {
       const a = Math.random() * Math.PI * 2, sp = rnd(0.4, 2.2);
@@ -177,7 +178,7 @@
     const px = lv.spawn.x * TILE + 4, py = lv.spawn.y * TILE - 15;
     Game.player = new Player(px, py);
     Game.spawn = { x: px, y: lv.spawn.y * TILE }; Game.spawnMount = null;
-    Game.zone = -1; Game.banner = 0;
+    Game.zone = -1; Game.banner = 0; Game.toastMsg = null;
     Game.look = LOOK_X * 0.6; Game.floorY = Game.player.cy;
     updateCamera(true);
     Game.state = 'play'; Game.stateT = 0; Game.fade = 1;
@@ -310,6 +311,7 @@
     if (Input.pressed('pause')) { Game.state = 'pause'; Game.pauseSel = 0; AUDIO.play('select'); return; }
     if (Input.pressed('mute')) AUDIO.toggleMute();
     Game.time++; Game.banner++;
+    if (Game.toastMsg && ++Game.toastMsg.t > 100) Game.toastMsg = null;
 
     for (const m of Game.movers) m.update(Game);
     p.update(Game);
@@ -928,6 +930,13 @@
     const lf = Game.entities.find(e => e instanceof Leaf), pl = Game.player;
     if (lf && !lf.taken && Math.abs(pl.cx - lf.cx) < 90 && Math.abs(pl.cy - lf.cy) < 60 && !pl.riding) hintBox(['TOMA LA HOJA DE PLÁTANO']);
     else if (pl.gliding && pl.onGround && pl.y < 100 * TILE) hintBox(['¡SALTA AL VACÍO PARA PLANEAR!']);
+    // aviso breve (p. ej. al tocar un punto de control)
+    if (Game.toastMsg) {
+      const tm = Game.toastMsg, w = textWidth(tm.text) + 14;
+      ctx.globalAlpha = Math.min(1, tm.t / 8, (100 - tm.t) / 20);
+      panel(6, 26, w, 13); drawText(ctx, tm.text, 13, 29, { color: '#9be7c4' });
+      ctx.globalAlpha = 1;
+    }
     // título al empezar
     if (Game.banner < 170) {
       const a = Math.min(1, (170 - Game.banner) / 40);

@@ -262,7 +262,7 @@ const LEVEL = {
     { type: 'checkpoint', x: 66, y: G - 2 },
     { type: 'checkpoint', x: 88, y: G },
     ...MTN_CP,
-    { type: 'checkpoint', x: 151, y: 110 },
+    { type: 'checkpoint', x: 151, y: 110, w: 14, h: 10 },   // toda la orilla donde aterriza el parapente
     { type: 'checkpoint', x: sx(44), y: 108 },
     { type: 'checkpoint', x: 151 + D, y: 110 },
     { type: 'rockfall', x: 82, y: G - 13, interval: 130 },

@@ -118,7 +118,8 @@ const AUDIO = (() => {
     creak:   () => { const t = now(); tone(140, 0.6, 'sawtooth', 0.08, t, 90); tone(180, 0.5, 'sawtooth', 0.05, t + 0.3, 120); noise(0.4, 0.12, 300, t + 0.5); },
     sit:     () => { noise(0.12, 0.2, 700); [523, 659, 784].forEach((f, i) => tone(f, 0.2, 'triangle', 0.18, now() + 0.1 + i * 0.08)); },
     // el caimán: burbujeo antes de saltar y chasquido de mandíbulas
-    gurgle:  () => { const t = now(); for (let i = 0; i < 5; i++) tone(180 + Math.random() * 120, 0.08, 'sine', 0.18, t + i * 0.07, 380); },
+    gurgle:  () => { const t = now(); for (let i = 0; i < 8; i++) tone(160 + Math.random() * 140, 0.09, 'sine', 0.32, t + i * 0.06, 420); noise(0.5, 0.2, 400, t, { type: 'lowpass' }); },
+    checkpoint: () => { const t = now(); [880, 1175, 1568].forEach((f, i) => tone(f, 0.22, 'triangle', 0.16, t + i * 0.07)); },
     snap:    () => { const t = now(); noise(0.08, 0.5, 1800, t, { type: 'bandpass', q: 1 }); tone(90, 0.2, 'square', 0.25, t, 50); noise(0.06, 0.4, 2500, t + 0.18, { type: 'bandpass', q: 2 }); },
     boing:   () => { tone(200, 0.16, 'triangle', 0.16, 0, 420); noise(0.05, 0.08, 800); },
     rock:    () => { noise(0.2, 0.3, 450); tone(140, 0.16, 'sine', 0.25, 0, 60); },
