@@ -1,5 +1,6 @@
 // audio.js — todo sintetizado con WebAudio, sin archivos externos.
-// · Música de huayno: quena (con vibrato y soplo), charango rasgueado, bajo y bombo.
+// · Música andina acústica: quena y zampoña con soplo, charango y bajo de cuerda
+//   pulsada (Karplus-Strong), bombo de cuero, chajchas y eco de quebrada.
 // · Ambiente: rumor del río (con burbujeo) y el retumbar del huaico.
 const AUDIO = (() => {
   let ctx = null, master = null, musicGain = null, sfxGain = null, ambGain = null;
@@ -46,6 +47,14 @@ const AUDIO = (() => {
     comp.connect(master);
     sfxGain = ctx.createGain(); sfxGain.gain.value = 0.5; sfxGain.connect(comp);
     musicGain = ctx.createGain(); musicGain.gain.value = 0.0001; musicGain.connect(comp);
+    // eco de quebrada: reverberación natural para los instrumentos acústicos
+    try {
+      const len = Math.floor(ctx.sampleRate * 2.2), ir = ctx.createBuffer(2, len, ctx.sampleRate);
+      for (let ch = 0; ch < 2; ch++) { const d = ir.getChannelData(ch); for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 3.2); }
+      const conv = ctx.createConvolver(); conv.buffer = ir;
+      const wet = ctx.createGain(); wet.gain.value = 0.32;
+      musicGain.connect(conv); conv.connect(wet); wet.connect(comp);
+    } catch (e) { /* sin reverberación */ }
     ambGain = ctx.createGain(); ambGain.gain.value = 1; ambGain.connect(comp);
     whiteBuf = makeNoise('white', 1.2);
   }
@@ -163,7 +172,7 @@ const AUDIO = (() => {
     song = s; musicOn = true; step = 0; nextTime = ctx.currentTime + 0.12;
     musicGain.gain.cancelScheduledValues(now());
     musicGain.gain.setValueAtTime(0.0001, now());
-    musicGain.gain.exponentialRampToValueAtTime(s.vol || 0.3, now() + 1.0);
+    musicGain.gain.exponentialRampToValueAtTime((s.vol || 0.3) * 0.7, now() + 1.0);
     if (!musicTimer) musicTimer = setInterval(schedule, 25);
   }
   function stopMusic() {
@@ -171,39 +180,93 @@ const AUDIO = (() => {
     if (musicGain) { musicGain.gain.cancelScheduledValues(now()); musicGain.gain.setValueAtTime(Math.max(0.0001, musicGain.gain.value), now()); musicGain.gain.exponentialRampToValueAtTime(0.0001, now() + 0.4); }
   }
 
-  // quena: triangulo + octava suave, vibrato que entra tarde y soplo al atacar
-  function quena(f, dur, vol, t) {
-    const o = ctx.createOscillator(); o.type = 'triangle'; o.frequency.setValueAtTime(f, t);
-    const o2 = ctx.createOscillator(); o2.type = 'sine'; o2.frequency.setValueAtTime(f * 2, t);
-    const vib = ctx.createOscillator(); vib.frequency.value = 5.6;
-    const vg = ctx.createGain(); vg.gain.setValueAtTime(0, t); vg.gain.linearRampToValueAtTime(f * 0.012, t + Math.min(0.25, dur * 0.6));
-    vib.connect(vg); vg.connect(o.frequency); vg.connect(o2.frequency);
-    const g = ctx.createGain(), g2 = ctx.createGain(); g2.gain.value = 0.18;
-    g.gain.setValueAtTime(0.0001, t);
-    g.gain.exponentialRampToValueAtTime(vol, t + 0.035);
-    g.gain.setValueAtTime(vol, t + Math.max(0.04, dur - 0.06));
-    g.gain.exponentialRampToValueAtTime(0.0001, t + dur + 0.05);
-    o.connect(g); o2.connect(g2); g2.connect(g); g.connect(musicGain);
-    [o, o2, vib].forEach(x => { x.start(t); x.stop(t + dur + 0.1); });
-    noise(0.07, vol * 0.25, f * 2, t, { type: 'bandpass', q: 2, out: musicGain });
+  // cuerda pulsada (Karplus-Strong): suena a madera y cuerda de verdad, no a oscilador
+  const ksCache = {};
+  function pluckBuf(f, dur, bright, decay) {
+    const key = f.toFixed(1) + '|' + bright + '|' + dur;
+    if (ksCache[key]) return ksCache[key];
+    const sr = ctx.sampleRate, len = Math.floor(sr * dur), N = Math.max(2, Math.round(sr / f));
+    const buf = ctx.createBuffer(1, len, sr), d = buf.getChannelData(0);
+    // excitación: ruido suavizado (bright = cuánto brillo tiene la púa)
+    let prev = 0;
+    for (let i = 0; i < N; i++) { const r = Math.random() * 2 - 1; prev = prev + (r - prev) * bright; d[i] = prev; }
+    for (let i = N; i < len; i++) d[i] = (d[i - N] + d[i - N + 1 < i ? i - N + 1 : i - N]) * 0.5 * decay;
+    // quitar componente continua
+    let m = 0; for (let i = 0; i < N; i++) m += d[i]; m /= N; for (let i = 0; i < len; i++) d[i] -= m * Math.pow(decay, i / N);
+    return (ksCache[key] = buf);
   }
+  function playBuf(buf, vol, t, out, rate = 1) {
+    const s = ctx.createBufferSource(); s.buffer = buf; s.playbackRate.value = rate;
+    const g = ctx.createGain(); g.gain.value = vol;
+    s.connect(g); g.connect(out || musicGain); s.start(t); s.stop(t + buf.duration);
+  }
+  // aire: ruido filtrado alrededor de la nota, el soplo que se oye en la quena y la zampoña
+  function breath(f, dur, vol, t, q) {
+    const s = ctx.createBufferSource(); s.buffer = whiteBuf; s.loop = true;
+    const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = f; bp.Q.value = q;
+    const g = ctx.createGain(); g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(vol, t + 0.03); g.gain.setValueAtTime(vol, t + Math.max(0.04, dur - 0.05)); g.gain.exponentialRampToValueAtTime(0.0001, t + dur + 0.05);
+    s.connect(bp); bp.connect(g); g.connect(musicGain); s.start(t, Math.random() * 0.8); s.stop(t + dur + 0.1);
+  }
+  // quena: tono casi puro con un poco de 2º y 3º armónico, entra un pelín bajo
+  // y sube a la nota, vibrato que llega tarde y soplo constante
+  function quena(f, dur, vol, t) {
+    const vib = ctx.createOscillator(); vib.frequency.value = 5.2;
+    const vg = ctx.createGain(); vg.gain.setValueAtTime(0, t); vg.gain.linearRampToValueAtTime(f * 0.011, t + Math.min(0.35, dur * 0.7));
+    vib.connect(vg);
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(vol, t + 0.05);
+    g.gain.setValueAtTime(vol * 0.9, t + Math.max(0.06, dur - 0.06));
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur + 0.06);
+    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = Math.min(9000, f * 4);
+    const oscs = [];
+    for (const [mul, amp] of [[1, 1], [2, 0.16], [3, 0.06]]) {
+      const o = ctx.createOscillator(); o.type = 'sine';
+      o.frequency.setValueAtTime(f * mul * 0.975, t); o.frequency.exponentialRampToValueAtTime(f * mul, t + 0.06);
+      const og = ctx.createGain(); og.gain.value = amp;
+      const vm = ctx.createGain(); vm.gain.value = mul; vg.connect(vm); vm.connect(o.frequency);
+      o.connect(og); og.connect(lp); oscs.push(o);
+    }
+    lp.connect(g); g.connect(musicGain);
+    [vib, ...oscs].forEach(x => { x.start(t); x.stop(t + dur + 0.12); });
+    breath(f, dur, vol * 0.55, t, 6);                                  // aire en la nota
+    breath(f * 2.5, Math.min(dur, 0.08), vol * 0.5, t, 1.5);          // golpe de lengua
+  }
+  // zampoña (siku): caña grave, ataque soplado con "chiff" y mucho aire
+  function zampona(f, dur, vol, t) {
+    const o = ctx.createOscillator(); o.type = 'sine'; o.frequency.setValueAtTime(f * 0.99, t); o.frequency.linearRampToValueAtTime(f, t + 0.08);
+    const o2 = ctx.createOscillator(); o2.type = 'sine'; o2.frequency.value = f * 3; // tubo cerrado: armónicos impares
+    const g2 = ctx.createGain(); g2.gain.value = 0.12;
+    const g = ctx.createGain(); g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(vol, t + 0.07); g.gain.exponentialRampToValueAtTime(vol * 0.7, t + Math.max(0.1, dur));
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur + 0.12);
+    o.connect(g); o2.connect(g2); g2.connect(g); g.connect(musicGain);
+    [o, o2].forEach(x => { x.start(t); x.stop(t + dur + 0.15); });
+    breath(f, dur, vol * 0.9, t, 4);
+    breath(f * 4, 0.1, vol * 0.9, t, 1.2);
+  }
+  // charango: 4 órdenes dobles de cuerda pulsada, rasgueo rápido
   function charango(chord, vol, t, up) {
     const notes = CHORDS[chord]; if (!notes) return;
     const seq = up ? notes.slice().reverse() : notes;
     seq.forEach((n, i) => {
-      const tt = t + i * 0.011;
-      const o = ctx.createOscillator(); o.type = 'square'; o.frequency.setValueAtTime(freq(n), tt);
-      const f = ctx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.setValueAtTime(3200, tt); f.frequency.exponentialRampToValueAtTime(900, tt + 0.2);
-      const g = ctx.createGain(); g.gain.setValueAtTime(0.0001, tt);
-      g.gain.exponentialRampToValueAtTime(vol, tt + 0.004); g.gain.exponentialRampToValueAtTime(0.0001, tt + 0.28);
-      o.connect(f); f.connect(g); g.connect(musicGain); o.start(tt); o.stop(tt + 0.3);
+      const tt = t + i * 0.012, f = freq(n);
+      playBuf(pluckBuf(f, 0.7, 0.7, 0.994), vol * 2.2, tt);
+      playBuf(pluckBuf(f, 0.7, 0.7, 0.994), vol * 1.6, tt + 0.004, null, 1.003);  // cuerda doble, apenas desafinada
     });
   }
+  // bajo: guitarra pulsada grave con un poco de cuerpo
   function bass(f, dur, vol, t) {
-    const o = ctx.createOscillator(); o.type = 'triangle'; o.frequency.setValueAtTime(f, t);
+    playBuf(pluckBuf(f, 1.2, 0.35, 0.998), vol * 1.6, t);
+    const o = ctx.createOscillator(); o.type = 'sine'; o.frequency.setValueAtTime(f, t);
     const g = ctx.createGain(); g.gain.setValueAtTime(0.0001, t);
-    g.gain.exponentialRampToValueAtTime(vol, t + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    g.gain.exponentialRampToValueAtTime(vol * 0.45, t + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, t + Math.min(dur, 0.5));
     o.connect(g); g.connect(musicGain); o.start(t); o.stop(t + dur + 0.02);
+  }
+  // chajchas: sonaja de pezuñas de cabra, un racimo de golpecitos secos
+  function chajchas(vol, t) {
+    for (let i = 0; i < 4; i++) noise(0.025, vol * (1 - i * 0.2), 3500 + Math.random() * 2500, t + i * 0.009 + Math.random() * 0.006, { type: 'bandpass', q: 3, out: musicGain });
   }
   function bombo(vol, t) {
     const o = ctx.createOscillator(); o.type = 'sine';
@@ -211,7 +274,7 @@ const AUDIO = (() => {
     const g = ctx.createGain(); g.gain.setValueAtTime(0.0001, t);
     g.gain.exponentialRampToValueAtTime(vol, t + 0.005); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.22);
     o.connect(g); g.connect(musicGain); o.start(t); o.stop(t + 0.25);
-    noise(0.05, vol * 0.3, 1800, t, { out: musicGain });
+    noise(0.08, vol * 0.35, 600, t, { out: musicGain });   // parche de cuero
   }
 
   function schedule() {
@@ -225,7 +288,8 @@ const AUDIO = (() => {
         const local = st % trk.length;
         for (const ev of trk.events) if (ev.step === local) {
           if (fn === 'bass') bass(freq(ev.note), ev.len * spb * 0.95, 0.32, nextTime);
-          else quena(freq(ev.note), ev.len * spb * 0.92, fn === 'lead' ? 0.17 : 0.08, nextTime);
+          else if (fn === 'lead') ((s.lead_inst === 'zampona') ? zampona : quena)(freq(ev.note), ev.len * spb * 0.92, 0.17, nextTime);
+          else zampona(freq(ev.note), ev.len * spb * 0.95, 0.11, nextTime);
         }
       }
       // charango: un acorde por compás de 2/4 (8 semicorcheas)
@@ -237,7 +301,7 @@ const AUDIO = (() => {
       // bombo + shaker
       const dr = (s.drums || 'B...b.B.')[inBar];
       if (dr === 'B') bombo(0.5, nextTime); else if (dr === 'b') bombo(0.3, nextTime);
-      if (s.shaker && st % 2 === 1) noise(0.04, 0.035, 7000, nextTime, { type: 'highpass', out: musicGain });
+      if (s.shaker && st % 2 === 1) chajchas(0.05, nextTime);
       nextTime += spb; step++;
     }
   }

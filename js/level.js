@@ -81,6 +81,12 @@ SONGS.selva = {
         'E5:1 E5:1 D5:2 C5:2 B4:2 | D5:1 D5:1 C5:2 B4:2 A4:2 | C5:2 A4:2 F4:2 A4:2 | B4:2 G#4:2 E4:4',
 };
 SONGS.selva.bass = SONGS.selva.chords.map(c => { const [r, f] = BASS_OF[c]; return `${r}:3 ${f}:1 ${r}:2 ${f}:2`; }).join(' ');
+// segunda voz de zampoña (sikuris): notas largas que sostienen la armonía
+const SIKU = { Am: 'C5', G: 'B4', F: 'A4', C: 'E5', Em: 'G4', Dm: 'D5', D: 'F#4', E: 'G#4', Bb: 'D5' };
+function sikuVoice(chords) { return chords.map(c => `${SIKU[c]}:6 r:2`).join(' '); }
+SONGS.valle.lead2 = sikuVoice(SONGS.valle.chords);
+SONGS.huayco.lead2 = sikuVoice(SONGS.huayco.chords);
+SONGS.selva.lead2 = sikuVoice(SONGS.selva.chords);
 SONGS.menu.bass = slowBass(SONGS.menu.chords);
 SONGS.valle.bass = huaynoBass(SONGS.valle.chords);
 SONGS.apu.bass = slowBass(SONGS.apu.chords);
