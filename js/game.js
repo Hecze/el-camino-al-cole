@@ -578,6 +578,22 @@
 
   // agua quieta de la selva: reflejos de los troncos, hojitas flotando y ondas
   function renderSwamp(lv, L, Pl, X0, X1, wl, cx0, cx1, yBot, t) {
+    // rocas: su parte sumergida se ve oscura bajo el agua, con espuma y ondas en la línea del agua
+    for (const r of lv.swampRocks || []) {
+      const rx = r[0] * TILE, rw = r[2] * TILE; if (rx + rw + 6 < cx0 || rx - 6 > cx1) continue;
+      for (let y = wl + 2; y < Math.min(yBot, wl + 34); y++) {
+        const k = (y - wl) / 34, inset = Math.round(hash(y * 7 + r[0]) * 2) - Math.round(k * 3);
+        ctx.fillStyle = 'rgba(70,78,74,' + (0.55 * (1 - k)).toFixed(2) + ')';
+        ctx.fillRect(rx + inset, y, rw - inset * 2, 1);
+      }
+      ctx.fillStyle = 'rgba(200,235,210,0.75)';
+      const f = Math.floor(t / 10) % 2;
+      ctx.fillRect(rx - 3 - f, wl, 3, 1); ctx.fillRect(rx + rw + f, wl, 3, 1);
+      ctx.fillRect(rx - 1, wl + 1, rw + 2, 1);
+      const rr = 4 + (t * 0.15 + r[0] * 5) % 10;
+      ctx.fillStyle = 'rgba(200,235,210,' + (0.5 * (1 - ((t * 0.15 + r[0] * 5) % 10) / 10)).toFixed(2) + ')';
+      ctx.fillRect(Math.round(rx - rr), wl + 2, 3, 1); ctx.fillRect(Math.round(rx + rw + rr - 3), wl + 2, 3, 1);
+    }
     const J = lv.jungle;
     if (J) for (const tx of J.trees) {
       const x = tx * TILE + 2; if (x + 12 < cx0 || x > cx1) continue;

@@ -14,6 +14,7 @@ const TILE_SPECS = {
   clay:      { solid: true, top: T.clay, body: T.clayBody },
   mudRock:   { solid: true, body: T.mudRock },
   jungle:    { solid: true, top: T.jungle, body: T.jungleBody },
+  swampRock: { solid: true, top: T.mudRock, body: T.stone },   // piedra de río redondeada
   branch:    { oneway: true, body: T.branch },
   ropeBridge:{ oneway: true },                       // lo dibuja la entidad del puente
   swampTop:  { liquid: 'swamp' }, swampBody: { liquid: 'swamp' },
@@ -101,6 +102,9 @@ function buildLevel(def) {
       for (let x = l[0]; x < l[0] + l[2]; x++)
         put(x, y, (y === l[1] ? l[4] + 'Top' : l[4] + 'Body'));
   }
+  for (const r of def.swampRocks || [])
+    for (let y = r[1]; y < r[1] + r[3]; y++)
+      for (let x = r[0]; x < r[0] + r[2]; x++) put(x, y, 'swampRock');
   for (const r of def.fgRocks || [])
     for (let y = r[1]; y < r[1] + r[3]; y++)
       for (let x = r[0]; x < r[0] + r[2]; x++) put(x, y, 'mudRock');
@@ -221,12 +225,6 @@ const LEVEL = {
     // ── LA SELVA INUNDADA ──
     [145, 110, 12, 40, 'jungle'],                 // donde aterriza el parapente
     [SV, 118, SWID, 32, 'jungle'],                // fondo fangoso bajo el agua
-    // parte 1: rocas para aprender
-    [sx(3), 111, 2, 7, 'stone'], [sx(8), 111, 2, 7, 'stone'], [sx(13), 111, 2, 7, 'stone'], [sx(18), 111, 2, 7, 'stone'],
-    // parte 2: una roca de descanso entre victorias regias
-    [sx(40), 111, 2, 7, 'stone'],
-    // parte 3: rocas para salir del agua si caes desde las ramas
-    [sx(52), 111, 2, 7, 'stone'], [sx(63), 111, 2, 7, 'stone'],
     // ── LA QUEBRADA CÁLIDA: orilla, lecho del huaico y el colegio ──
     [145 + D, 110, 12, 40, 'clay'],
     [160 + D, 114, 16, 36, 'clay'], [176 + D, 112, 16, 38, 'clay'], [192 + D, 110, 16, 40, 'clay'], [208 + D, 108, 14, 42, 'clay'],
@@ -249,6 +247,9 @@ const LEVEL = {
   ],
   // rocas fijas en cada escalón del huaico; la primera para entrar desde la
   // orilla y la última como peldaño para el salto final a la orilla del colegio
+  // rocas que asoman del agua de la selva (se colocan después del agua: entran en ella)
+  //   parte 1: rocas para aprender · parte 2: descanso entre victorias regias · parte 3: para salir si caes
+  swampRocks: [[sx(3), 111, 2, 7], [sx(8), 111, 2, 7], [sx(13), 111, 2, 7], [sx(18), 111, 2, 7], [sx(40), 111, 2, 7], [sx(52), 111, 2, 7], [sx(63), 111, 2, 7]],
   fgRocks: [[161 + D, 111, 2, 3], [174 + D, 109, 2, 5], [190 + D, 107, 2, 5], [206 + D, 105, 2, 5], [219 + D, 104, 2, 4]],
   entities: [
     // la casa del niño, con mamá en la puerta
