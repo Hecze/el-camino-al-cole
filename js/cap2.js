@@ -544,10 +544,10 @@
       drawText(ctx, 'PEATONAL', cx, y + 10, { color: '#d8432f', align: 'center' });
     }
   }
-  // ayuda: el camino sigue por arriba
-  class StairsHint {
-    constructor(def) { this.x0 = def.x0 * TS; this.x1 = def.x1 * TS; }
-    hint(g) { const p = g.player; return p.onGround && !p.lastMover && p.cx > this.x0 && p.cx < this.x1 && p.y + p.h >= GR * TS - 1 ? ['¡SUBE POR EL PUENTE PEATONAL!'] : null; }
+  // ayuda en pantalla mientras caminas por la pista en un tramo
+  class RoadHint {
+    constructor(def) { this.x0 = def.x0 * TS; this.x1 = def.x1 * TS; this.text = def.text; }
+    hint(g) { const p = g.player; return p.onGround && !p.lastMover && p.cx > this.x0 && p.cx < this.x1 && p.y + p.h >= GR * TS - 1 ? [this.text] : null; }
     update() {}
     draw() {}
   }
@@ -969,7 +969,9 @@
       { type: 'palm', x: 177, y: GR, tall: 54, lean: -0.2 }, { type: 'palm', x: 183, y: GR, tall: 44, lean: 0.25 }, { type: 'palm', x: 188, y: GR, tall: 58, lean: 0.1 }, { type: 'palm', x: 193, y: GR, tall: 40, lean: -0.3 },
       { type: 'sign', x: 181, y: GR, lines: ['HUACACHINA'], style: 'post' },
       // ── LA PANAMERICANA ──
-      { type: 'checkpoint', x: 199, y: GR },
+      // apenas dejas la tabla (así nunca reapareces a pie en las dunas)
+      { type: 'checkpoint', x: 180, y: GR },
+      { type: 'roadHint', x0: 214.5, x1: 222, text: '¡SÚBETE AL TECHO DE LA COMBI!' },
       { type: 'sign', x: 202, y: GR, lines: ['PANAMERICANA SUR', 'LIMA 299 KM'], style: 'post' },
       { type: 'combiSpawner', x0: 196, x1: 330, stops: STOPS, end: 346.5 },
       { type: 'vendor', x: 207, y: GR, shout: '¡CHICHA MORADA, CHICHA!', kind: 'chicha' },
@@ -983,7 +985,7 @@
       { type: 'sign', x: 278, y: GR, lines: ['SE ROMPIÓ', 'LA TUBERÍA'], style: 'board', col: '#f6c94a' },
       { type: 'sign', x: 313, y: GR, lines: ['SE VENDE TERRENO', 'TRATO DIRECTO'], style: 'board' },
       { type: 'footbridge', x0: 313, x1: 346, deck: 44, steps: FB_STEPS },
-      { type: 'stairsHint', x0: 296, x1: 330 },
+      { type: 'roadHint', x0: 296, x1: 330, text: '¡SUBE POR EL PUENTE PEATONAL!' },
       { type: 'tunnel', x: 346 },
       // ── LAS AZOTEAS ──
       { type: 'checkpoint', x: 350, y: 44 },
@@ -1042,7 +1044,7 @@
     geyser: (d) => new Geyser(d),
     footbridge: (d) => new Footbridge(d),
     tunnel: (d) => new Tunnel(d),
-    stairsHint: (d) => new StairsHint(d),
+    roadHint: (d) => new RoadHint(d),
     rebar: (d) => new Rebar(d),
     tank: (d) => new WaterTank(d),
     clothesline: (d) => new Clothesline(d),
