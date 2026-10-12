@@ -3,7 +3,7 @@
 //   pulsada (Karplus-Strong), bombo de cuero, chajchas y eco de quebrada.
 // · Ambiente: rumor del río (con burbujeo) y el retumbar del huaico.
 const AUDIO = (() => {
-  let ctx = null, master = null, musicGain = null, sfxGain = null, ambGain = null;
+  let ctx = null, master = null, musicGain = null, melBus = null, sfxGain = null, ambGain = null;
   let whiteBuf = null;
   let enabled = true;
 
@@ -47,13 +47,17 @@ const AUDIO = (() => {
     comp.connect(master);
     sfxGain = ctx.createGain(); sfxGain.gain.value = 0.5; sfxGain.connect(comp);
     musicGain = ctx.createGain(); musicGain.gain.value = 0.0001; musicGain.connect(comp);
+    melBus = ctx.createGain(); melBus.connect(musicGain);
     // eco de quebrada: reverberación natural para los instrumentos acústicos
     try {
-      const len = Math.floor(ctx.sampleRate * 2.2), ir = ctx.createBuffer(2, len, ctx.sampleRate);
-      for (let ch = 0; ch < 2; ch++) { const d = ir.getChannelData(ch); for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 3.2); }
+      // solo los instrumentos melódicos pasan por el eco; bombo, chajchas y bajo van secos
+      // para que el pulso quede limpio
+      const len = Math.floor(ctx.sampleRate * 1.5), ir = ctx.createBuffer(2, len, ctx.sampleRate);
+      for (let ch = 0; ch < 2; ch++) { const d = ir.getChannelData(ch); for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 4); }
       const conv = ctx.createConvolver(); conv.buffer = ir;
-      const wet = ctx.createGain(); wet.gain.value = 0.32;
-      musicGain.connect(conv); conv.connect(wet); wet.connect(comp);
+      const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 4000;
+      const wet = ctx.createGain(); wet.gain.value = 0.2;
+      melBus.connect(lp); lp.connect(conv); conv.connect(wet); wet.connect(musicGain);
     } catch (e) { /* sin reverberación */ }
     ambGain = ctx.createGain(); ambGain.gain.value = 1; ambGain.connect(comp);
     whiteBuf = makeNoise('white', 1.2);
@@ -206,7 +210,7 @@ const AUDIO = (() => {
   function playBuf(p, vol, t, out, detune = 1) {
     const s = ctx.createBufferSource(); s.buffer = p.buf; s.playbackRate.value = p.rate * detune;
     const g = ctx.createGain(); g.gain.value = vol;
-    s.connect(g); g.connect(out || musicGain); s.start(t); s.stop(t + p.buf.duration / (p.rate * detune));
+    s.connect(g); g.connect(out || melBus); s.start(t); s.stop(t + p.buf.duration / (p.rate * detune));
   }
   // caja de resonancia del charango (madera): realza el cuerpo y el brillo
   let charBus = null;
@@ -215,7 +219,7 @@ const AUDIO = (() => {
     const hp = ctx.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 180;
     const body = ctx.createBiquadFilter(); body.type = 'peaking'; body.frequency.value = 520; body.Q.value = 1.2; body.gain.value = 5;
     const air = ctx.createBiquadFilter(); air.type = 'peaking'; air.frequency.value = 3200; air.Q.value = 0.8; air.gain.value = 4;
-    hp.connect(body); body.connect(air); air.connect(musicGain);
+    hp.connect(body); body.connect(air); air.connect(melBus);
     return (charBus = hp);
   }
   // aire: ruido filtrado alrededor de la nota, el soplo que se oye en la quena y la zampoña
@@ -224,7 +228,7 @@ const AUDIO = (() => {
     const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = f; bp.Q.value = q;
     const g = ctx.createGain(); g.gain.setValueAtTime(0.0001, t);
     g.gain.exponentialRampToValueAtTime(vol, t + 0.03); g.gain.setValueAtTime(vol, t + Math.max(0.04, dur - 0.05)); g.gain.exponentialRampToValueAtTime(0.0001, t + dur + 0.05);
-    s.connect(bp); bp.connect(g); g.connect(musicGain); s.start(t, Math.random() * 0.8); s.stop(t + dur + 0.1);
+    s.connect(bp); bp.connect(g); g.connect(melBus); s.start(t, Math.random() * 0.8); s.stop(t + dur + 0.1);
   }
   // quena: tono casi puro con un poco de 2º y 3º armónico, entra un pelín bajo
   // y sube a la nota, vibrato que llega tarde y soplo constante
@@ -246,7 +250,7 @@ const AUDIO = (() => {
       const vm = ctx.createGain(); vm.gain.value = mul; vg.connect(vm); vm.connect(o.frequency);
       o.connect(og); og.connect(lp); oscs.push(o);
     }
-    lp.connect(g); g.connect(musicGain);
+    lp.connect(g); g.connect(melBus);
     [vib, ...oscs].forEach(x => { x.start(t); x.stop(t + dur + 0.12); });
     breath(f, dur, vol * 0.55, t, 6);                                  // aire en la nota
     if (!soft) breath(f * 2.5, Math.min(dur, 0.08), vol * 0.5, t, 1.5);          // golpe de lengua
@@ -259,7 +263,7 @@ const AUDIO = (() => {
     const g = ctx.createGain(); g.gain.setValueAtTime(0.0001, t);
     g.gain.exponentialRampToValueAtTime(vol, t + 0.07); g.gain.exponentialRampToValueAtTime(vol * 0.7, t + Math.max(0.1, dur));
     g.gain.exponentialRampToValueAtTime(0.0001, t + dur + 0.12);
-    o.connect(g); o2.connect(g2); g2.connect(g); g.connect(musicGain);
+    o.connect(g); o2.connect(g2); g2.connect(g); g.connect(melBus);
     [o, o2].forEach(x => { x.start(t); x.stop(t + dur + 0.15); });
     breath(f, dur, vol * 0.9, t, 4);
     breath(f * 4, 0.1, vol * 0.9, t, 1.2);
@@ -278,7 +282,7 @@ const AUDIO = (() => {
   }
   // bajo: bordón de guitarra, redondo y cálido
   function bass(f, dur, vol, t) {
-    playBuf(pluckBuf(f, 1.4, 0.5, 1.2, 0.5), vol * 0.9, t);
+    playBuf(pluckBuf(f, 1.4, 0.5, 1.2, 0.5), vol * 0.9, t, musicGain);
     const o = ctx.createOscillator(); o.type = 'sine'; o.frequency.setValueAtTime(f, t);
     const g = ctx.createGain(); g.gain.setValueAtTime(0.0001, t);
     g.gain.exponentialRampToValueAtTime(vol * 0.5, t + 0.008); g.gain.exponentialRampToValueAtTime(0.0001, t + Math.min(dur, 0.6));
@@ -337,7 +341,8 @@ const AUDIO = (() => {
       // bombo + shaker
       const dr = (s.drums || 'B...b.B.')[inBar];
       if (dr === 'B') bombo(0.5, nextTime); else if (dr === 'b') bombo(0.3, nextTime);
-      if (s.shaker && st % 2 === 1) chajchas(0.05, nextTime);
+      // chajchas en corcheas, acentuando el pulso (no a contratiempo de los demás)
+      if (s.shaker && st % 2 === 0) chajchas(inBar % 4 === 0 ? 0.05 : 0.03, nextTime);
       nextTime += spb; step++;
     }
   }

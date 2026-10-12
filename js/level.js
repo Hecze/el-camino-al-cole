@@ -36,61 +36,86 @@ function liquidAt(level, px, py) {
   return k;
 }
 
-// ── Canciones (huayno andino). Compás de 2/4 = 8 semicorcheas. ──────────────
+// ── Canciones. Compás de 2/4 = 8 semicorcheas. ─────────────────────────────
+// Todos los instrumentos comparten la célula del huayno (golpes en 0, 3 y 4):
+// bajo y bombo marcan "larga–corta–larga", el charango la rellena y las
+// chajchas van en corcheas. Cada canción tiene varias partes con su propia
+// armonía (la melodía cae en notas del acorde en los tiempos fuertes):
+//   'X'  la quena toca la parte X, la zampoña sostiene notas largas debajo
+//   'X*' diálogo: la quena pregunta 2 compases y la zampoña responde 2
+//   'X~' respiro: la quena descansa y la zampoña canta notas largas
 const BASS_OF = { Am: ['A2', 'E2'], G: ['G2', 'D2'], F: ['F2', 'C3'], C: ['C3', 'G2'], Em: ['E2', 'B2'], Dm: ['D2', 'A2'], D: ['D2', 'A2'], E: ['E2', 'B2'], Bb: ['Bb2', 'F2'] };
-// bajo de huayno: fundamental con anticipación + quinta
+// bajo de huayno: fundamental con anticipación + quinta (golpes en 0, 3 y 4)
 function huaynoBass(chords) { return chords.map(c => { const [r, f] = BASS_OF[c]; return `${r}:3 ${r}:1 ${f}:4`; }).join(' '); }
-function slowBass(chords) { return chords.map(c => `${BASS_OF[c][0]}:8`).join(' '); }
+function slowBass(chords) { return chords.map(c => `${BASS_OF[c][0]}:4 ${BASS_OF[c][1]}:4`).join(' '); }
+function cumbiaBass(chords) { return chords.map(c => { const [r, f] = BASS_OF[c]; return `${r}:3 ${f}:1 ${r}:2 ${f}:2`; }).join(' '); }
+// zampoña grave (malta): una nota del acorde por debajo de la quena, con
+// notas comunes entre acordes para que la voz se mueva poco
+const SIKU = { Am: 'E4', G: 'D4', F: 'C4', C: 'E4', Em: 'E4', Dm: 'D4', D: 'D4', E: 'E4', Bb: 'D4' };
+function makeSong(base, parts, form, bassFn) {
+  const chords = [], lead = [], lead2 = [];
+  for (const k0 of form) {
+    const k = k0.replace(/[*~]/g, ''), P = parts[k];
+    const bars = P.mel.split('|').map(x => x.trim());
+    if (bars.length !== P.ch.length) throw new Error('parte ' + k + ': compases y acordes no coinciden');
+    bars.forEach((b, i) => {
+      chords.push(P.ch[i]);
+      if (k0.endsWith('~')) { lead.push('r:8'); lead2.push(`${SIKU[P.ch[i]]}:6 r:2`); }
+      else if (k0.endsWith('*') && i % 4 >= 2) { lead.push('r:8'); lead2.push(b); }
+      else { lead.push(b); lead2.push(`${SIKU[P.ch[i]]}:6 r:2`); }
+    });
+  }
+  return Object.assign({}, base, { chords, lead: lead.join(' '), lead2: lead2.join(' '), bass: bassFn(chords) });
+}
 
 const SONGS = {
   // yaraví: lento y melancólico, para el menú
-  menu: {
-    bpm: 92, vol: 0.26, strum: 'D...D.U.', drums: 'B.......',
-    chords: ['Am', 'Am', 'F', 'Am', 'C', 'G', 'Em', 'Am'],
-    lead: 'A4:4 C5:2 D5:2 | E5:6 D5:2 | C5:4 D5:2 C5:2 | A4:8 | G4:4 A4:2 C5:2 | D5:6 E5:2 | D5:2 C5:2 A4:2 G4:2 | A4:8',
-  },
+  menu: makeSong({ bpm: 92, vol: 0.26, strum: 'D...D.U.', drums: 'B.......', orn: 0.3, lead2Vol: 0.1 }, {
+    A: { ch: ['Am', 'Am', 'F', 'Am', 'C', 'G', 'Em', 'Am'],
+         mel: 'A4:4 C5:2 E5:2 | E5:6 D5:2 | C5:4 A4:2 C5:2 | A4:8 | G4:4 C5:2 E5:2 | D5:6 B4:2 | B4:2 G4:2 E4:2 G4:2 | A4:8' },
+  }, ['A', 'A~'], slowBass),
+
   // huayno alegre del valle
-  valle: {
-    bpm: 128, vol: 0.28, strum: 'D.DU.DU.', drums: 'B..bB.b.', shaker: true,
-    chords: ['Am', 'G', 'F', 'Am', 'Am', 'G', 'C', 'Am', 'Am', 'C', 'G', 'Em', 'Am', 'C', 'Dm', 'Am'],
-    lead: 'E5:3 E5:1 D5:2 C5:2 | D5:3 E5:1 G5:2 E5:2 | D5:3 C5:1 A4:2 C5:2 | D5:2 C5:1 A4:1 A4:4 |' +
-          'E5:3 E5:1 D5:2 C5:2 | D5:3 E5:1 G5:2 A5:2 | G5:3 E5:1 D5:2 C5:2 | A4:2 C5:1 A4:1 A4:4 |' +
-          'A5:3 A5:1 G5:2 E5:2 | G5:3 A5:1 C6:2 A5:2 | G5:3 E5:1 D5:2 E5:2 | G5:2 E5:1 D5:1 E5:4 |' +
-          'A5:3 A5:1 G5:2 E5:2 | G5:3 A5:1 G5:2 E5:2 | D5:3 C5:1 A4:2 C5:2 | D5:2 C5:1 A4:1 A4:4',
-  },
-  // el Apu: solemne, quena con segunda voz
-  apu: {
-    bpm: 104, vol: 0.28, strum: 'D..D..U.', drums: 'B...B...',
-    chords: ['Dm', 'Dm', 'Bb', 'C', 'Dm', 'F', 'C', 'Dm'],
-    lead: 'D5:4 F5:2 G5:2 | A5:6 G5:2 | F5:3 G5:1 F5:2 D5:2 | C5:8 | D5:4 F5:2 A5:2 | C6:6 A5:2 | G5:3 A5:1 G5:2 E5:2 | D5:8',
-    lead2: 'A4:8 | F4:8 | D4:8 | E4:8 | F4:8 | A4:8 | G4:8 | F4:8',
-  },
+  valle: makeSong({ bpm: 128, vol: 0.28, strum: 'D.DUD.DU', drums: 'B..bB...', shaker: true, orn: 0.3, lead2Vol: 0.13 }, {
+    A:  { ch: ['Am', 'G', 'Dm', 'Am', 'Am', 'G', 'C', 'Am'],
+          mel: 'E5:3 E5:1 E5:1 D5:1 C5:2 | D5:3 E5:1 G5:2 E5:2 | D5:3 C5:1 A4:2 C5:2 | C5:2 E5:1 A4:1 A4:4 | E5:3 E5:1 E5:1 D5:1 C5:2 | D5:3 E5:1 G5:2 A5:2 | G5:3 E5:1 E5:1 D5:1 C5:2 | A4:2 C5:1 A4:1 A4:4' },
+    A2: { ch: ['Am', 'G', 'Am', 'G', 'Am', 'C', 'Am', 'Am'],
+          mel: 'E5:2 G5:2 E5:1 D5:1 C5:2 | D5:2 E5:1 G5:1 B4:2 G5:2 | E5:2 D5:1 C5:1 A4:2 C5:2 | D5:1 E5:1 D5:1 B4:1 G4:4 | E5:2 G5:2 A5:2 G5:2 | E5:3 G5:1 E5:2 C6:2 | A5:2 G5:1 E5:1 C5:2 E5:2 | A4:2 C5:1 A4:1 A4:4' },
+    B:  { ch: ['Am', 'C', 'G', 'Em', 'Am', 'C', 'Dm', 'Am'],
+          mel: 'A5:3 A5:1 A5:1 G5:1 E5:2 | G5:3 A5:1 C6:2 G5:2 | G5:3 E5:1 D5:2 B4:2 | G5:2 E5:1 D5:1 E5:4 | A5:3 A5:1 A5:1 G5:1 E5:2 | G5:3 A5:1 G5:2 E5:2 | D5:3 C5:1 A4:2 F5:2 | E5:2 C5:1 A4:1 A4:4' },
+    C:  { ch: ['C', 'C', 'G', 'Am', 'C', 'C', 'Em', 'Am'],
+          mel: 'C5:4 D5:2 E5:2 | G5:6 E5:2 | D5:4 B4:2 D5:2 | E5:8 | C5:4 D5:2 E5:2 | G5:4 A5:2 G5:2 | E5:3 D5:1 E5:2 B4:2 | A4:8' },
+    F:  { ch: ['Am', 'G', 'Am', 'Am', 'Am', 'C', 'G', 'Am'],
+          mel: 'A5:1 G5:1 E5:1 G5:1 A5:2 A5:2 | G5:1 E5:1 D5:1 E5:1 G5:2 G5:2 | A5:1 G5:1 E5:1 G5:1 A5:2 C6:2 | A5:2 G5:2 E5:4 | E5:1 D5:1 C5:1 D5:1 E5:2 E5:2 | G5:1 E5:1 D5:1 E5:1 C5:2 C5:2 | D5:1 C5:1 B4:1 C5:1 D5:2 B4:2 | A4:2 A4:2 A4:4' },
+  }, ['A', 'B*', 'A2', 'C~', 'B', 'F'], huaynoBass),
+
+  // el Apu: solemne
+  apu: makeSong({ bpm: 104, vol: 0.28, strum: 'D...D.U.', drums: 'B...B...', orn: 0.25, lead2Vol: 0.13 }, {
+    A: { ch: ['Dm', 'Dm', 'Bb', 'C', 'Dm', 'F', 'C', 'Dm'],
+         mel: 'D5:4 F5:2 A5:2 | A5:6 F5:2 | F5:3 G5:1 F5:2 D5:2 | C5:8 | D5:4 F5:2 A5:2 | C6:6 A5:2 | G5:3 A5:1 G5:2 E5:2 | D5:8' },
+    B: { ch: ['Bb', 'F', 'C', 'Am', 'Bb', 'F', 'C', 'Dm'],
+         mel: 'F5:4 D5:2 F5:2 | A5:6 C6:2 | G5:4 E5:2 G5:2 | A5:8 | F5:4 D5:2 F5:2 | C6:4 A5:2 F5:2 | E5:3 G5:1 E5:2 C5:2 | D5:8' },
+  }, ['A', 'B', 'A*', 'B~'], slowBass),
+
   // carnavalito del huaico: rápido y urgente
-  huayco: {
-    bpm: 152, vol: 0.28, strum: 'DUDUDUDU', drums: 'B.bBB.b.', shaker: true,
-    chords: ['Em', 'D', 'G', 'Em', 'C', 'Em', 'G', 'Em'],
-    lead: 'E5:2 E5:1 E5:1 G5:2 E5:2 | D5:2 D5:1 D5:1 E5:2 D5:2 | B4:2 B4:1 B4:1 D5:2 B4:2 | A4:2 B4:2 E5:4 |' +
-          'G5:2 G5:1 G5:1 A5:2 G5:2 | E5:2 E5:1 G5:1 E5:2 D5:2 | B4:2 D5:1 B4:1 A4:2 G4:2 | A4:2 B4:2 E5:4',
-  },
+  huayco: makeSong({ bpm: 152, vol: 0.28, strum: 'D.DUD.DU', drums: 'B..bB..b', shaker: true, orn: 0.2, lead2Vol: 0.13 }, {
+    A: { ch: ['Em', 'D', 'G', 'Em', 'C', 'Em', 'G', 'Em'],
+         mel: 'E5:2 E5:1 E5:1 G5:2 E5:2 | D5:2 D5:1 D5:1 F#5:2 D5:2 | B4:2 B4:1 B4:1 D5:2 B4:2 | G4:2 B4:2 E5:4 |' +
+              'G5:2 G5:1 G5:1 E5:2 G5:2 | E5:2 E5:1 G5:1 E5:2 B4:2 | B4:2 D5:1 B4:1 G4:2 D5:2 | E5:2 B4:2 E5:4' },
+    B: { ch: ['C', 'D', 'Em', 'Em', 'C', 'D', 'Em', 'Em'],
+         mel: 'G5:1 A5:1 G5:1 E5:1 G5:2 E5:2 | F#5:1 G5:1 F#5:1 D5:1 F#5:2 D5:2 | E5:1 F#5:1 G5:1 F#5:1 E5:2 B4:2 | E5:2 G5:2 E5:4 |' +
+              'G5:2 E5:2 C5:2 E5:2 | F#5:2 D5:2 A4:2 D5:2 | B4:1 D5:1 E5:1 G5:1 B5:2 G5:2 | E5:4 E5:4' },
+  }, ['A', 'B', 'A*', 'B'], huaynoBass),
+
+  // cumbia amazónica para la selva: guitarra a contratiempo y bajo saltarín
+  selva: makeSong({ bpm: 96, vol: 0.27, strum: '.D.U.D.U', drums: 'B...B.b.', shaker: true, orn: 0.25, lead2Vol: 0.13 }, {
+    A: { ch: ['Am', 'G', 'F', 'E', 'Am', 'G', 'F', 'E'],
+         mel: 'A4:2 C5:2 E5:2 C5:2 | B4:2 D5:2 G5:2 D5:2 | A4:2 C5:2 F5:2 C5:2 | G#4:2 B4:2 E5:4 |' +
+              'E5:1 E5:1 D5:2 C5:2 A4:2 | D5:1 D5:1 B4:2 G4:2 B4:2 | C5:2 A4:2 F4:2 A4:2 | B4:2 G#4:2 E4:4' },
+    B: { ch: ['Dm', 'Am', 'E', 'Am', 'Dm', 'Am', 'E', 'Am'],
+         mel: 'D5:2 F5:2 A5:2 F5:2 | E5:2 C5:2 A4:4 | B4:2 D5:2 E5:2 G#5:2 | A5:4 E5:4 | D5:2 F5:2 A5:2 F5:2 | A5:2 E5:2 C5:4 | B4:2 G#4:2 B4:2 E5:2 | A4:8' },
+  }, ['A', 'B', 'A*', 'B~'], cumbiaBass),
 };
-// cumbia amazónica para la selva: guitarra a contratiempo, güiro y bajo saltarín
-SONGS.selva = {
-  bpm: 96, vol: 0.27, strum: '.D.U.D.U', drums: 'B...B.b.', shaker: true,
-  chords: ['Am', 'G', 'F', 'E', 'Am', 'G', 'F', 'E'],
-  lead: 'A4:2 C5:2 E5:2 D5:2 | B4:2 D5:2 G5:2 F5:2 | A4:2 C5:2 F5:2 E5:2 | G#4:2 B4:2 E5:4 |' +
-        'E5:1 E5:1 D5:2 C5:2 B4:2 | D5:1 D5:1 C5:2 B4:2 A4:2 | C5:2 A4:2 F4:2 A4:2 | B4:2 G#4:2 E4:4',
-};
-SONGS.selva.bass = SONGS.selva.chords.map(c => { const [r, f] = BASS_OF[c]; return `${r}:3 ${f}:1 ${r}:2 ${f}:2`; }).join(' ');
-// segunda voz de zampoña (sikuris): notas largas que sostienen la armonía
-const SIKU = { Am: 'C5', G: 'B4', F: 'A4', C: 'E5', Em: 'G4', Dm: 'D5', D: 'F#4', E: 'G#4', Bb: 'D5' };
-function sikuVoice(chords) { return chords.map(c => `${SIKU[c]}:6 r:2`).join(' '); }
-SONGS.valle.lead2 = sikuVoice(SONGS.valle.chords);
-SONGS.huayco.lead2 = sikuVoice(SONGS.huayco.chords);
-SONGS.selva.lead2 = sikuVoice(SONGS.selva.chords);
-SONGS.menu.bass = slowBass(SONGS.menu.chords);
-SONGS.valle.bass = huaynoBass(SONGS.valle.chords);
-SONGS.apu.bass = slowBass(SONGS.apu.chords);
-SONGS.huayco.bass = huaynoBass(SONGS.huayco.chords);
 
 function buildLevel(def) {
   const rows = def.h, cols = def.w;
