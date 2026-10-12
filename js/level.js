@@ -343,9 +343,9 @@ const LEVEL = {
     { type: 'school', x: SCH + 14, y: 110 },
     { type: 'outdoorClass', x: SCH + 22, y: 110 },
     // mototaxis estacionados: el transporte del pueblo
-    { type: 'mototaxi', x: SCH + 36.5, y: 110, col: ['#d8432f', '#962a22'] },
-    { type: 'mototaxi', x: SCH + 40, y: 110, col: ['#3f6fb8', '#27426e'], flip: true, run: true },
-    { type: 'mototaxi', x: SCH - 4.5, y: 110, col: ['#f0913c', '#b45f1e'] },   // esperando pasajeros en el puerto
+    { type: 'mototaxi', x: SCH + 36, y: 110, model: 'rojo' },
+    { type: 'mototaxi', x: SCH + 39.8, y: 110, model: 'azul', flip: true, run: true },
+    { type: 'mototaxi', x: SCH - 4.8, y: 110, model: 'azul' },   // esperando pasajeros en el puerto
     ...BIRDS,
     ...HERBS,
     // las 3 hojas de tarea que se le volaron al niño, enganchadas en el camino

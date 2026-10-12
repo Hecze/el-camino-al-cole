@@ -1015,46 +1015,72 @@ class Striker extends Actor {
   }
 }
 
-// Mototaxi (torito) estacionado: moto adelante y cabina con toldo de lona
-// detrás, con flecos y colores vivos. Detalle de pueblo; de vez en cuando
-// el motor tose una nubecita de humo.
+// Mototaxi (torito) estacionado, de perfil: cabina cerrada blanca con dos
+// puertas y ventanas, frente del color de la moto con parabrisas grande,
+// direccional ámbar, panel oscuro con faro y la rueda delantera bajo la trompa.
+// Colores tomados de fotos reales (modelo rojo y modelo azul).
+const TORITO = {
+  rojo: { body: '#c31c14', mid: '#b82a20', dark: '#741114', panel: '#221f26', glass: '#283136', glassHi: '#3c4850', stripe: '#c31c14' },
+  azul: { body: '#1268a1', mid: '#0b5489', dark: '#144472', panel: '#4b5262', glass: '#7a879a', glassHi: '#a4b2c2', stripe: '#4e8bc1' },
+};
+const TORITO_WHITE = '#eef2f2', TORITO_WHITE2 = '#cfcfcf', TORITO_SHADE = '#a4adac';
 class Mototaxi extends Actor {
   constructor(def) {
     const base = def.y * TS;
-    super(def.x * TS, base - 30, 46, 30);
-    this.base = base; this.col = def.col || ['#d8432f', '#962a22']; this.flip = !!def.flip; this.t = Math.floor(def.x * 7) % 300; this.run = !!def.run;
+    super(def.x * TS, base - 38, 52, 38);
+    this.base = base; this.c = TORITO[def.model] || TORITO.rojo; this.flip = !!def.flip; this.t = Math.floor(def.x * 7) % 300; this.run = !!def.run;
   }
   update(g) {
     this.t++;
-    if (this.run && this.t % 40 === 0) g.particles.push({ x: this.flip ? this.x + 44 : this.x + 1, y: this.base - 7, vx: this.flip ? 0.25 : -0.25, vy: -0.2, life: 50, max: 50, col: '#c8c2cc', size: 2, grav: -0.004 });
+    if (this.run && this.t % 40 === 0) g.particles.push({ x: this.flip ? this.x + 50 : this.x + 1, y: this.base - 5, vx: this.flip ? 0.25 : -0.25, vy: -0.2, life: 50, max: 50, col: '#c8c2cc', size: 2, grav: -0.004 });
   }
   draw() {}
   drawBack(ctx) {
-    const base = this.base, bx = Math.round(this.x), sh = this.run && Math.floor(this.t / 3) % 2 ? -1 : 0;
+    const c = this.c, base = this.base, bx = Math.round(this.x), sh = this.run && Math.floor(this.t / 3) % 2 ? -1 : 0;
     ctx.save();
-    if (this.flip) { ctx.translate(bx * 2 + 46, 0); ctx.scale(-1, 1); }
-    const R = (c, x, y, w, h) => { ctx.fillStyle = c; ctx.fillRect(bx + x, base + y + sh, w, h); };
-    const wheel = (cx) => { ctx.fillStyle = '#1d1622'; ctx.beginPath(); ctx.arc(bx + cx, base - 5, 5, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = '#8a8296'; ctx.fillRect(bx + cx - 1, base - 6, 3, 3); };
-    // sombra
-    ctx.fillStyle = 'rgba(30,20,20,0.25)'; ctx.fillRect(bx + 1, base - 1, 44, 2);
-    // cabina: chasis, asiento y respaldo
-    R('#2b2030', 2, -12, 28, 4);
-    R(this.col[0], 2, -16, 28, 5); R(this.col[1], 2, -12, 28, 1);
-    R('#3a2a3a', 6, -22, 18, 6); R('#5a4a5a', 7, -21, 16, 2);   // asiento
-    // parantes y toldo de lona con flecos
-    R('#8a8296', 3, -30, 2, 14); R('#8a8296', 27, -30, 2, 14);
-    R(this.col[0], 1, -34, 30, 5); R(this.col[1], 1, -30, 30, 1);
-    R('#fffaf0', 1, -33, 30, 1);
-    for (let x = 1; x < 31; x += 3) R('#f6c94a', x, -29, 1, 2);
-    // la moto: guardafango, tanque, manubrio y faro
-    R('#2b2030', 28, -13, 12, 3);
-    R(this.col[0], 30, -18, 8, 5); R('#fffaf0', 31, -17, 3, 1);   // tanque
-    R('#1d1622', 32, -21, 4, 3);                                    // asiento de la moto
-    R('#8a8296', 38, -24, 2, 12); R('#1d1622', 36, -25, 6, 1);     // horquilla y manubrio
-    R('#f6c94a', 41, -21, 3, 3); R('#fff3cf', 42, -20, 1, 1);      // faro
-    R('#5a5060', 33, -11, 6, 3);                                    // motor
-    R('#8a8296', 26, -9, 9, 1);                                     // tubo de escape
-    wheel(8); wheel(39);
+    if (this.flip) { ctx.translate(bx * 2 + 52, 0); ctx.scale(-1, 1); }
+    const R = (col, x, y, w, h) => { ctx.fillStyle = col; ctx.fillRect(bx + x, base + y + sh, w, h); };
+    const wheel = (cx) => {
+      ctx.fillStyle = '#232429'; ctx.beginPath(); ctx.arc(bx + cx, base - 5, 5, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#88929c'; ctx.fillRect(bx + cx - 2, base - 7, 4, 4); ctx.fillStyle = '#232429'; ctx.fillRect(bx + cx - 1, base - 6, 2, 2);
+    };
+    ctx.fillStyle = 'rgba(30,20,20,0.25)'; ctx.fillRect(bx + 1, base - 1, 50, 2);   // sombra
+    wheel(9);
+    // techo blanco con el filo del color de la moto; sobresale sobre el parabrisas
+    R(TORITO_WHITE, 3, -42, 42, 1); R(TORITO_WHITE, 2, -41, 45, 3); R(TORITO_SHADE, 2, -38, 45, 1);
+    R(c.stripe, 8, -43, 22, 1);
+    // cabina trasera blanca con dos puertas, esquina de atrás redondeada
+    R(TORITO_WHITE, 1, -37, 27, 30); R(TORITO_WHITE2, 1, -37, 2, 30); R(TORITO_WHITE2, 1, -37, 3, 1);
+    R(TORITO_SHADE, 13, -36, 1, 29); R(TORITO_SHADE, 27, -36, 1, 29);          // juntas de las puertas
+    R(c.glass, 4, -35, 7, 11); R(c.glassHi, 5, -34, 2, 4);                      // ventana trasera
+    R(c.glass, 16, -35, 9, 12); R(c.glassHi, 17, -34, 2, 4);                   // ventana de la puerta
+    R(c.body, 17, -21, 3, 1); R(c.body, 5, -22, 3, 1);                           // manijas
+    for (let y = -20; y < -15; y += 2) R(TORITO_WHITE2, 3, y, 8, 1);           // rejilla
+    R(TORITO_WHITE2, 14, -9, 13, 2);                                             // zócalo de la puerta
+    // parte baja trasera del color de la moto, con el arco de la rueda
+    R(c.body, 1, -14, 13, 8); R(c.mid, 1, -9, 13, 2); R(c.dark, 1, -7, 3, 1); R(c.dark, 13, -7, 1, 1);
+    // frente: parante con parabrisas grande
+    R(c.body, 28, -38, 15, 19);
+    R(c.glass, 29, -37, 13, 15); R(c.glassHi, 30, -36, 3, 7);
+    R('#232429', 35, -36, 1, 1); R('#232429', 36, -35, 1, 1); R('#232429', 37, -34, 1, 1); R('#232429', 38, -33, 1, 1);   // plumilla
+    // trompa redondeada que sobresale abajo
+    const nose = [[-21, 45], [-20, 46], [-19, 47], [-18, 48], [-17, 49], [-16, 49], [-15, 50], [-14, 50], [-13, 50], [-12, 49], [-11, 48], [-10, 46], [-9, 43], [-8, 40]];
+    for (const [y, x1] of nose) R(c.body, 28, y, x1 - 28, 1);
+    R(c.body, 43, -38, 1, 17);
+    for (const [y, x1] of nose.slice(-4)) R(c.mid, 28, y, x1 - 28, 1);
+    R(c.dark, 28, -8, 12, 1);
+    R('#be6023', 30, -21, 7, 2);                                                 // direccional ámbar
+    R(c.panel, 41, -18, 8, 7); R(c.panel, 40, -17, 1, 5);                        // panel del frente
+    ctx.fillStyle = '#d3dce1'; ctx.beginPath(); ctx.arc(bx + 46, base - 15 + sh, 2.5, 0, Math.PI * 2); ctx.fill();
+    R('#ffffff', 45, -16, 1, 1);
+    // horquilla
+    R('#232429', 46, -9, 2, 4);
+    ctx.restore();
+    // rueda delantera (sin el temblor del motor) con su guardafango
+    ctx.save(); if (this.flip) { ctx.translate(bx * 2 + 52, 0); ctx.scale(-1, 1); }
+    wheel(46);
+    ctx.fillStyle = c.body; ctx.fillRect(bx + 41, base - 11, 11, 2); ctx.fillRect(bx + 40, base - 10, 2, 2); ctx.fillRect(bx + 51, base - 10, 1, 2);
+    ctx.fillStyle = c.mid; ctx.fillRect(bx + 42, base - 9, 9, 1);
     ctx.restore();
   }
 }
