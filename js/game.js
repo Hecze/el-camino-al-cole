@@ -155,7 +155,7 @@
     for (const e of Game.entities) { if (e instanceof Mount && !e.retired) e.reset(); if (e.onRespawn) e.onRespawn(Game); }
     Game.entities = Game.entities.filter(e => !(e instanceof Boulder));
     p.riding = null; p.x = Game.spawn.x; p.y = Game.spawn.y - p.h;
-    p.vx = 0; p.vy = 0; p.dragged = false; p.overEdge = false; p.stickT = 0; p.gliding = false; p.glideAir = 0;
+    p.vx = 0; p.vy = 0; p.dragged = false; p.overEdge = false; p.stickT = 0; p.gliding = false; p.glideAir = 0; p.fallFrom = null;
     Game.entities = Game.entities.filter(e => !(e instanceof FallingLeaf)); p.mountCd = 0; p.invuln = 50; p.lastMover = null;
     const m = Game.spawnMount;
     if (m) { m.x = p.cx - m.w / 2; m.y = Game.spawn.y - m.h; m.vx = 0; m.vy = 0; p.mount(m, Game, true); }
@@ -783,7 +783,7 @@
     // en la cumbre: explicar el parapente
     const lf = Game.entities.find(e => e instanceof Leaf), pl = Game.player;
     if (lf && !lf.taken && Math.abs(pl.cx - lf.cx) < 90 && Math.abs(pl.cy - lf.cy) < 60 && !pl.riding) hintBox(['TOMA LA HOJA DE PLÁTANO']);
-    else if (pl.gliding && pl.onGround) hintBox(['¡SALTA AL VACÍO PARA PLANEAR!', 'ESPACIO FRENA LA CAÍDA - ABAJO PICA']);
+    else if (pl.gliding && pl.onGround && pl.y < 100 * TILE) hintBox(['¡SALTA AL VACÍO PARA PLANEAR!']);
     // título al empezar
     if (Game.banner < 170) {
       const a = Math.min(1, (170 - Game.banner) / 40);
@@ -884,7 +884,7 @@
       drawText(ctx, r[0], 30, 50 + i * 15, { color: '#9be7c4' });
       drawText(ctx, r[1], BASE_W - 30, 50 + i * 15, { color: '#f4e9d8', align: 'right' });
     });
-    const tips = ['LLAMA: TÓCALA PARA MONTARLA. CORRE Y SALTA MÁS.', 'CABRA: SALTA SOLA. TÚ SOLO LA GUÍAS.', 'EL PASTO LE DA A LA CABRA UN SÚPER SALTO.', 'HUAICO: SI CAES, PULSA SALTO PARA AGARRARTE.'];
+    const tips = ['LLAMA: TÓCALA PARA MONTARLA. CORRE Y SALTA MÁS.', 'CABRA: SALTA SOLA. TÚ SOLO LA GUÍAS.', 'EL PASTO LE DA A LA CABRA UN SÚPER SALTO.', 'HUAICO: SI CAES, PULSA SALTO MUY SEGUIDO.'];
     tips.forEach((t, i) => drawText(ctx, t, BASE_W / 2, 132 + i * 12, { color: '#cdbde8', align: 'center' }));
     drawText(ctx, 'PULSA ESPACIO PARA VOLVER', BASE_W / 2, 196, { color: '#fff3d6', align: 'center' });
   }

@@ -175,6 +175,7 @@ const LEVEL = {
   goatEnd: 118, goatEndRow: SUMMIT,
   // al planear no puedes alejarte de la ladera este
   glide: { x0: 119, x1: 164 },
+  glideLandRow: 100,   // la hoja solo se suelta al aterrizar por debajo de esta fila (el valle)
   altitude: { baseRow: G, baseM: 3650, perRow: 13 },
   zones: [
     { x: 0,   name: 'EL VALLE',  music: 'valle' },

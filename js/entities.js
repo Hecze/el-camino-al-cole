@@ -84,7 +84,7 @@ class Player extends Actor {
     this.riding = null; this.mountCd = 0; this.lastMover = null;
     this.dropThrough = false; this.dropT = 0; this.surfT = 0; this.stickT = 0;
     this.dragged = false; this.dragT = 0; this.overEdge = false;
-    this.gliding = false; this.glideAir = 0;
+    this.gliding = false; this.glideAir = 0; this.fallFrom = null;
     this.won = false; this.invuln = 0;
   }
   get jumpHeld() { return Input.held('jump') || Input.held('up'); }
@@ -124,9 +124,8 @@ class Player extends Actor {
     }
     if (!this.jumpHeld && this.vy < -PHYS.JUMP_CUT) this.vy = -PHYS.JUMP_CUT;
     if (this.gliding && !this.onGround && this.vy > 0) {
-      // planeando: caída lenta; abajo = picar más rápido, salto = frenar
-      const target = Input.held('down') ? 2.8 : (this.jumpHeld ? 0.7 : 1.3);
-      this.vy += (target - this.vy) * 0.12;
+      // planeando: caída lenta y constante; solo te mueves a los lados
+      this.vy += (1.3 - this.vy) * 0.12;
       this.vx = Math.max(-2.0, Math.min(2.0, this.vx));
       const G = level.glide;
       if (G) { if (this.x < G.x0 * TS) { this.x = G.x0 * TS; this.vx = Math.max(0, this.vx); } if (this.x > G.x1 * TS) { this.x = G.x1 * TS; this.vx = Math.min(0, this.vx); } }
@@ -178,11 +177,19 @@ class Player extends Actor {
     this.lastMover = onMover;
     if (this.surfT > 0) this.surfT--;
 
-    // al aterrizar después de planear, se suelta la hoja
+    // la hoja solo se suelta al aterrizar en el valle de abajo; si caes en
+    // una saliente de la montaña la conservas
     if (this.gliding) {
       if (!this.onGround) this.glideAir++;
-      else if (this.glideAir > 40) { this.gliding = false; g.addEntity(new FallingLeaf(this.cx, this.y - 14, this.facing)); g.audio('land'); }
+      else if (this.glideAir > 40 && this.y > (level.glideLandRow || 0) * TS) { this.gliding = false; g.addEntity(new FallingLeaf(this.cx, this.y - 14, this.facing)); g.audio('land'); }
       else this.glideAir = 0;
+    }
+    // caída desde muy alto a pie (sin hoja ni montura): pierdes
+    if (!this.onGround) this.fallFrom = this.gliding ? null : (this.fallFrom === null ? this.y : Math.min(this.fallFrom, this.y));
+    else {
+      const drop = this.fallFrom === null ? 0 : this.y - this.fallFrom;
+      this.fallFrom = null;
+      if (drop > 14 * TS) { g.playerEnvDeath('fall'); return; }
     }
     this.checkLiquids(g);
     this.animT++;
