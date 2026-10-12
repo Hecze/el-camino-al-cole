@@ -1015,6 +1015,50 @@ class Striker extends Actor {
   }
 }
 
+// Mototaxi (torito) estacionado: moto adelante y cabina con toldo de lona
+// detrás, con flecos y colores vivos. Detalle de pueblo; de vez en cuando
+// el motor tose una nubecita de humo.
+class Mototaxi extends Actor {
+  constructor(def) {
+    const base = def.y * TS;
+    super(def.x * TS, base - 30, 46, 30);
+    this.base = base; this.col = def.col || ['#d8432f', '#962a22']; this.flip = !!def.flip; this.t = Math.floor(def.x * 7) % 300; this.run = !!def.run;
+  }
+  update(g) {
+    this.t++;
+    if (this.run && this.t % 40 === 0) g.particles.push({ x: this.flip ? this.x + 44 : this.x + 1, y: this.base - 7, vx: this.flip ? 0.25 : -0.25, vy: -0.2, life: 50, max: 50, col: '#c8c2cc', size: 2, grav: -0.004 });
+  }
+  draw() {}
+  drawBack(ctx) {
+    const base = this.base, bx = Math.round(this.x), sh = this.run && Math.floor(this.t / 3) % 2 ? -1 : 0;
+    ctx.save();
+    if (this.flip) { ctx.translate(bx * 2 + 46, 0); ctx.scale(-1, 1); }
+    const R = (c, x, y, w, h) => { ctx.fillStyle = c; ctx.fillRect(bx + x, base + y + sh, w, h); };
+    const wheel = (cx) => { ctx.fillStyle = '#1d1622'; ctx.beginPath(); ctx.arc(bx + cx, base - 5, 5, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = '#8a8296'; ctx.fillRect(bx + cx - 1, base - 6, 3, 3); };
+    // sombra
+    ctx.fillStyle = 'rgba(30,20,20,0.25)'; ctx.fillRect(bx + 1, base - 1, 44, 2);
+    // cabina: chasis, asiento y respaldo
+    R('#2b2030', 2, -12, 28, 4);
+    R(this.col[0], 2, -16, 28, 5); R(this.col[1], 2, -12, 28, 1);
+    R('#3a2a3a', 6, -22, 18, 6); R('#5a4a5a', 7, -21, 16, 2);   // asiento
+    // parantes y toldo de lona con flecos
+    R('#8a8296', 3, -30, 2, 14); R('#8a8296', 27, -30, 2, 14);
+    R(this.col[0], 1, -34, 30, 5); R(this.col[1], 1, -30, 30, 1);
+    R('#fffaf0', 1, -33, 30, 1);
+    for (let x = 1; x < 31; x += 3) R('#f6c94a', x, -29, 1, 2);
+    // la moto: guardafango, tanque, manubrio y faro
+    R('#2b2030', 28, -13, 12, 3);
+    R(this.col[0], 30, -18, 8, 5); R('#fffaf0', 31, -17, 3, 1);   // tanque
+    R('#1d1622', 32, -21, 4, 3);                                    // asiento de la moto
+    R('#8a8296', 38, -24, 2, 12); R('#1d1622', 36, -25, 6, 1);     // horquilla y manubrio
+    R('#f6c94a', 41, -21, 3, 3); R('#fff3cf', 42, -20, 1, 1);      // faro
+    R('#5a5060', 33, -11, 6, 3);                                    // motor
+    R('#8a8296', 26, -9, 9, 1);                                     // tubo de escape
+    wheel(8); wheel(39);
+    ctx.restore();
+  }
+}
+
 class OutdoorClass extends Actor {
   constructor(x, y) {
     const base = y * TS;
@@ -1355,6 +1399,7 @@ function makeEntity(def, level) {
     case 'huaico': return new Huaico(def, level);
     case 'collapseHouse': return new CollapseHouse(def.x, def.y);
     case 'striker': return new Striker(def);
+    case 'mototaxi': return new Mototaxi(def);
     case 'checkpoint': return new Checkpoint(def.x, def.y, def.w, def.h);
     case 'house': return new House(def.x, def.y);
     case 'school': return new School(def.x, def.y);
