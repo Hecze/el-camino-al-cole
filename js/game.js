@@ -492,9 +492,11 @@
     const c0 = Math.floor(Game.cam.x / TILE) - 1, c1 = Math.ceil((Game.cam.x + BASE_W) / TILE);
     for (let r = r0; r <= r1; r++) {
       const d = r - Hh.peakRow;
-      const L = Math.round(Hh.peakX - d * Hh.slopeL - 1 - hash(r * 11) * 1.5), R = Math.round(Hh.peakX + d * Hh.slopeR + 1 + hash(r * 37) * 1.5);
+      // el cerro no empieza antes de x0 (detrás de la última roca fija): no debe parecer pisable
+      const L = Math.max(Hh.x0 || -1e9, Math.round(Hh.peakX - d * Hh.slopeL - 1 - hash(r * 11) * 1.5)), R = Math.round(Hh.peakX + d * Hh.slopeR + 1 + hash(r * 37) * 1.5);
       for (let c = Math.max(L, c0); c <= Math.min(R, c1); c++) {
-        if (isSolidCode(lv.tile(c, r)) || liquidKind(lv.tile(c, r))) continue;
+        // también detrás del lodo: así no asoma el cielo entre el lodo y el cerro
+        if (isSolidCode(lv.tile(c, r))) continue;
         const px = c * TILE, py = r * TILE;
         ctx.drawImage(hillTile, px, py);
         const band = Math.floor((r + Math.floor(hash(c >> 2) * 3)) / 3) % 3;

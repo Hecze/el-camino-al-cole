@@ -171,7 +171,8 @@ const LEVEL = {
   // la gran montaña: silueta de fondo con nieve en lo alto
   mountain: { peakX: 121, peakRow: 10, snowRow: 78, shape: mountainShape(121, 10, 150) },
   // cerro del que baja el huaico (tierra cálida)
-  hill: { peakX: 220, peakRow: 89, slopeL: 1.7, slopeR: 2.1 },
+  // la ladera izquierda nace en x 208 (tras la roca fija de x 206–207) a nivel del lodo y sube hasta la cumbre
+  hill: { peakX: 220, peakRow: 89, slopeL: 0.75, slopeR: 2.1, x0: 208 },
   goatEnd: 118, goatEndRow: SUMMIT,
   // al planear no puedes alejarte de la ladera este
   glide: { x0: 119, x1: 164 },
