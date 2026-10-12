@@ -99,7 +99,7 @@
   }
 
   // ── partículas ───────────────────────────────────────────────────────────
-  const COL = { leaf: '#8fd062', feather: '#2a1f2d', dust: '#c9a86a', spark: '#ffe27a', mud: '#7a5232', splash: '#bdf0f4', rock: '#8a8296', paper: '#ffffff' };
+  const COL = { foam: '#f0d6a8', leaf: '#8fd062', feather: '#2a1f2d', dust: '#c9a86a', spark: '#ffe27a', mud: '#7a5232', splash: '#bdf0f4', rock: '#8a8296', paper: '#ffffff' };
 
   // ── estado ───────────────────────────────────────────────────────────────
   const Game = {
@@ -120,7 +120,7 @@
   Game.burst = (x, y, type, n) => {
     for (let i = 0; i < n; i++) {
       const a = Math.random() * Math.PI * 2, sp = rnd(0.4, 2.2);
-      const heavy = type === 'splash' || type === 'mud';
+      const heavy = type === 'splash' || type === 'mud' || type === 'foam';
       Game.particles.push({ x, y, vx: Math.cos(a) * sp, vy: (heavy ? -Math.abs(Math.sin(a)) * sp * 1.4 : Math.sin(a) * sp) - 0.6, life: rnd(16, 32), max: 32, col: COL[type] || '#fff', size: Math.random() < 0.3 ? 2 : 1, grav: heavy ? 0.2 : 0.05 });
     }
   };
@@ -406,7 +406,6 @@
     renderParticles();
     ctx.restore();
     renderSnowfall(lv, camy);
-    renderBirdWarnings();
     renderAttackAlert();
     // luz fría y violácea del amanecer que se va disipando
     if (day < 1) { ctx.fillStyle = 'rgba(70,40,110,' + (0.22 * (1 - day)) + ')'; ctx.fillRect(0, 0, BASE_W, BASE_H); }
@@ -759,20 +758,6 @@
     }
   }
 
-  // aviso "!" en el borde por donde va a entrar un cóndor
-  function renderBirdWarnings() {
-    for (const e of Game.entities) {
-      if (!(e instanceof Condor) || !e.warning) continue;
-      const sy = e.baseY - Game.cam.y; if (sy < 10 || sy > BASE_H - 10) continue;
-      const left = e.dir > 0, x = left ? 6 : BASE_W - 16;
-      if (Math.floor(tick / 6) % 2) continue;
-      panel(x - 2, sy - 6, 14, 14);
-      drawText(ctx, '!', x + 5, sy - 3, { color: '#ff6b5a', align: 'center' });
-      drawText(ctx, left ? '>' : '<', x + (left ? 10 : -2), sy - 3, { color: '#ff6b5a', align: 'center' });
-    }
-  }
-
-  // ── HUD ──────────────────────────────────────────────────────────────────
   function panel(x, y, w, h) { ctx.fillStyle = 'rgba(28,18,30,0.55)'; ctx.fillRect(x + 1, y, w - 2, h); ctx.fillRect(x, y + 1, w, h - 2); }
   function hintBox(lines) {
     const w = Math.max(...lines.map(l => textWidth(l))) + 16, h = lines.length * 11 + 6;

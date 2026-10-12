@@ -225,7 +225,7 @@ const LEVEL = {
     // en la cumbre crece un platanal: su hoja gigante sirve de parapente
     { type: 'leaf', x: 123, y: SUMMIT },
     ...EAGLES,
-    { type: 'huaico', x0: 160, x1: 222, interval: 84, speed: 0.75, inflow: { x: 218, top: 92 } },
+    { type: 'huaico', x0: 160, x1: 222, interval: 135, speed: 0.75, inflow: { x: 218, top: 92 } },
     // el colegio se cae a pedazos... la clase se da afuera, sentados en el suelo
     { type: 'school', x: 231, y: 103 },
     { type: 'outdoorClass', x: 243, y: 103 },

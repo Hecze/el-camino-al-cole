@@ -218,7 +218,7 @@ class Player extends Actor {
     if (inWater) { g.playerEnvDeath('water'); return; }
     if (inMud && g.huaico) {
       // el huaico te atrapa y te arrastra hacia el precipicio
-      this.dragged = true; this.dragT = 0; this.overEdge = false; this.vx = 0; this.vy = 0; this.escapeCd = 0; this.stamina = 6;
+      this.dragged = true; this.dragT = 0; this.overEdge = false; this.vx = 0; this.vy = 0; this.struggle = 0; this.hop = 0;
       g.audio('splash'); g.burst(this.cx, this.y + this.h, 'mud', 14); g.shake(2, 8);
       return;
     }
@@ -245,22 +245,20 @@ class Player extends Actor {
     if (this.y < target) { this.vy = Math.min(this.vy + 0.4, 5); this.y = Math.min(target, this.y + this.vy); }
     else { this.y = target; this.vy = 0; }
     if (this.dragT % 9 === 0) g.burst(this.cx, s, 'mud', 3);
-    if (this.escapeCd > 0) this.escapeCd--;
-    // el niño se cansa: solo tiene fuerzas para unos pocos intentos
-    if (Input.consumeJump() && this.escapeCd <= 0 && this.stamina > 0) {
-      this.escapeCd = 14; this.stamina--; // machacar el botón no sirve: hay que elegir el momento
-      // ¿hay un tronco justo encima? te agarras a él (tiene que pasar muy cerca)
-      // solo si el extremo de un tronco queda casi en tu mano
-      const grab = g.movers.find(m => !m.dead && !m.falling && (Math.abs(this.cx - m.x) < 5 || Math.abs(this.cx - (m.x + m.w)) < 5) && m.y > this.y - 6 && m.y < this.y + 18);
-      if (grab) {
-        this.dragged = false; this.y = grab.y - this.h; this.vy = 0; this.vx = 0;
-        this.lastMover = grab; this.stickT = 18; this.onGround = true; this.invuln = 20; unstick(this, g.level);
-        g.audio('jump'); g.burst(this.cx, this.y + this.h, 'mud', 10);
-      } else if (Math.random() < 0.03) {
-        // muy de vez en cuando, un manotazo desesperado te saca del lodo
-        this.dragged = false; this.y = s - this.h - 6; this.vy = -6.6; this.vx = 0.8; unstick(this, g.level);
-        g.audio('jump'); g.burst(this.cx, s, 'mud', 12);
-      } else { g.audio('mud'); g.burst(this.cx, s - 2, 'mud', 5); }
+    // FORCEJEO: cada pulsación es un saltito con salpicadura; si pulsas seguido
+    // el impulso se acumula y al llenarse sales de un brinco. Si paras, se pierde.
+    this.struggle = Math.max(0, this.struggle - 0.05);
+    if (this.hop > 0) this.hop--;
+    if (Input.consumeJump()) {
+      this.struggle += 1; this.hop = 8;
+      const k = this.struggle / 8;
+      g.burst(this.cx, s - 2, 'foam', 5 + Math.round(k * 12)); g.burst(this.cx, s - 2, 'mud', 3);
+      g.audio('mud');
+      if (this.struggle >= 8) {
+        this.dragged = false; this.y = s - this.h - 6; this.vy = -6.8; this.vx = 0.9; this.struggle = 0;
+        unstick(this, g.level);
+        g.audio('jump'); g.burst(this.cx, s, 'foam', 24); g.burst(this.cx, s, 'mud', 10); g.shake(1.5, 6);
+      }
     }
   }
 
@@ -268,9 +266,11 @@ class Player extends Actor {
     if (this.riding) return;
     if (this.dragged) {
       const s = this.overEdge ? 99999 : (g.huaico.surfaceAt(this.cx) || 99999);
-      ctx.save(); ctx.beginPath(); ctx.rect(this.x - 10, this.y - 12, 28, s + 1 - (this.y - 12)); ctx.clip();
+      ctx.save(); ctx.beginPath(); ctx.rect(this.x - 10, this.y - 30, 28, s + 1 - (this.y - 30)); ctx.clip();
       const img = P.jump, jx = Math.floor(this.dragT / 6) % 2;
-      ctx.drawImage(this.facing < 0 ? flipS(img) : img, Math.round(this.cx - 8 + jx), Math.round(this.y + this.h - 22));
+      // saltito al forcejear: más alto cuanto más impulso llevas
+      const lift = this.hop > 0 ? Math.round(Math.sin(this.hop / 8 * Math.PI) * (3 + this.struggle * 1.2)) : 0;
+      ctx.drawImage(this.facing < 0 ? flipS(img) : img, Math.round(this.cx - 8 + jx), Math.round(this.y + this.h - 22 - lift));
       ctx.restore();
       return;
     }
