@@ -10,6 +10,7 @@ const TILE_SPECS = {
   pirca:     { solid: true, body: T.pirca },
   ledge:     { oneway: true, body: T.ledge },
   ledgeSnow: { oneway: true, body: T.ledgeSnow },
+  summit:    { oneway: true, body: T.snowTop },   // cumbre: se atraviesa desde abajo
   clay:      { solid: true, top: T.clay, body: T.clayBody },
   mudRock:   { solid: true, body: T.mudRock },
   waterTop:  { liquid: 'water' }, waterBody: { liquid: 'water' },
@@ -112,12 +113,14 @@ const SUMMIT = 18;      // fila de la cumbre
 const ZIG = [0, 4, 1, -3, 1, 5, 2, -2, -5, -1, 3, -1, -4, 0, 4, 0];
 function mountainPath() {
   const up = [];
-  // subida (cara oeste): de la fila 141 a la 21, una saliente cada 3 filas
-  const nUp = Math.round((G - 3 - (SUMMIT + 3)) / 3) + 1;
+  // subida (cara oeste): de la fila 141 a la 21, una saliente cada 4 filas.
+  // El rebote de la cabra sube ~5,8 filas: llega con holgura a la siguiente
+  // saliente pero no roza la de más arriba (nada de saltos de "1,9 salientes").
+  const nUp = Math.round((G - 3 - (SUMMIT + 3)) / 4) + 1;
   for (let i = 0; i < nUp; i++) {
-    const row = G - 3 - i * 3;
+    const row = G - 3 - i * 4;
     const center = 103 + (i / (nUp - 1)) * 14;
-    const x = Math.round(center + ZIG[i % ZIG.length] * 0.9);
+    const x = Math.round(center + ZIG[i % ZIG.length] * 0.8);
     up.push([x - 1, row, i < 3 ? 4 : 3, row < 80 ? 'ledgeSnow' : 'ledge']);
   }
   return { up };
@@ -133,7 +136,7 @@ const BIRDS = [];
 const HERBS = [];
 MTN.up.forEach((l, i) => { if (i % 4 === 2) HERBS.push({ type: 'herb', x: mid(l) + (i % 8 === 2 ? 3 : -3), y: l[1] - 3 }); });
 // puntos de control en la montaña (reapareces montado en la cabra)
-const MTN_CP = [MTN.up[10], MTN.up[20], MTN.up[30]].map(l => ({ type: 'checkpoint', x: Math.floor(mid(l)), y: l[1] }));
+const MTN_CP = [MTN.up[8], MTN.up[16], MTN.up[24]].map(l => ({ type: 'checkpoint', x: Math.floor(mid(l)), y: l[1] }));
 
 // Silueta de la montaña calculada a partir del camino: cada saliente queda
 // pegada a la roca (nada de salientes flotando en el aire).
@@ -189,7 +192,7 @@ const LEVEL = {
     [46, G - 3, 1, 1, 'pirca'], [47, G - 4, 1, 2, 'pirca'],
     [61, G, 40, 6, 'grass'],
     // ── LA CUMBRE ──
-    [116, SUMMIT, 9, 1, 'snow'],
+    [116, SUMMIT, 9, 1, 'summit'],
     // ── LA QUEBRADA CÁLIDA: orilla, lecho del huaico y el colegio ──
     [145, 110, 12, 40, 'clay'],
     [160, 114, 16, 36, 'clay'], [176, 112, 16, 38, 'clay'], [192, 110, 16, 40, 'clay'], [208, 108, 14, 42, 'clay'],
@@ -229,7 +232,7 @@ const LEVEL = {
     ...HERBS,
     // las 3 hojas de tarea que se le volaron al niño, enganchadas en el camino
     { type: 'page', x: 47, y: G - 5 },                                            // sobre la pirca alta
-    { type: 'page', x: MTN.up[25][0] - 5, y: MTN.up[25][1] - 6 },                 // en el aire, junto al risco
+    { type: 'page', x: MTN.up[19][0] - 5, y: MTN.up[19][1] - 6 },                 // en el aire, junto al risco
     { type: 'page', x: 154, y: 109 },                                             // en la orilla del huaico
   ],
   decor: [

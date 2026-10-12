@@ -6,7 +6,8 @@ const PHYS = {
   RUN_ACCEL: 0.60, RUN_MAX: 2.30, FRICTION: 0.30, AIR_ACCEL: 0.45,
   JUMP_V: -7.3, JUMP_CUT: 3.0, COYOTE: 7,
   LLAMA_MAX: 3.2, LLAMA_JUMP: -7.5,
-  GOAT_MAX: 2.6, GOAT_JUMP: -9.0,
+  // cabra: rebote algo más alto y más lento (sube ~93 px, 1,45 salientes)
+  GOAT_MAX: 2.6, GOAT_JUMP: -8.4, GOAT_GRAV: 0.38, GOAT_FALL: 5.2,
 };
 
 function moveX(a, level) {
@@ -370,7 +371,7 @@ class Cabra extends Mount {
       this.vx *= 0.8;
       if (this.onGround && ++this.idleT % 110 === 0 && !this.retired) this.vy = -3.2; // brinquito de espera
     }
-    this.vy = Math.min(this.vy + PHYS.GRAV, PHYS.MAX_FALL);
+    this.vy = Math.min(this.vy + PHYS.GOAT_GRAV, PHYS.GOAT_FALL);
     moveX(this, g.level); moveY(this, g.level);
     if (this.rider) this.rider.syncRide();
     this.hazards(g);
