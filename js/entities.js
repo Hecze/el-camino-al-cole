@@ -574,90 +574,110 @@ class Debris extends Actor {
   }
 }
 
-// Casa de adobe al fondo, al borde del huaico. Cuando te acercas cruje, tiembla
-// y se derrumba: los muros caen hacia los lados y el techo de calamina se
-// desliza al lodo, donde flota como una balsa junto con sus vigas.
+// Casa de adobe al fondo, sobre un barranco al borde del huaico. Un segundo
+// después de verla entera en pantalla, el lodo empieza a comerse el barranco:
+// el terreno baja y se desmorona, la casa baja con él hasta que su piso toca
+// el lodo; la corriente la golpea, la ladea y se la lleva aguas abajo mientras
+// se hunde. El techo de calamina se suelta y sigue flotando como balsa (se
+// puede pisar), junto con dos vigas. La casa se dibuja detrás del lodo, así
+// que lo que se hunde queda tapado por la corriente.
 class CollapseHouse extends Actor {
   constructor(x, y) {
-    super(x * TS - 32, y * TS + 4 - 60, 64, 60);
-    this.base = y * TS + 4; this.hx = x * TS; this.state = 'stand'; this.t = 0;
+    super(x * TS - 40, y * TS + 4 - 70, 80, 70);
+    this.base = y * TS + 4; this.hx = x * TS; this.onRespawn();
   }
-  onRespawn() { this.state = 'stand'; this.t = 0; }
+  onRespawn() {
+    this.state = 'stand'; this.t = 0; this.seen = 0;
+    this.bank = -14;           // altura del barranco respecto al lodo (negativo = sobre el lodo)
+    this.dx = 0; this.dy = 0;  // desplazamiento de la casa (arrastre y hundimiento)
+    this.tilt = 0; this.roofOn = true;
+  }
   update(g) {
     this.t++;
-    const p = g.player;
+    const hu = g.huaico, cam = g.cam;
+    const surf = () => (hu && hu.surfaceAt(this.hx + this.dx)) || this.base;
     if (this.state === 'stand') {
-      if (p.cx > this.hx - 9 * TS && p.cx < this.hx + 4 * TS && g.state === 'play') { this.state = 'creak'; this.t = 0; g.audio('creak'); g.audio('rumble'); }
-    } else if (this.state === 'creak') {
-      if (this.t % 6 === 0) g.particles.push({ x: this.hx - 30 + Math.random() * 60, y: this.base - 58 + Math.random() * 6, vx: 0, vy: 0.3, life: 40, max: 40, col: Math.random() < 0.5 ? '#c9a86a' : '#8a6a4a', size: 1, grav: 0.08 });
-      if (this.t > 45) { this.state = 'fall'; this.t = 0; g.audio('crush'); g.audio('rock'); g.shake(3, 22); }
-    } else if (this.state === 'fall') {
-      if (this.t < 30 && this.t % 2 === 0) g.particles.push({ x: this.hx - 30 + Math.random() * 60, y: this.base - 40 + Math.random() * 26, vx: (Math.random() - 0.5) * 2.4, vy: -1.5 - Math.random() * 1.5, life: 50, max: 50, col: Math.random() < 0.6 ? '#b98a55' : '#94502d', size: Math.random() < 0.4 ? 2 : 1, grav: 0.18 });
-      if (this.t === 26) {
-        // el techo y las vigas caen al lodo y la corriente se los lleva
-        const hu = g.huaico;
-        if (hu) {
-          for (const [kind, dx, dy] of [['roof', 0, 40], ['log', -66, 30], ['log', 68, 26]]) {
-            const d = new Debris(kind, this.hx + dx, hu, this.base - dy); g.addEntity(d); g.movers.push(d);
-          }
-        }
-        g.burst(this.hx, this.base, 'mud', 26); g.audio('splash');
+      // un segundo después de que la casa entra entera en la pantalla
+      const inView = this.hx - 46 >= cam.x && this.hx + 46 <= cam.x + VIEW.w && this.base - 70 >= cam.y && this.base <= cam.y + VIEW.h;
+      this.seen = inView ? this.seen + 1 : 0;
+      if (this.seen > 60 && g.state === 'play') { this.state = 'erode'; this.t = 0; g.audio('rumble'); }
+    } else if (this.state === 'erode') {
+      // el lodo se come el barranco: baja de a pocos y se desprenden terrones
+      this.bank = Math.min(2, this.bank + 0.12);
+      this.tilt = -Math.min(0.12, this.t * 0.0012);
+      if (this.t % 7 === 0) {
+        const side = Math.random() < 0.5 ? -1 : 1, x = this.hx + side * (30 + Math.random() * 14);
+        g.particles.push({ x, y: this.base + this.bank - 2, vx: side * 0.3, vy: -0.4, life: 30, max: 30, col: Math.random() < 0.5 ? '#6e4627' : '#5a3b22', size: 2, grav: 0.2 });
+        g.burst(x, this.base, 'mud', 3);
       }
-      if (this.t > 60) { this.state = 'ruin'; this.t = 0; }
+      if (this.t % 50 === 0) { g.audio('mud'); g.audio('creak'); }
+      if (this.bank >= 2) { this.state = 'hit'; this.t = 0; g.audio('crush'); g.audio('splash'); g.shake(2, 14); }
+    } else if (this.state === 'hit') {
+      // la corriente golpea las paredes: salpica y la empieza a ladear
+      this.tilt = -0.12 - Math.min(0.18, this.t * 0.005);
+      this.dy = Math.min(6, this.t * 0.15);
+      if (this.t % 4 === 0) g.burst(this.hx + 30 - Math.random() * 10, this.base - 2, 'foam', 4);
+      if (this.t > 40) { this.state = 'drag'; this.t = 0; g.audio('creak'); }
+    } else if (this.state === 'drag') {
+      // aguas abajo (hacia la izquierda), cada vez más hundida y ladeada
+      this.dx -= (hu ? hu.speed : 0.75) * Math.min(1, this.t / 60) * 0.9;
+      this.dy = Math.min(64, 6 + this.t * 0.11) + (surf() - this.base);
+      this.tilt = -0.3 - Math.min(0.45, this.t * 0.0018) + Math.sin(this.t * 0.08) * 0.04;
+      if (this.t % 5 === 0) g.burst(this.hx + this.dx + 28, surf() - 2, 'foam', 3);
+      if (this.roofOn && this.t === 150) {
+        // el techo se suelta y se lo lleva la corriente, flotando
+        this.roofOn = false; g.audio('snap');
+        if (hu) for (const [kind, ox] of [['roof', 0], ['log', -60], ['log', 58]]) {
+          const d = new Debris(kind, this.hx + this.dx + ox, hu, null); g.addEntity(d); g.movers.push(d);
+        }
+        g.burst(this.hx + this.dx, surf() - 4, 'mud', 16);
+      }
+      if (this.t > 120 && 6 + this.t * 0.11 >= 64) { this.state = 'gone'; this.t = 0; }
     }
   }
   draw() {}
-  // se dibuja detrás del lodo (está al fondo), sobre un barranco de tierra
   drawBack(ctx) {
-    const bx = Math.round(this.hx - 32), base = this.base - 14;   // el piso de la casa, sobre el barranco
-    const R = (c, x, y, w, h) => { ctx.fillStyle = c; ctx.fillRect(bx + x, base + y, w, h); };
-    // barranco que baja hasta el lodo (el huaico ya se comió parte de la orilla)
+    const base = this.base, bx0 = Math.round(this.hx - 32);
+    // barranco de tierra: baja a medida que el lodo se lo come
+    const top = Math.round(base + this.bank);
     for (let x = -18; x < 82; x += 2) {
-      const edge = Math.abs(x - 32) > 40 ? Math.round((Math.abs(x - 32) - 40) * 0.9) : 0;
-      R('#6e4627', x, edge, 2, 30 - edge); R('#5a3b22', x, 8 + edge + ((x >> 1) % 3), 2, 22);
-      R('#7d9a62', x, edge - 1, 2, 2);
+      const d = Math.abs(x - 32), edge = d > 40 ? Math.round((d - 40) * 0.9) : 0;
+      // borde desmoronado: más irregular mientras se erosiona
+      const n = Math.sin((x * 3 + Math.floor(this.t / 9)) * 12.9898) * 43758.5453, bite = this.state === 'stand' ? 0 : Math.round((n - Math.floor(n)) * 3);
+      const y0 = top + edge + bite;
+      if (y0 > base + 6) continue;
+      ctx.fillStyle = '#6e4627'; ctx.fillRect(bx0 + x, y0, 2, base + 10 - y0);
+      ctx.fillStyle = '#5a3b22'; ctx.fillRect(bx0 + x, y0 + 7 + ((x >> 1) % 3), 2, Math.max(0, base + 3 - y0 - 7));
+      if (this.state === 'stand' || this.state === 'erode') { ctx.fillStyle = '#7d9a62'; ctx.fillRect(bx0 + x, y0 - 1, 2, 2); }
     }
-    for (const [x, y] of [[-8, 6], [6, 10], [24, 7], [50, 11], [70, 8]]) R('#94502d', x, y, 4, 2);   // piedras en el barranco
-    if (this.state === 'ruin') {
-      // escombros: tocones de muro, adobes sueltos y un dintel caído
-      R('#a3753f', 2, -12, 8, 12); R('#b98a55', 3, -11, 6, 3); R('#a3753f', 54, -9, 9, 9);
-      for (const [x, w] of [[12, 6], [20, 5], [27, 7], [37, 6], [45, 5]]) R(x % 2 ? '#b98a55' : '#94502d', x, -4, w, 4);
-      R('#6b4524', 22, -7, 16, 3);
-      return;
+    if (this.state === 'gone') return;
+    // la casa, como un bloque: baja con el barranco, se ladea y se va con la corriente
+    const floor = top + this.dy;
+    ctx.save();
+    ctx.translate(Math.round(this.hx + this.dx), Math.round(floor)); ctx.rotate(this.tilt);
+    const R = (c, x, y, w, h) => { ctx.fillStyle = c; ctx.fillRect(x, y, w, h); };
+    const cracked = this.state !== 'stand';
+    // muros de adobe
+    R('#b98a55', -30, -36, 60, 36);
+    for (let y = -34; y < 0; y += 5) R('#a3753f', -30, y, 60, 1);
+    for (let y = -32; y < 0; y += 10) for (let x = -28; x < 28; x += 9) R('#c9a06a', x + ((y / 10) & 1) * 4, y, 1, 4);
+    R('#8a6040', -30, -2, 60, 2);
+    R('#3a2412', -17, -23, 11, 23); R('#6b4524', -16, -22, 9, 22); R('#e2b13c', -9, -12, 1, 2);   // puerta
+    R('#6b4524', 7, -28, 12, 11); R('#2b2030', 8, -27, 10, 9); R('#d8432f', 8, -27, 3, 9); R('#6b4524', 12, -27, 1, 9);   // ventana
+    if (cracked) {   // grietas que crecen
+      const n = Math.min(7, 2 + Math.floor(this.t / 25) + (this.state === 'drag' ? 4 : 0));
+      for (let i = 0; i < n; i++) R('#3a2414', -1 + ((i % 2) ? 1 : 0), -35 + i * 5, 1, 5);
+      if (this.state !== 'erode') for (let i = 0; i < 4; i++) R('#3a2414', 22 - i * 2, -10 - i * 5, 1, 5);
     }
-    const sh = this.state === 'creak' ? Math.round(Math.sin(this.t * 1.7) * Math.min(2, this.t / 15)) : 0;
-    const k = this.state === 'fall' ? Math.min(1, this.t / 26) : 0;   // avance del derrumbe
-    const wall = (side) => {
-      // cada muro gira hacia su lado sobre su base y cae por el barranco
-      ctx.save();
-      ctx.translate(bx + (side < 0 ? 2 : 62) + sh, base + k * 14); ctx.rotate(side * k * 1.3);
-      const ox = side < 0 ? 0 : -30;
-      ctx.fillStyle = '#b98a55'; ctx.fillRect(ox, -36, 30, 36);
-      ctx.fillStyle = '#a3753f'; for (let y = -34; y < 0; y += 5) ctx.fillRect(ox, y, 30, 1);
-      ctx.fillStyle = '#c9a06a'; for (let y = -32; y < 0; y += 10) for (let x = 2; x < 28; x += 9) ctx.fillRect(ox + x, y, 1, 4);
-      ctx.fillStyle = '#8a6040'; ctx.fillRect(ox, -2, 30, 2);   // zócalo
-      if (side < 0) { ctx.fillStyle = '#3a2412'; ctx.fillRect(ox + 17, -23, 11, 23); ctx.fillStyle = '#6b4524'; ctx.fillRect(ox + 18, -22, 9, 22); ctx.fillStyle = '#e2b13c'; ctx.fillRect(ox + 25, -12, 1, 2); }   // puerta
-      else {   // ventana con cortina
-        ctx.fillStyle = '#6b4524'; ctx.fillRect(ox + 7, -28, 12, 11); ctx.fillStyle = '#2b2030'; ctx.fillRect(ox + 8, -27, 10, 9);
-        ctx.fillStyle = '#d8432f'; ctx.fillRect(ox + 8, -27, 3, 9); ctx.fillStyle = '#6b4524'; ctx.fillRect(ox + 12, -27, 1, 9);
-      }
-      if (this.state !== 'stand') {   // grieta que se abre
-        ctx.fillStyle = '#3a2414'; const cx = ox + (side < 0 ? 26 : 3);
-        for (let i = 0; i < 6; i++) ctx.fillRect(cx + ((i % 2) ? -side : 0), -35 + i * 5, 1, 5);
-      }
-      ctx.restore();
-    };
-    wall(-1); wall(1);
-    // techo de calamina a dos aguas: en el derrumbe se desliza al lodo
-    if (!(this.state === 'fall' && this.t >= 26)) {
-      ctx.save(); ctx.translate(bx + 32 + sh, base - 44 + k * k * 40); ctx.rotate(k * 0.35);
-      for (let i = 0; i < 11; i++) { const w = 76 - (10 - i) * 6; ctx.fillStyle = i % 2 ? '#9aa0a8' : '#8a9098'; ctx.fillRect(Math.round(-w / 2), i - 10, w, 1); }
-      ctx.fillStyle = '#7d838c'; for (let x = -38; x < 38; x += 4) ctx.fillRect(x, 0, 2, 2);
-      ctx.fillStyle = 'rgba(150,70,30,0.7)'; ctx.fillRect(-24, -4, 9, 3); ctx.fillRect(12, -2, 11, 3);
-      ctx.fillStyle = '#5d636c'; ctx.fillRect(-39, 2, 78, 1);
-      ctx.fillStyle = '#d9ccb0'; ctx.fillRect(14, -16, 4, 7); ctx.fillStyle = '#8a8296'; ctx.fillRect(14, -17, 4, 1);   // chimenea
-      ctx.restore();
+    // techo de calamina a dos aguas (hasta que la corriente lo arranca)
+    if (this.roofOn) {
+      for (let i = 0; i < 11; i++) { const w = 76 - (10 - i) * 6; R(i % 2 ? '#9aa0a8' : '#8a9098', Math.round(-w / 2), i - 46, w, 1); }
+      ctx.fillStyle = '#7d838c'; for (let x = -38; x < 38; x += 4) ctx.fillRect(x, -36, 2, 2);
+      R('rgba(150,70,30,0.7)', -24, -40, 9, 3); R('rgba(150,70,30,0.7)', 12, -38, 11, 3);
+      R('#5d636c', -39, -34, 78, 1);
+      R('#d9ccb0', 14, -52, 4, 7); R('#8a8296', 14, -53, 4, 1);   // chimenea
     }
+    ctx.restore();
   }
 }
 
