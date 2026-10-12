@@ -731,19 +731,32 @@
     ctx.globalAlpha = 1;
   }
 
-  // ¡bajo ataque!: el borde de la pantalla late en rojo mientras un águila
-  // se prepara (rápido) o está en picado (fijo e intenso)
+  // ¡bajo ataque!: líneas de velocidad estilo manga que convergen hacia el
+  // niño. Pocas y titilantes mientras el águila se prepara; densas en el picado.
   function renderAttackAlert() {
-    let level = 0;
+    let n = 0;
     for (const e of Game.entities) if (e instanceof Eagle) {
-      if (e.state === 'dive') level = Math.max(level, 0.55);
-      else if (e.state === 'windup') level = Math.max(level, 0.25 + 0.25 * (Math.sin(tick * 0.6) * 0.5 + 0.5));
+      if (e.state === 'dive') n = Math.max(n, 46);
+      else if (e.state === 'windup') n = Math.max(n, 18);
     }
-    if (level <= 0) return;
-    const d = 28;
-    const edge = (x0, y0, x1, y1, x, y, w, h) => { const gr = ctx.createLinearGradient(x0, y0, x1, y1); gr.addColorStop(0, 'rgba(230,30,30,' + level + ')'); gr.addColorStop(1, 'rgba(230,30,30,0)'); ctx.fillStyle = gr; ctx.fillRect(x, y, w, h); };
-    edge(0, 0, d, 0, 0, 0, d, BASE_H); edge(BASE_W, 0, BASE_W - d, 0, BASE_W - d, 0, d, BASE_H);
-    edge(0, 0, 0, d, 0, 0, BASE_W, d); edge(0, BASE_H, 0, BASE_H - d, 0, BASE_H - d, BASE_W, d);
+    if (!n) return;
+    const p = Game.player, fx = p.cx - Game.cam.x, fy = p.cy - Game.cam.y;
+    const seed = Math.floor(tick / 2);   // se redibujan cada 2 frames: efecto "vibrante"
+    const R = Math.hypot(BASE_W, BASE_H) * 0.75;
+    for (let i = 0; i < n; i++) {
+      const ang = hash(seed * 97 + i * 13) * Math.PI * 2;
+      const inner = 64 + hash(seed * 31 + i * 7) * 60;           // dejan libre el centro
+      const reach = 0.45 + hash(i * 11 + seed) * 0.45;          // largo de cada trazo
+      const thick = hash(i * 5 + seed) > 0.6 ? 3 : 2;
+      const cx = Math.cos(ang), cy = Math.sin(ang);
+      const steps = Math.floor((R - inner) * reach);
+      for (let k = 0; k < steps; k++) {
+        const d = R - k, x = Math.round(fx + cx * d), y = Math.round(fy + cy * d);
+        const w = k < steps * 0.35 ? thick : k < steps * 0.7 ? 2 : 1;   // afina hacia el niño
+        ctx.fillStyle = 'rgba(40,30,60,0.35)'; ctx.fillRect(x + 1, y + 1, w, w);   // sombra para que se vea sobre la nieve
+        ctx.fillStyle = 'rgba(255,255,255,0.9)'; ctx.fillRect(x, y, w, w);
+      }
+    }
   }
 
   // aviso "!" en el borde por donde va a entrar un cóndor

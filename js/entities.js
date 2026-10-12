@@ -218,7 +218,7 @@ class Player extends Actor {
     if (inWater) { g.playerEnvDeath('water'); return; }
     if (inMud && g.huaico) {
       // el huaico te atrapa y te arrastra hacia el precipicio
-      this.dragged = true; this.dragT = 0; this.overEdge = false; this.vx = 0; this.vy = 0;
+      this.dragged = true; this.dragT = 0; this.overEdge = false; this.vx = 0; this.vy = 0; this.escapeCd = 0; this.stamina = 6;
       g.audio('splash'); g.burst(this.cx, this.y + this.h, 'mud', 14); g.shake(2, 8);
       return;
     }
@@ -238,20 +238,25 @@ class Player extends Actor {
     if (s === null) { this.overEdge = true; this.dragT = 0; this.vy = -1.5; g.audio('fall'); return; }
     // la corriente arrastra (un poco más rápido que los troncos); puedes bracear algo
     let swim = 0;
-    if (Input.held('right')) swim = 0.35; else if (Input.held('left')) swim = -0.25;
-    this.x += -hu.speed * 1.35 + swim;
+    if (Input.held('right')) swim = 0.12; else if (Input.held('left')) swim = -0.12;
+    // vas a la misma velocidad que los troncos: no los adelantas por debajo
+    this.x += -hu.speed * 1.15 + swim;
     const target = s - this.h + 6 + (Math.floor(this.dragT / 10) % 2);
     if (this.y < target) { this.vy = Math.min(this.vy + 0.4, 5); this.y = Math.min(target, this.y + this.vy); }
     else { this.y = target; this.vy = 0; }
     if (this.dragT % 9 === 0) g.burst(this.cx, s, 'mud', 3);
-    if (Input.consumeJump()) {
-      // ¿hay un tronco al alcance? te agarras a él
-      const grab = g.movers.find(m => !m.dead && !m.falling && this.cx > m.x - 10 && this.cx < m.x + m.w + 10 && m.y > this.y - 14 && m.y < this.y + 26);
+    if (this.escapeCd > 0) this.escapeCd--;
+    // el niño se cansa: solo tiene fuerzas para unos pocos intentos
+    if (Input.consumeJump() && this.escapeCd <= 0 && this.stamina > 0) {
+      this.escapeCd = 14; this.stamina--; // machacar el botón no sirve: hay que elegir el momento
+      // ¿hay un tronco justo encima? te agarras a él (tiene que pasar muy cerca)
+      // solo si el extremo de un tronco queda casi en tu mano
+      const grab = g.movers.find(m => !m.dead && !m.falling && (Math.abs(this.cx - m.x) < 5 || Math.abs(this.cx - (m.x + m.w)) < 5) && m.y > this.y - 6 && m.y < this.y + 18);
       if (grab) {
         this.dragged = false; this.y = grab.y - this.h; this.vy = 0; this.vx = 0;
         this.lastMover = grab; this.stickT = 18; this.onGround = true; this.invuln = 20; unstick(this, g.level);
         g.audio('jump'); g.burst(this.cx, this.y + this.h, 'mud', 10);
-      } else if (Math.random() < 0.12) {
+      } else if (Math.random() < 0.03) {
         // muy de vez en cuando, un manotazo desesperado te saca del lodo
         this.dragged = false; this.y = s - this.h - 6; this.vy = -6.6; this.vx = 0.8; unstick(this, g.level);
         g.audio('jump'); g.burst(this.cx, s, 'mud', 12);
@@ -677,11 +682,11 @@ class Eagle extends Actor {
       // línea de mira punteada hacia el niño y "!" sobre el águila
       const x0 = this.cx, y0 = this.cy, x1 = this.aimX || x0, y1 = this.aimY || y0;
       const n = Math.floor(Math.hypot(x1 - x0, y1 - y0) / 6);
-      ctx.fillStyle = (Math.floor(this.t / 4) % 2) ? '#ff3b30' : '#ffd0c8';
+      ctx.fillStyle = (Math.floor(this.t / 4) % 2) ? '#ffffff' : '#d9e6f2';
       for (let i = 1; i < n; i += 2) ctx.fillRect(Math.round(x0 + (x1 - x0) * i / n), Math.round(y0 + (y1 - y0) * i / n), 2, 2);
       // el "!" nunca se sale de la pantalla: si el águila está fuera, se pega al borde
       const g = Game, cy = Math.max(g.cam.y + 4, Math.min(g.cam.y + 216 - 20, this.y - 16)), cx = Math.max(g.cam.x + 10, Math.min(g.cam.x + 374, this.cx));
-      if (Math.floor(this.t / 5) % 2 === 0) drawText(ctx, '!', Math.round(cx), Math.round(cy), { scale: 2, color: '#ff3b30', align: 'center', shadow: true, shadowColor: '#ffffff' });
+      if (Math.floor(this.t / 5) % 2 === 0) drawText(ctx, '!', Math.round(cx), Math.round(cy), { scale: 2, color: '#ffffff', align: 'center', shadow: true, shadowColor: '#2a1f2d' });
     }
     const img = att ? E.eagle.attack : (Math.floor(this.animT / 8) % 2 ? E.eagle.flyA : E.eagle.flyB);
     ctx.save();
