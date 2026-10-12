@@ -770,4 +770,135 @@ OBJ.boulder = spr([
   '....KKKKKK....',
 ]);
 
+// ─────────────────────────────────────────────────────────────────────────────
+// LA SELVA INUNDADA
+// ─────────────────────────────────────────────────────────────────────────────
+// caimán (generado con primitivas): al saltar se ve entero, con las fauces abiertas. 40x16
+E.caiman = { open: spr([
+    '........................................',
+    '........................................',
+    '......................................K.',
+    '....................................KKkK',
+    '................................KKKK1k1K',
+    '........KK..K.KKKKKKKK..K..KK..K1k1kkkK.',
+    '.....KKKkGKKGKkGkkGkkGKKGKKy0KKkkkkKrK..',
+    '..KKKkkkkkgkkgkkgkkgkkgkkkkkkkkkrrrrrK..',
+    '.KkkkkkkkkkkkkkkkkkkkkkkkkkkkkkrrrrrrK..',
+    '.KkkkkkkkkkkkkkEEEEEkkkkkkkkkkkkkKrrrK..',
+    '..KKKKKKkkEEEEEEEEEEEEEEkkkkkkkKkkkkkKK.',
+    '........KKEEEEEEEEEEEEEEEKKKKKKK1K1kkkkK',
+    '..........KKkkkEEEEEkkKKK.......K.KK1K1K',
+    '...........KkkKKKKKKkkK.............K.K.',
+    '...........KkkK....KkkK.................',
+    '............KK......KK..................',
+  ]), shut: spr([
+    '........................................',
+    '........................................',
+    '........................................',
+    '........................................',
+    '........................................',
+    '........KK..K.KKKKKKKK..K..KK...........',
+    '.....KKKkGKKGKkGkkGkkGKKGKKy0KK.........',
+    '..KKKkkkkkgkkgkkgkkgkkgkkkkkkkkKKKKKKKKK',
+    '.Kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk0k',
+    '.KkkkkkkkkkkkkkEEEEEkkkkkkkkkkkkkkkkkkkk',
+    '..KKKKKKkkEEEEEEEEEEEEEEkkkkkkk1k1k1k1kk',
+    '........KKEEEEEEEEEEEEEEEKKKKKKKKKKKKKKK',
+    '..........KKkkkEEEEEkkKKK...............',
+    '...........KkkKKKKKKkkK.................',
+    '...........KkkK....KkkK.................',
+    '............KK......KK..................',
+  ]) };
+// perezoso colgado de una rama, con su antifaz; gira la cara para mirarte. 20x18
+E.sloth = { left: spr([
+    '..KKMK........KMKK..',
+    '..KmMK........KMmK..',
+    '...KmMK......KMmK...',
+    '...KmMK......KMmK...',
+    '....KmMK..K.KMmK....',
+    '....KmMKKKmKKMmK....',
+    '.....KKmmmjmmmK.....',
+    '.....KmjMjjjjjmK....',
+    '....KmjjjjjjjjjmK...',
+    '....KmwwwwwjjjjmK...',
+    '...KmwwwwwwwjjMmmK..',
+    '...Kwh0hwh0hwjmmK...',
+    '....KwwwiwwwmmmmK...',
+    '.....KwMwMwmmMmK....',
+    '......KmmmmMmmK.....',
+    '.....KmmKKmKKmmK....',
+    '.....KmmK.K.KmmK....',
+    '......KK.....KK.....',
+  ]), right: spr([
+    '..KKMK........KMKK..',
+    '..KmMK........KMmK..',
+    '...KmMK......KMmK...',
+    '...KmMK......KMmK...',
+    '....KmMK..K.KMmK....',
+    '....KmMKKKmKKMmK....',
+    '.....KKmmmjmmmK.....',
+    '.....KmjMjjjjjmK....',
+    '....KmjjjjjjjjjmK...',
+    '....KmjjjjwwwwwmK...',
+    '...KmmjjjwwwwwwwmK..',
+    '....Kmmjwh0hwh0hwK..',
+    '....KmMmmwwwiwwwK...',
+    '.....KmmmmwMwMwK....',
+    '......KmmmmMmmK.....',
+    '.....KmmKKmKKmmK....',
+    '.....KmmK.K.KmmK....',
+    '......KK.....KK.....',
+  ]) };
+// rama firme (una vía)
+T.branch = spr([
+  '..e..G.....e.G..',
+  '.eGe.gGe..eGgGe.',
+  'MMmMMmMMMmMMmMMM',
+  'mjmmjmmmjmmmjmmj',
+  'MMMMMMMMMMMMMMMM',
+  '..M.....M....M..',
+]);
+// rama seca: gris, agrietada, sin hojas (se rompe al poco de pisarla). 48x6
+OBJ.dryBranch = spr([
+  '..S.........S..........S...........S........S...',
+  'DSSdSSDSSSdSSDSSKSSdSSDSSSdSSDSSSdSSKSSDSSSdSSDS',
+  'SdSSSdSSKSSSdSSSdSSSdSSKSSSdSSSdSSSdSSSdSSKSSSdS',
+  'DDDDDDDDKDDDDDDDDDDDDDDDKDDDDDDDDDDDDDDDDDDKDDDD',
+  '...D.......D.......D...........D.......D........',
+  '................................................',
+]);
+// victoria regia: hoja gigante flotante con el borde levantado. 30x5
+OBJ.lily = spr([
+  '....RRRRRRRRRRRRRRRRRRRRRR....',
+  '..RRgggggggggggggggggggggRRR..',
+  '.RgggegggggGgggggegggggGgggR..',
+  '..RRgggggggggggggggggggggRR...',
+  '....RRRRRRRRRRRRRRRRRRRRRR....',
+]);
+// suelo de selva: tierra oscura con musgo
+T.jungle = spr([
+  '.k..k.G...k..G..',
+  'kGkkGkGk.kGkkGkk',
+  'GGkGGGkGGGkGGkGG',
+  'iGiiGiiiGiiGiiGi',
+  'iiiiiiIiiiiiiiii',
+  'iiIiiiiiiiiIiiii',
+  'iiiiiiiiiiiiiiii',
+  'iiiiIiiiiiiiiIii',
+  'iiiiiiiiiIiiiiii',
+  'iIiiiiiiiiiiiiii',
+  'iiiiiiIiiiiiiiii',
+  'iiiiiiiiiiiiIiii',
+  'iiiIiiiiiiiiiiii',
+  'iiiiiiiiiiiiiiii',
+  'iiiiiiiiIiiiiiii',
+  'IiiiiiiiiiiiiiiI',
+]);
+T.jungleBody = spr([
+  'iiiiiiIiiiiiiiii', 'iiIiiiiiiiiIiiii', 'iiiiiiiiiiiiiiii', 'iiiiIiiiiiiiiIii',
+  'iiiiiiiiiIiiiiii', 'iIiiiiiiiiiiiiii', 'iiiiiiIiiiiiiiii', 'iiiiiiiiiiiiIiii',
+  'iiiIiiiiiiiiiiii', 'iiiiiiiiiiiiiiii', 'iiiiiiiiIiiiiiii', 'IiiiiiiiiiiiiiiI',
+  'iiiiiiIiiiiiiiii', 'iiIiiiiiiiiIiiii', 'iiiiiiiiiiiiiiii', 'iiiiIiiiiiiiiIii',
+]);
+
 const ART = { T, P, LL, GOAT, E, OBJ };

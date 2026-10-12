@@ -13,6 +13,10 @@ const TILE_SPECS = {
   summit:    { oneway: true, body: T.snowTop },   // cumbre: se atraviesa desde abajo
   clay:      { solid: true, top: T.clay, body: T.clayBody },
   mudRock:   { solid: true, body: T.mudRock },
+  jungle:    { solid: true, top: T.jungle, body: T.jungleBody },
+  branch:    { oneway: true, body: T.branch },
+  ropeBridge:{ oneway: true },                       // lo dibuja la entidad del puente
+  swampTop:  { liquid: 'swamp' }, swampBody: { liquid: 'swamp' },
   waterTop:  { liquid: 'water' }, waterBody: { liquid: 'water' },
   mudTop:    { liquid: 'mud' },   mudBody:   { liquid: 'mud' },
 };
@@ -67,6 +71,14 @@ const SONGS = {
           'G5:2 G5:1 G5:1 A5:2 G5:2 | E5:2 E5:1 G5:1 E5:2 D5:2 | B4:2 D5:1 B4:1 A4:2 G4:2 | A4:2 B4:2 E5:4',
   },
 };
+// cumbia amazónica para la selva: guitarra a contratiempo, güiro y bajo saltarín
+SONGS.selva = {
+  bpm: 96, vol: 0.27, strum: '.D.U.D.U', drums: 'B...B.b.', shaker: true,
+  chords: ['Am', 'G', 'F', 'E', 'Am', 'G', 'F', 'E'],
+  lead: 'A4:2 C5:2 E5:2 D5:2 | B4:2 D5:2 G5:2 F5:2 | A4:2 C5:2 F5:2 E5:2 | G#4:2 B4:2 E5:4 |' +
+        'E5:1 E5:1 D5:2 C5:2 B4:2 | D5:1 D5:1 C5:2 B4:2 A4:2 | C5:2 A4:2 F4:2 A4:2 | B4:2 G#4:2 E4:4',
+};
+SONGS.selva.bass = SONGS.selva.chords.map(c => { const [r, f] = BASS_OF[c]; return `${r}:3 ${f}:1 ${r}:2 ${f}:2`; }).join(' ');
 SONGS.menu.bass = slowBass(SONGS.menu.chords);
 SONGS.valle.bass = huaynoBass(SONGS.valle.chords);
 SONGS.apu.bass = slowBass(SONGS.apu.chords);
@@ -157,8 +169,14 @@ function mountainShape(peakX, peakRow, rows) {
 // águilas que acechan mientras bajas planeando: cada una vigila una franja de altura
 const EAGLES = [[24, 58], [50, 84], [76, 106]].map((b, i) => ({ type: 'eagle', rowMin: b[0], rowMax: b[1], delay: 60 + i * 40 }));
 
+// La selva inundada va entre el aterrizaje del parapente y el huaico.
+const SV = 157;          // primera columna de agua de la selva
+const SWID = 72;         // ancho de la selva
+const D = 84;            // todo lo que viene después (huaico y colegio) se desplaza esto
+const sx = (lx) => SV + lx;
+
 const LEVEL = {
-  name: 'EL CAMINO AL COLE', w: 262, h: 150,
+  name: 'EL CAMINO AL COLE', w: 346, h: 150,
   anchorRow: G,
   bgLayers: [
     { kind: 'mountains', color: '#8c93c9', color2: '#6d72a6', y: G - 3.4, parallax: 0.08, vpar: 0.10, amp: 8.5, seed: 5, snow: true },
@@ -170,81 +188,111 @@ const LEVEL = {
   spawn: { x: 6, y: G },
   // la gran montaña: silueta de fondo con nieve en lo alto
   mountain: { peakX: 121, peakRow: 10, snowRow: 78, shape: mountainShape(121, 10, 150) },
-  // cerro del que baja el huaico (tierra cálida)
-  // la ladera izquierda nace en x 208 (tras la roca fija de x 206–207) a nivel del lodo y sube hasta la cumbre
-  hill: { peakX: 220, peakRow: 89, slopeL: 0.75, slopeR: 2.1, x0: 208 },
+  // cerro del que baja el huaico (tierra cálida); su ladera nace tras la última roca fija
+  hill: { peakX: 220 + D, peakRow: 89, slopeL: 0.75, slopeR: 2.1, x0: 208 + D },
+  // EL CAÑÓN DEL VALLE: puente colgante inca con una gran catarata al fondo
+  canyon: { x0: 50, x1: 64, rimRow: G - 2, fall: { x: 57, top: G - 8 } },
+  // LA SELVA: árboles, lianas y agua quieta
+  jungle: { x0: 143, x1: SV + SWID + 2, waterRow: 112, trees: [sx(45), sx(53), sx(61), sx(68), sx(5), sx(26), sx(35)] },
   goatEnd: 118, goatEndRow: SUMMIT,
   // al planear no puedes alejarte de la ladera este
-  glide: { x0: 119, x1: 164 },
+  glide: { x0: 119, x1: 160 },
   glideLandRow: 100,   // la hoja solo se suelta al aterrizar por debajo de esta fila (el valle)
   altitude: { baseRow: G, baseM: 3650, perRow: 13 },
   zones: [
     { x: 0,   name: 'EL VALLE',  music: 'valle' },
     { x: 86,  name: 'EL APU',    music: 'apu', alt: true },
-    { x: 145, name: 'EL HUAICO', music: 'huayco' },
-    { x: 222, name: 'EL COLEGIO', music: 'huayco' },
+    { x: 145, name: 'LA SELVA',  music: 'selva' },
+    { x: 145 + D, name: 'EL HUAICO', music: 'huayco' },
+    { x: 222 + D, name: 'EL COLEGIO', music: 'huayco' },
   ],
   rects: [
     // ── EL VALLE ──
-    [0, G, 22, 6, 'grass'],
+    [0, G, 38, 6, 'grass'],
     [15, G - 1, 1, 1, 'pirca'],
-    [25, G, 13, 6, 'grass'],
     [31, G - 2, 1, 2, 'pirca'],
-    [38, G - 2, 18, 8, 'grass'],
+    [38, G - 2, 12, 8, 'grass'],
     [46, G - 3, 1, 1, 'pirca'], [47, G - 4, 1, 2, 'pirca'],
-    [61, G, 40, 6, 'grass'],
+    // el cañón (x 50–63): paredes de roca hasta el río del fondo
+    [64, G - 2, 6, 8, 'grass'],
+    [70, G, 31, 6, 'grass'],
     // ── LA CUMBRE ──
     [116, SUMMIT, 9, 1, 'summit'],
+    // ── LA SELVA INUNDADA ──
+    [145, 110, 12, 40, 'jungle'],                 // donde aterriza el parapente
+    [SV, 118, SWID, 32, 'jungle'],                // fondo fangoso bajo el agua
+    // parte 1: rocas para aprender
+    [sx(3), 111, 2, 7, 'stone'], [sx(8), 111, 2, 7, 'stone'], [sx(13), 111, 2, 7, 'stone'], [sx(18), 111, 2, 7, 'stone'],
+    // parte 2: una roca de descanso entre victorias regias
+    [sx(40), 111, 2, 7, 'stone'],
+    // parte 3: rocas para salir del agua si caes desde las ramas
+    [sx(52), 111, 2, 7, 'stone'], [sx(63), 111, 2, 7, 'stone'],
     // ── LA QUEBRADA CÁLIDA: orilla, lecho del huaico y el colegio ──
-    [145, 110, 12, 40, 'clay'],
-    [160, 114, 16, 36, 'clay'], [176, 112, 16, 38, 'clay'], [192, 110, 16, 40, 'clay'], [208, 108, 14, 42, 'clay'],
-    [222, 103, 40, 47, 'clay'],
+    [145 + D, 110, 12, 40, 'clay'],
+    [160 + D, 114, 16, 36, 'clay'], [176 + D, 112, 16, 38, 'clay'], [192 + D, 110, 16, 40, 'clay'], [208 + D, 108, 14, 42, 'clay'],
+    [222 + D, 103, 40, 47, 'clay'],
   ],
-  platforms: [...MTN.up],
+  platforms: [
+    ...MTN.up,
+    // puente colgante sobre el cañón
+    [50, G - 2, 14, 'ropeBridge'],
+    // ramas firmes de la selva (donde duermen los perezosos)
+    [sx(43), 108, 4, 'branch'], [sx(54), 104, 4, 'branch'], [sx(65), 108, 4, 'branch'],
+  ],
   liquids: [
-    // arroyos que bajan del cerro: caen en cascada a una quebrada estrecha
-    [22, G, 3, 6, 'water', 1, G - 7],
-    [56, G, 5, 6, 'water', 1, G - 9],
-    // el huaico: cuatro escalones de lodo que bajan hacia el precipicio (x 157–159)
-    [160, 111, 16, 3, 'mud', -1], [176, 109, 16, 3, 'mud', -1], [192, 107, 16, 3, 'mud', -1], [208, 105, 14, 3, 'mud', -1],
+    // el río del fondo del cañón
+    [50, G + 1, 14, 5, 'water', 1],
+    // el agua quieta de la selva
+    [SV, 112, SWID, 6, 'swamp', 0.15],
+    // el huaico: cuatro escalones de lodo que bajan hacia el precipicio
+    [160 + D, 111, 16, 3, 'mud', -1], [176 + D, 109, 16, 3, 'mud', -1], [192 + D, 107, 16, 3, 'mud', -1], [208 + D, 105, 14, 3, 'mud', -1],
   ],
-  // rocas fijas en cada escalón del huaico (para subir sin caerte)
-  // la primera (x 161) sirve para entrar al huaico desde la orilla sin depender del tronco justo
-  // la última (x 219) es el peldaño para el salto final a la orilla del colegio
-  fgRocks: [[161, 111, 2, 3], [174, 109, 2, 5], [190, 107, 2, 5], [206, 105, 2, 5], [219, 104, 2, 4]],
+  // rocas fijas en cada escalón del huaico; la primera para entrar desde la
+  // orilla y la última como peldaño para el salto final a la orilla del colegio
+  fgRocks: [[161 + D, 111, 2, 3], [174 + D, 109, 2, 5], [190 + D, 107, 2, 5], [206 + D, 105, 2, 5], [219 + D, 104, 2, 4]],
   entities: [
     // la casa del niño, con mamá en la puerta
     { type: 'house', x: 0, y: G },
     { type: 'llama', x: 10, y: G },
+    { type: 'bridge', x0: 50, x1: 64, row: G - 2 },
     { type: 'cabra', x: 91, y: G },
     // puntos de control invisibles
     { type: 'checkpoint', x: 39, y: G - 2 },
-    { type: 'checkpoint', x: 64, y: G },
+    { type: 'checkpoint', x: 66, y: G - 2 },
     { type: 'checkpoint', x: 88, y: G },
     ...MTN_CP,
     { type: 'checkpoint', x: 151, y: 110 },
+    { type: 'checkpoint', x: sx(44), y: 108 },
+    { type: 'checkpoint', x: 151 + D, y: 110 },
     { type: 'rockfall', x: 82, y: G - 13, interval: 130 },
     { type: 'checkpoint', x: 121, y: SUMMIT },
     // en la cumbre crece un platanal: su hoja gigante sirve de parapente
     { type: 'leaf', x: 123, y: SUMMIT },
     ...EAGLES,
-    { type: 'huaico', x0: 160, x1: 222, interval: 135, speed: 0.75, inflow: { x: 215, top: 92 } },
+    // ── la selva ──
+    { type: 'lily', x: sx(23.5) }, { type: 'lily', x: sx(28) }, { type: 'lily', x: sx(32.5) }, { type: 'lily', x: sx(37) },
+    { type: 'dryBranch', x: sx(49), y: 106 }, { type: 'dryBranch', x: sx(59.5), y: 106 },
+    { type: 'sloth', x: sx(44.5), y: 108 }, { type: 'sloth', x: sx(55.5), y: 104 }, { type: 'sloth', x: sx(66.5), y: 108 },
+    { type: 'caiman', x0: sx(0), x1: sx(21), leap: false },
+    { type: 'caiman', x0: sx(21), x1: sx(43), leap: true },
+    { type: 'caiman', x0: sx(43), x1: sx(71), leap: true },
+    { type: 'huaico', x0: 160 + D, x1: 222 + D, interval: 135, speed: 0.75, inflow: { x: 215 + D, top: 92 } },
     // el colegio se cae a pedazos... la clase se da afuera, sentados en el suelo
-    { type: 'school', x: 231, y: 103 },
-    { type: 'outdoorClass', x: 243, y: 103 },
+    { type: 'school', x: 231 + D, y: 103 },
+    { type: 'outdoorClass', x: 243 + D, y: 103 },
     ...BIRDS,
     ...HERBS,
     // las 3 hojas de tarea que se le volaron al niño, enganchadas en el camino
     { type: 'page', x: 47, y: G - 5 },                                            // sobre la pirca alta
     { type: 'page', x: MTN.up[19][0] - 5, y: MTN.up[19][1] - 6 },                 // en el aire, junto al risco
-    { type: 'page', x: 154, y: 109 },                                             // en la orilla del huaico
+    { type: 'page', x: sx(55), y: 101 },                                          // en lo alto del árbol, sobre el perezoso
   ],
   decor: [
     ['cantuta', 7, G - 1], ['ichu', 12, G - 1], ['ichu', 19, G - 1], ['maguey', 27, G - 1],
-    ['cantuta', 35, G - 1], ['ichu', 41, G - 3], ['cantuta', 51, G - 3], ['ichu', 63, G - 1], ['maguey', 70, G - 1],
+    ['cantuta', 35, G - 1], ['ichu', 41, G - 3], ['ichu', 66, G - 3], ['maguey', 72, G - 1],
     ['ichu', 78, G - 1], ['cantuta', 85, G - 1],
-    ['cactus', 146, 109], ['maguey', 149, 109],
-    ['cactus', 225, 102], ['maguey', 229, 102], ['cantuta', 233, 102], ['cactus', 252, 102], ['maguey', 257, 102],
+    ['cactus', 146 + D, 109], ['maguey', 149 + D, 109],
+    ['cactus', 225 + D, 102], ['maguey', 229 + D, 102], ['cantuta', 233 + D, 102], ['cactus', 252 + D, 102], ['maguey', 257 + D, 102],
   ],
 };
 

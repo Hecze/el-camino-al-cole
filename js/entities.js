@@ -85,6 +85,7 @@ class Player extends Actor {
     this.dropThrough = false; this.dropT = 0; this.surfT = 0; this.stickT = 0;
     this.dragged = false; this.dragT = 0; this.overEdge = false;
     this.gliding = false; this.glideAir = 0; this.fallFrom = null;
+    this.swimming = false; this.swimCd = 0;
     this.won = false; this.invuln = 0;
   }
   get jumpHeld() { return Input.held('jump') || Input.held('up'); }
@@ -94,6 +95,8 @@ class Player extends Actor {
     if (this.won) { this.animT++; return; }
     if (this.mountCd > 0) this.mountCd--;
     if (this.dragged) { this.updateDragged(g); return; }
+    if (this.swimCd > 0) this.swimCd--;
+    if (this.swimming) { this.updateSwim(g); return; }
     if (this.invuln > 0) this.invuln--;
 
     // ── montado: la montura se mueve en su propio update ──
@@ -122,7 +125,8 @@ class Player extends Actor {
       this.vy = PHYS.JUMP_V; this.onGround = false; this.coyote = 0;
       g.onPlayerJump(this);
     }
-    if (!this.jumpHeld && this.vy < -PHYS.JUMP_CUT) this.vy = -PHYS.JUMP_CUT;
+    if (this.noCut > 0) this.noCut--;
+    else if (!this.jumpHeld && this.vy < -PHYS.JUMP_CUT) this.vy = -PHYS.JUMP_CUT;
     if (this.gliding && !this.onGround && this.vy > 0) {
       // planeando: caída lenta y constante; solo te mueves a los lados
       this.vy += (1.3 - this.vy) * 0.12;
@@ -226,6 +230,12 @@ class Player extends Actor {
       if (k === 'water') inWater = true; else if (k === 'mud') inMud = true;
     }
     if (inWater) { g.playerEnvDeath('water'); return; }
+    if (!this.swimming && this.swimCd <= 0 && pts.some(([px, py]) => liquidAt(level, px, py) === 'swamp')) {
+      // agua quieta de la selva: no te mata, nadas (despacio) mientras los caimanes se acercan
+      this.swimming = true; this.vx *= 0.3; this.vy = Math.min(this.vy, 1); this.gliding = false;
+      g.audio('splash'); g.burst(this.cx, this.y + this.h, 'swampSplash', 14);
+      return;
+    }
     if (inMud && g.huaico) {
       // el huaico te atrapa y te arrastra hacia el precipicio
       this.dragged = true; this.dragT = 0; this.overEdge = false; this.vx = 0; this.vy = 0; this.struggle = 0; this.hop = 0;
@@ -235,6 +245,30 @@ class Player extends Actor {
     if (this.y > Math.max(level.rows * TS + 40, 0) || this.y > g.cam.y + 216 + 80) g.playerEnvDeath('fall');
   }
 
+  swampSurface(level, x) {
+    for (const l of level.liquids) if (l.kind === 'swamp' && x >= l.x * TS && x < (l.x + l.w) * TS) return l.y * TS + 4;
+    return null;
+  }
+  updateSwim(g) {
+    const level = g.level, s = this.swampSurface(level, this.cx);
+    this.animT++;
+    if (s === null) { this.swimming = false; return; }
+    const left = Input.held('left'), right = Input.held('right');
+    if (left && !right) { this.vx -= 0.12; this.facing = -1; } else if (right && !left) { this.vx += 0.12; this.facing = 1; } else this.vx *= 0.9;
+    this.vx = Math.max(-1.0, Math.min(1.0, this.vx));
+    // flota con la cabeza fuera del agua
+    const target = s - this.h + 9;
+    this.vy += (target - this.y) * 0.12; this.vy *= 0.75;
+    if (Input.consumeJump() && Math.abs(this.y - target) < 4) {
+      // impulso para salir a una roca o raíz
+      this.swimming = false; this.swimCd = 14; this.vy = -6.6; this.noCut = 14;   // salto completo aunque solo toques el botón
+      g.audio('jump'); g.burst(this.cx, s, 'swampSplash', 10);
+    }
+    moveX(this, level);
+    this.y += this.vy;
+    if (this.animT % 16 === 0) g.burst(this.cx, s, 'swampSplash', 2);
+    if (this.x < 0) this.x = 0;
+  }
   updateDragged(g) {
     const hu = g.huaico;
     this.dragT++; this.animT++;
@@ -274,6 +308,17 @@ class Player extends Actor {
 
   draw(ctx, g) {
     if (this.riding) return;
+    if (this.swimming) {
+      const s = this.swampSurface(g.level, this.cx) || 99999;
+      ctx.save(); ctx.beginPath(); ctx.rect(this.x - 10, this.y - 30, 28, s + 1 - (this.y - 30)); ctx.clip();
+      const img = P.run[Math.floor(this.animT / 8) % 4];   // braceando
+      ctx.drawImage(this.facing < 0 ? flipS(img) : img, Math.round(this.cx - 8), Math.round(this.y + this.h - 22));
+      ctx.restore();
+      ctx.fillStyle = 'rgba(200,235,210,0.7)';
+      const r = 6 + (this.animT % 24) / 3;
+      ctx.fillRect(Math.round(this.cx - r), Math.round(s), 3, 1); ctx.fillRect(Math.round(this.cx + r - 3), Math.round(s), 3, 1);
+      return;
+    }
     if (this.dragged) {
       const s = this.overEdge ? 99999 : (g.huaico.surfaceAt(this.cx) || 99999);
       ctx.save(); ctx.beginPath(); ctx.rect(this.x - 10, this.y - 30, 28, s + 1 - (this.y - 30)); ctx.clip();
@@ -881,6 +926,210 @@ class House extends Actor {
   }
 }
 
+// ═════════════════════════════════════════════════════════════════════════════
+// LA SELVA INUNDADA
+// ═════════════════════════════════════════════════════════════════════════════
+const SWAMP_SURFACE = (level, x) => {
+  for (const l of level.liquids) if (l.kind === 'swamp' && x >= l.x * TS && x < (l.x + l.w) * TS) return l.y * TS + 4;
+  return null;
+};
+
+// Victoria regia: flota, pero si te quedas encima se hunde poco a poco.
+class LilyPad extends Actor {
+  constructor(x, level) {
+    super(x * TS - 14, 0, 28, 4);
+    this.isMover = true; this.dx = 0; this.dy = 0; this.level = level;
+    this.base = SWAMP_SURFACE(level, this.cx) - 3; this.y = this.base;
+    this.sink = 0; this.falling = false; this.goneT = 0; this.t = Math.random() * 6;
+  }
+  onRespawn() { this.sink = 0; this.falling = false; this.goneT = 0; this.y = this.base; }
+  update(g) {
+    const py = this.y; this.t += 0.05;
+    if (this.falling) {
+      // hundida: vuelve a salir al rato
+      if (++this.goneT > 170) { this.falling = false; this.sink = 0; this.goneT = 0; }
+      this.y = this.base + 12;
+    } else {
+      if (g.player.lastMover === this && !g.player.swimming) { this.sink += 0.085; if (Math.floor(this.sink * 10) % 12 === 0) g.burst(this.cx + (Math.random() * 20 - 10), this.base + 3, 'swampSplash', 1); }
+      else this.sink = Math.max(0, this.sink - 0.05);
+      if (this.sink > 6) { this.falling = true; g.burst(this.cx, this.base + 3, 'swampSplash', 10); }
+      this.y = this.base + this.sink + (Math.sin(this.t) > 0.6 ? 1 : 0) * (this.sink < 0.5 ? 1 : 0);
+    }
+    this.dy = this.y - py;
+  }
+  draw(ctx) {
+    if (this.falling && this.goneT < 150) return;
+    const a = this.falling ? (this.goneT - 150) / 20 : 1;
+    ctx.save(); ctx.globalAlpha = a;
+    ctx.drawImage(OBJ.lily, Math.round(this.cx - 15), Math.round(this.y - 1));
+    ctx.restore();
+  }
+}
+
+// Rama seca: cruje al pisarla y al poco se rompe y cae al agua. Vuelve a crecer.
+class DryBranch extends Actor {
+  constructor(x, y) {
+    super(x * TS, y * TS, 46, 6);
+    this.isMover = true; this.dx = 0; this.dy = 0; this.hx = this.x; this.hy = this.y;
+    this.crack = 0; this.falling = false; this.goneT = 0; this.vy = 0; this.rot = 0;
+  }
+  onRespawn() { this.crack = 0; this.falling = false; this.goneT = 0; this.x = this.hx; this.y = this.hy; this.vy = 0; this.rot = 0; }
+  update(g) {
+    const py = this.y;
+    if (this.falling) {
+      this.goneT++; this.vy = Math.min(this.vy + 0.35, 6); this.y += this.vy; this.rot += 0.04;
+      const s = SWAMP_SURFACE(g.level, this.cx);
+      if (s && this.y > s && this.y - this.vy <= s) { g.burst(this.cx, s, 'swampSplash', 14); if (g.near(this.cx, 240)) g.audio('splash'); }
+      if (this.goneT > 260) this.onRespawn();
+    } else if (g.player.lastMover === this) {
+      if (this.crack === 0) g.audio('creak');
+      if (++this.crack > 30) { this.falling = true; this.vy = 0.5; g.burst(this.cx, this.y, 'dust', 10); g.audio('rock'); }
+    } else if (this.crack > 0) this.crack = Math.max(0, this.crack - 0.5);
+    this.dy = this.y - py;
+  }
+  draw(ctx) {
+    if (this.falling && this.goneT > 230) { // vuelve a aparecer
+      ctx.save(); ctx.globalAlpha = (this.goneT - 230) / 30; ctx.drawImage(OBJ.dryBranch, Math.round(this.hx), Math.round(this.hy)); ctx.restore(); return;
+    }
+    const sh = this.crack > 0 && !this.falling ? (this.crack % 4 < 2 ? 1 : -1) * Math.min(1, this.crack / 10) : 0;
+    ctx.save(); ctx.translate(Math.round(this.cx + sh), Math.round(this.y + 3)); ctx.rotate(this.rot);
+    ctx.drawImage(OBJ.dryBranch, -24, -3); ctx.restore();
+  }
+}
+
+// Perezoso colgado de una rama firme: gira la cabeza (despacio) para mirarte.
+class Sloth extends Actor {
+  constructor(x, y) { super(x * TS - 10, y * TS + 3, 20, 18); this.face = -1; this.turnT = 0; this.animT = Math.random() * 100; }
+  update(g) {
+    this.animT++;
+    const want = g.player.cx < this.cx ? -1 : 1;
+    if (want !== this.face) { if (++this.turnT > 70) { this.face = want; this.turnT = 0; } } else this.turnT = 0;
+  }
+  draw(ctx) {
+    const img = this.face < 0 ? E.sloth.left : E.sloth.right;
+    const sway = Math.round(Math.sin(this.animT * 0.02) * 1);
+    ctx.drawImage(img, Math.round(this.x + sway), Math.round(this.y));
+  }
+}
+
+// CAIMÁN: patrulla con solo los ojos fuera. Si nadas, va a por ti. Si estás en
+// una piedra, hoja o rama baja, se acerca por debajo, burbujea... y salta.
+class Caiman extends Actor {
+  constructor(def, level) {
+    super(def.x0 * TS + 20, 0, 34, 10);
+    this.x0 = def.x0 * TS; this.x1 = def.x1 * TS; this.canLeap = def.leap;
+    this.s = SWAMP_SURFACE(level, this.x0 + 8); this.y = this.s - 4;
+    this.dir = 1; this.state = 'patrol'; this.t = 0; this.cool = 60; this.animT = Math.random() * 50;
+    this.vx = 0; this.vy = 0; this.homeX = this.x;
+  }
+  onRespawn() { this.state = 'patrol'; this.x = this.homeX; this.y = this.s - 4; this.cool = 120; this.vy = 0; }
+  get dangerous() { return this.state === 'leap' || this.state === 'chase'; }
+  get hitbox() { return this.state === 'leap' ? { x: this.x + 2, y: this.y - 2, w: this.w - 4, h: this.h + 2 } : { x: this.x + 6, y: this.y - 2, w: this.w - 12, h: 10 }; }
+  update(g) {
+    const p = g.player; this.animT++; this.t++;
+    if (this.cool > 0) this.cool--;
+    const inRange = p.cx > this.x0 - 30 && p.cx < this.x1 + 30;
+    const feet = p.y + p.h;
+    const swimTo = (tx, sp) => { const d = tx - this.cx; this.x += Math.max(-sp, Math.min(sp, d)); if (Math.abs(d) > 1) this.dir = Math.sign(d); this.x = Math.max(this.x0, Math.min(this.x1 - this.w, this.x)); };
+    switch (this.state) {
+      case 'patrol':
+        this.x += this.dir * 0.45;
+        if (this.x < this.x0 || this.x + this.w > this.x1) this.dir *= -1;
+        if (p.swimming && inRange) { this.state = 'chase'; this.t = 0; }
+        else if (this.canLeap && this.cool <= 0 && inRange && !p.riding && p.onGround && feet > this.s - 80 && feet <= this.s + 2) { this.state = 'stalk'; this.t = 0; }
+        break;
+      case 'chase':
+        // va a por el niño que nada
+        swimTo(p.cx, 1.25);
+        if (!p.swimming || !inRange) { this.state = 'patrol'; this.cool = 60; }
+        break;
+      case 'stalk':
+        // se acerca por debajo hasta donde estás
+        swimTo(p.cx + p.vx * 20, 1.5);
+        if (Math.abs(this.cx - p.cx) < 10) { this.state = 'aim'; this.t = 0; g.audio('gurgle'); }
+        if (!inRange || p.swimming || this.t > 360) { this.state = 'patrol'; this.cool = 90; }
+        break;
+      case 'aim':
+        // burbujas: va a saltar
+        if (this.t % 4 === 0) g.particles.push({ x: this.cx + (Math.random() * 16 - 8), y: this.s, vx: 0, vy: -0.6, life: 20, max: 20, col: '#c8ebd2', size: Math.random() < 0.4 ? 2 : 1, grav: -0.02 });
+        if (this.t > 34) {
+          this.state = 'leap'; this.t = 0;
+          this.vy = -7.4; this.vx = Math.max(-1.6, Math.min(1.6, (p.cx + p.vx * 22 - this.cx) / 23));
+          g.audio('snap'); g.burst(this.cx, this.s, 'swampSplash', 16);
+        }
+        break;
+      case 'leap':
+        this.vy += 0.32; this.y += this.vy; this.x += this.vx;
+        if (this.vx) this.dir = Math.sign(this.vx);
+        if (this.vy > 0 && this.y >= this.s - 4) { this.y = this.s - 4; this.vy = 0; this.vx = 0; this.state = 'patrol'; this.cool = 160; g.burst(this.cx, this.s, 'swampSplash', 18); if (g.near(this.cx, 260)) g.audio('splash'); }
+        break;
+    }
+  }
+  draw(ctx, g) {
+    if (this.state === 'leap') {
+      const img = this.t % 16 < 10 ? E.caiman.open : E.caiman.shut;
+      ctx.save(); ctx.translate(Math.round(this.cx), Math.round(this.y + 4));
+      ctx.rotate(Math.atan2(this.vy, 4) * 0.7 * this.dir); if (this.dir < 0) ctx.scale(-1, 1);
+      ctx.drawImage(img, -20, -9); ctx.restore();
+      return;
+    }
+    // en el agua solo asoman los ojos, el hocico y la cresta del lomo
+    const s = this.s, x = Math.round(this.cx), d = this.dir;
+    const sink = this.state === 'aim' ? Math.min(2, Math.floor(this.t / 10)) : 0;   // se hunde un poco antes de saltar
+    // la silueta oscura del cuerpo bajo el agua: se le ve venir
+    ctx.save(); ctx.globalAlpha = 0.45; ctx.beginPath(); ctx.rect(x - 30, s + 1, 60, 20); ctx.clip();
+    if (!Caiman.shadow) Caiman.shadow = PIX.tinted(E.caiman.shut, '#0d1f14');
+    const body = d < 0 ? flipS(Caiman.shadow) : Caiman.shadow;
+    ctx.drawImage(body, x - 20 + (d > 0 ? -6 : 6), s - 4 + sink);
+    ctx.restore();
+    ctx.fillStyle = '#2f5a2c';
+    for (let i = -14; i <= 6; i += 5) ctx.fillRect(x - i * d - 1, s - 1 + sink, 3, 1);                  // cresta
+    ctx.fillStyle = '#3f6b3a'; ctx.fillRect(x + d * 8 - 3, s - 3 + sink, 6, 3); ctx.fillRect(x + d * 15 - 1, s - 2 + sink, 4, 2); // ojos y hocico
+    ctx.fillStyle = '#f6c94a'; ctx.fillRect(x + d * 8 - 2, s - 3 + sink, 1, 1); ctx.fillRect(x + d * 8 + 1, s - 3 + sink, 1, 1);
+    ctx.fillStyle = 'rgba(200,235,210,0.6)';                                                          // estela en V
+    const w = 4 + (this.animT % 20) / 2;
+    ctx.fillRect(x - d * 10 - d * w, s, 3, 1); ctx.fillRect(x - d * 10 - d * w, s + 2, 3, 1);
+  }
+}
+
+// PUENTE COLGANTE INCA (tipo Q'eswachaka): cuerdas de ichu trenzado y tablas.
+// Se mece y se hunde un poco bajo tus pies.
+class Bridge extends Actor {
+  constructor(def) { super(def.x0 * TS - 6, def.row * TS - 20, (def.x1 - def.x0) * TS + 12, 24); this.x0 = def.x0 * TS; this.x1 = def.x1 * TS; this.deckY = def.row * TS; this.bounce = 0; this.animT = 0; this.px = -1; }
+  update(g) {
+    this.animT++;
+    const p = g.player, a = p.riding || p;
+    const on = a.onGround && Math.abs(a.y + a.h - this.deckY) < 2 && a.cx > this.x0 && a.cx < this.x1;
+    this.px = on ? a.cx : -1;
+    this.bounce += ((on ? Math.min(3, 1 + Math.abs(a.vx)) : 0) - this.bounce) * 0.08;
+  }
+  sagAt(x) {
+    const t = (x - this.x0) / (this.x1 - this.x0);
+    let s = Math.sin(Math.PI * t) * (1.5 + this.bounce * 0.6);
+    if (this.px > 0) s += Math.max(0, 1 - Math.abs(x - this.px) / 40) * this.bounce * 0.5;
+    return s + Math.sin(this.animT * 0.05 + t * 3) * 0.4;
+  }
+  draw(ctx) {
+    const x0 = this.x0, x1 = this.x1, y = this.deckY;
+    // postes de madera en cada lado
+    for (const px of [x0 - 5, x1 + 1]) { ctx.fillStyle = '#5a3a1e'; ctx.fillRect(px, y - 18, 4, 22); ctx.fillStyle = '#8a5a30'; ctx.fillRect(px, y - 18, 1, 22); ctx.fillStyle = '#3a2412'; ctx.fillRect(px - 1, y - 19, 6, 2); }
+    // cuerdas pasamanos (cuelgan más que el piso)
+    const rope = (yy, sagK) => { for (let x = x0 - 3; x <= x1 + 3; x++) { const t = (x - x0) / (x1 - x0); const sag = Math.sin(Math.PI * Math.max(0, Math.min(1, t))) * (6 + this.bounce * 2) * sagK + this.sagAt(Math.max(x0, Math.min(x1, x))) * 0.6; ctx.fillStyle = '#b88f3a'; ctx.fillRect(x, Math.round(yy + sag), 1, 1); ctx.fillStyle = '#7a5a20'; ctx.fillRect(x, Math.round(yy + sag) + 1, 1, 1); } };
+    // colgantes verticales de la cuerda al piso
+    ctx.fillStyle = '#9a7a30';
+    for (let x = x0 + 6; x < x1; x += 10) { const t = (x - x0) / (x1 - x0); const top = y - 16 + Math.sin(Math.PI * t) * (6 + this.bounce * 2) + this.sagAt(x) * 0.6; const bot = y + this.sagAt(x); ctx.fillRect(x, Math.round(top), 1, Math.max(1, Math.round(bot - top))); }
+    rope(y - 16, 1);
+    // tablas del piso
+    for (let x = x0; x < x1; x += 4) {
+      const yy = Math.round(y + this.sagAt(x + 2));
+      ctx.fillStyle = (x / 4) % 3 === 0 ? '#7a4f28' : '#9b663b'; ctx.fillRect(x, yy, 3, 3);
+      ctx.fillStyle = '#4a2f18'; ctx.fillRect(x, yy + 3, 3, 1);
+    }
+    // cuerdas bajo el piso
+    for (let x = x0; x < x1; x++) { ctx.fillStyle = '#7a5a20'; ctx.fillRect(x, Math.round(y + 4 + this.sagAt(x)), 1, 1); }
+  }
+}
+
 function makeEntity(def, level) {
   switch (def.type) {
     case 'llama': return new Llama(def.x * TS, def.y * TS);
@@ -890,6 +1139,11 @@ function makeEntity(def, level) {
     case 'checkpoint': return new Checkpoint(def.x, def.y);
     case 'house': return new House(def.x, def.y);
     case 'school': return new School(def.x, def.y);
+    case 'lily': return new LilyPad(def.x, level);
+    case 'dryBranch': return new DryBranch(def.x, def.y);
+    case 'sloth': return new Sloth(def.x, def.y);
+    case 'caiman': return new Caiman(def, level);
+    case 'bridge': return new Bridge(def);
     case 'outdoorClass': return new OutdoorClass(def.x, def.y);
     case 'leaf': return new Leaf(def.x, def.y);
     case 'eagle': return new Eagle(def);

@@ -117,6 +117,9 @@ const AUDIO = (() => {
     leaf:    () => { noise(0.25, 0.2, 3000, 0, { type: 'highpass' }); tone(500, 0.2, 'triangle', 0.15, 0, 900); },
     creak:   () => { const t = now(); tone(140, 0.6, 'sawtooth', 0.08, t, 90); tone(180, 0.5, 'sawtooth', 0.05, t + 0.3, 120); noise(0.4, 0.12, 300, t + 0.5); },
     sit:     () => { noise(0.12, 0.2, 700); [523, 659, 784].forEach((f, i) => tone(f, 0.2, 'triangle', 0.18, now() + 0.1 + i * 0.08)); },
+    // el caimán: burbujeo antes de saltar y chasquido de mandíbulas
+    gurgle:  () => { const t = now(); for (let i = 0; i < 5; i++) tone(180 + Math.random() * 120, 0.08, 'sine', 0.18, t + i * 0.07, 380); },
+    snap:    () => { const t = now(); noise(0.08, 0.5, 1800, t, { type: 'bandpass', q: 1 }); tone(90, 0.2, 'square', 0.25, t, 50); noise(0.06, 0.4, 2500, t + 0.18, { type: 'bandpass', q: 2 }); },
     boing:   () => { tone(200, 0.16, 'triangle', 0.16, 0, 420); noise(0.05, 0.08, 800); },
     rock:    () => { noise(0.2, 0.3, 450); tone(140, 0.16, 'sine', 0.25, 0, 60); },
     rumble:  () => { noise(0.8, 0.25, 220, 0, { attack: 0.2 }); },
@@ -262,7 +265,11 @@ const AUDIO = (() => {
     lfo(6.5, 0.35, m1g.gain);
     const m2 = filt('bandpass', 520, 1.1); const m2g = gain(0.3); loop(pink, 0.85).connect(m2); m2.connect(m2g); m2g.connect(mud);
     lfo(0.4, 160, m2.frequency);
-    amb = { river, mud, rv: 0, mv: 0 };
+    // SELVA: chicharras (siseo agudo con trémolo rápido)
+    const jungle = gain(0); jungle.connect(ambGain);
+    const j1 = filt('bandpass', 5200, 3); const j1g = gain(0.25); loop(pink, 1.1).connect(j1); j1.connect(j1g); j1g.connect(jungle);
+    lfo(17, 0.2, j1g.gain); lfo(0.15, 0.12, j1g.gain);
+    amb = { river, mud, jungle, rv: 0, mv: 0, jv: 0 };
   }
   function bubble(v) {
     const t = now() + 0.01, f0 = 420 + Math.random() * 900;
@@ -272,12 +279,19 @@ const AUDIO = (() => {
     g.gain.exponentialRampToValueAtTime(0.045 * v, t + 0.006); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.08);
     o.connect(g); g.connect(ambGain); o.start(t); o.stop(t + 0.1);
   }
-  function updateAmbient(riverVol, mudVol) {
+  function updateAmbient(riverVol, mudVol, jungleVol = 0) {
     if (!ctx || ctx.state !== 'running') return;
     initAmbient();
     const t = now();
     if (Math.abs(riverVol - amb.rv) > 0.01) { amb.river.gain.setTargetAtTime(riverVol * 0.6, t, 0.2); amb.rv = riverVol; }
     if (Math.abs(mudVol - amb.mv) > 0.01) { amb.mud.gain.setTargetAtTime(mudVol * 0.75, t, 0.25); amb.mv = mudVol; }
+    if (Math.abs(jungleVol - amb.jv) > 0.01) { amb.jungle.gain.setTargetAtTime(jungleVol * 0.5, t, 0.3); amb.jv = jungleVol; }
+    if (jungleVol > 0.1) {
+      // pájaros de la selva: silbidos que suben y bajan
+      if (Math.random() < 0.012 * jungleVol) { const f = 1500 + Math.random() * 1500; for (let i = 0; i < 2 + Math.floor(Math.random() * 3); i++) tone(f, 0.08, 'sine', 0.06 * jungleVol, t + i * 0.11, f * (i % 2 ? 0.7 : 1.4), ambGain); }
+      // ranas: croar grave
+      if (Math.random() < 0.008 * jungleVol) { for (let i = 0; i < 3; i++) tone(140 + Math.random() * 30, 0.07, 'square', 0.05 * jungleVol, t + i * 0.09, 110, ambGain); }
+    }
     if (riverVol > 0.05 && Math.random() < 0.12 * riverVol) bubble(riverVol);
     if (mudVol > 0.15 && Math.random() < 0.02 * mudVol) { noise(0.25, 0.18 * mudVol, 300, 0, { out: ambGain }); tone(70 + Math.random() * 60, 0.2, 'sine', 0.2 * mudVol, 0, 40, ambGain); }
   }

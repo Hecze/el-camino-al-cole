@@ -99,7 +99,7 @@
   }
 
   // ── partículas ───────────────────────────────────────────────────────────
-  const COL = { foam: '#f0d6a8', leaf: '#8fd062', feather: '#2a1f2d', dust: '#c9a86a', spark: '#ffe27a', mud: '#7a5232', splash: '#bdf0f4', rock: '#8a8296', paper: '#ffffff' };
+  const COL = { swampSplash: '#c8ebd2', foam: '#f0d6a8', leaf: '#8fd062', feather: '#2a1f2d', dust: '#c9a86a', spark: '#ffe27a', mud: '#7a5232', splash: '#bdf0f4', rock: '#8a8296', paper: '#ffffff' };
 
   // ── estado ───────────────────────────────────────────────────────────────
   const Game = {
@@ -138,6 +138,7 @@
     const p = Game.player, a = p.riding || p;
     if (kind === 'water') { AUDIO.play('splash'); Game.burst(a.cx, a.y + a.h, 'splash', 18); }
     else if (kind === 'mud') AUDIO.play('drown');
+    else if (kind === 'caiman') { AUDIO.play('snap'); AUDIO.play('splash'); Game.shake(3, 10); Game.burst(a.cx, a.cy, 'swampSplash', 20); }
     else if (kind === 'bird') { AUDIO.play('crush'); Game.shake(3, 10); Game.burst(a.cx, a.cy, 'feather', 16); }
     else if (kind === 'rock') { AUDIO.play('crush'); Game.shake(4, 12); Game.burst(a.cx, a.cy, 'rock', 14); }
     else AUDIO.play('fall');
@@ -171,7 +172,7 @@
     Game.level = lv;
     Game.entities = []; Game.movers = []; Game.particles = [];
     Game.pages = 0; Game.herbs = 0; Game.score = 0; Game.deaths = 0; Game.time = 0;
-    for (const def of lv.entities) { const e = makeEntity(def, lv); if (e) Game.entities.push(e); }
+    for (const def of lv.entities) { const e = makeEntity(def, lv); if (e) { Game.entities.push(e); if (e.isMover) Game.movers.push(e); } }
     for (const e of Game.entities.slice()) if (e instanceof Huaico) { Game.huaico = e; e.prefill(Game); }
     const px = lv.spawn.x * TILE + 4, py = lv.spawn.y * TILE - 15;
     Game.player = new Player(px, py);
@@ -259,22 +260,22 @@
         if (Game.stateT > 90 && (Input.pressed('confirm') || Input.pressed('jump'))) { AUDIO.play('select'); Game.state = 'menu'; AUDIO.playMusic(SONGS.menu); }
         break;
     }
-    let rv = 0, mv = 0;
-    if (Game.level && (Game.state === 'play' || Game.state === 'respawn')) [rv, mv] = ambientVolumes();
-    AUDIO.updateAmbient(rv, mv);
+    let rv = 0, mv = 0, jv = 0;
+    if (Game.level && (Game.state === 'play' || Game.state === 'respawn')) [rv, mv, jv] = ambientVolumes();
+    AUDIO.updateAmbient(rv, mv, jv);
     Input.endFrame();
   }
 
   function ambientVolumes() {
-    const p = Game.player; let r = 0, m = 0;
+    const p = Game.player; let r = 0, m = 0, j = 0;
     for (const L of Game.level.liquids) {
       const X0 = L.x * TILE, X1 = (L.x + L.w) * TILE, wl = L.y * TILE + 4;
       const dx = p.cx < X0 ? X0 - p.cx : p.cx > X1 ? p.cx - X1 : 0;
       const dy = Math.max(0, Math.abs(p.cy - wl) - 40);
       const d = Math.hypot(dx, dy);
-      if (L.kind === 'water') r = Math.max(r, 1 - d / 230); else m = Math.max(m, 1 - d / 300);
+      if (L.kind === 'water') r = Math.max(r, 1 - d / 230); else if (L.kind === 'mud') m = Math.max(m, 1 - d / 300); else j = Math.max(j, 1 - d / 260);
     }
-    return [clamp(r, 0, 1), clamp(m, 0, 1)];
+    return [clamp(r, 0, 1), clamp(m, 0, 1), clamp(j, 0, 1)];
   }
 
   const MENU_OPTS = () => ['JUGAR', 'CONTROLES', AUDIO.isEnabled() ? 'SONIDO: SÍ' : 'SONIDO: NO'];
@@ -337,6 +338,8 @@
         if (aabb(body, { x: e.x, y: e.y - 6, w: e.w, h: e.h + 6 })) p.mount(e, Game);
       } else if (e instanceof Eagle) {
         if (e.dangerous && p.invuln <= 0 && aabb(hb, e.hitbox)) { Game.playerEnvDeath('bird'); return; }
+      } else if (e instanceof Caiman) {
+        if (e.dangerous && p.invuln <= 0 && aabb(hb, e.hitbox)) { Game.playerEnvDeath('caiman'); return; }
       } else if (e instanceof Condor) {
         if (p.invuln <= 0 && aabb(hb, e.hitbox)) { Game.playerEnvDeath('bird'); return; }
       } else if (e instanceof Boulder) {
@@ -394,6 +397,8 @@
     ctx.translate(Math.round(-camx + sx), Math.round(-camy + sy));
     renderMountain(lv);
     renderHill(lv);
+    renderCanyon(lv);
+    renderJungle(lv);
     renderBackdrop(lv);
     renderTiles(lv);
     renderInflow(lv);
@@ -565,10 +570,130 @@
   // ── agua y lodo: dibujados píxel a píxel, con corriente ───────────────────
   const LIQ = {
     water: { foam: '#ffffff', hi: '#d2f6f2', bands: ['#6fd6dc', '#4fbad0', '#3597bb', '#27739f', '#1d5683'], streak: ['#b4f0f0', '#8cdde6', '#69c2da', '#4ba0c6', '#3780ad'], speed: 1.0, amp: 1, chunks: null },
+    swamp: { foam: '#c8ebd2', hi: '#7fae8c', bands: ['#3f6b55', '#30594a', '#24473b', '#1a372e', '#122822'], streak: ['#5a8a6c', '#4a7a5c', '#3a6a4c', '#2a5a3c', '#1a4a2c'], speed: 0, amp: 0.5, chunks: null },
     mud:   { foam: '#f0d6a8', hi: '#d6a56a', bands: ['#a8723c', '#8c5a2e', '#704623', '#56351a', '#3f2512'], streak: ['#dcae74', '#c2905a', '#a47546', '#875d36', '#6b4628'], speed: 1.3, amp: 1.7, chunks: ['#3a2414', '#5d5768', '#2a1f2d', '#6e4627'] },
   };
   const BAND_H = [5, 8, 12, 16, 9999];
   const surf = (x, t, flow, amp = 1) => Math.round((Math.sin(x * 0.19 - t * 0.11 * flow) * 0.9 + Math.sin(x * 0.067 - t * 0.05 * flow + 1.7) * 1.1) * amp);
+
+  // agua quieta de la selva: reflejos de los troncos, hojitas flotando y ondas
+  function renderSwamp(lv, L, Pl, X0, X1, wl, cx0, cx1, yBot, t) {
+    const J = lv.jungle;
+    if (J) for (const tx of J.trees) {
+      const x = tx * TILE + 2; if (x + 12 < cx0 || x > cx1) continue;
+      ctx.fillStyle = 'rgba(20,30,15,0.35)';
+      for (let y = wl + 2; y < Math.min(yBot, wl + 40); y += 2) ctx.fillRect(x + Math.round(Math.sin(y * 0.3 + t * 0.05)), y, 12, 1);
+    }
+    for (let i = 0; i < (X1 - X0) / 18; i++) {
+      // hojitas y lentejas de agua que flotan quietas
+      const x = X0 + Math.floor(hash(i * 13 + L.x) * (X1 - X0)); if (x < cx0 || x > cx1) continue;
+      ctx.fillStyle = hash(i * 7) > 0.5 ? '#5f9f4a' : '#8fd062'; ctx.fillRect(x, wl + Math.round(Math.sin(t * 0.02 + i)), hash(i * 3) > 0.6 ? 3 : 2, 1);
+    }
+    for (let i = 0; i < 6; i++) {
+      // ondas que se abren despacio
+      const ph = (t * 0.3 + i * 37) % 120, k = Math.floor((t * 0.3 + i * 37) / 120);
+      const x = X0 + Math.floor(hash(k * 17 + i * 5 + L.x) * (X1 - X0)); if (x < cx0 - 20 || x > cx1 + 20) continue;
+      const r = 2 + ph / 10, a = Math.max(0, 1 - ph / 120);
+      ctx.fillStyle = 'rgba(200,235,210,' + (0.5 * a).toFixed(2) + ')';
+      ctx.fillRect(Math.round(x - r), wl + 1, 2, 1); ctx.fillRect(Math.round(x + r - 2), wl + 1, 2, 1); ctx.fillRect(Math.round(x - r * 0.5), wl + 2, Math.round(r), 1);
+    }
+  }
+
+  // LA SELVA: fondo de follaje, troncos, lianas y rayos de sol entre las copas
+  function renderJungle(lv) {
+    const J = lv.jungle; if (!J) return;
+    const x0 = J.x0 * TILE, x1 = J.x1 * TILE, wr = J.waterRow * TILE;
+    if (x1 < Game.cam.x || x0 > Game.cam.x + BASE_W) return;
+    const cx0 = Math.max(x0, Math.floor(Game.cam.x)), cx1 = Math.min(x1, Math.ceil(Game.cam.x + BASE_W));
+    // muro de follaje al fondo, con el borde superior irregular
+    for (let x = cx0 - (cx0 % 4); x < cx1; x += 4) {
+      const top = wr - 150 + Math.round(Math.sin(x * 0.05) * 10 + hash(x >> 3) * 14);
+      ctx.fillStyle = '#244a2c'; ctx.fillRect(x, top, 4, wr - top + 4);
+      ctx.fillStyle = '#2f5d34'; ctx.fillRect(x, top, 4, 3);
+    }
+    for (let i = 0; i < 90; i++) {
+      // manchas de hojas
+      const x = x0 + Math.floor(hash(i * 31) * (x1 - x0)); if (x < cx0 - 10 || x > cx1) continue;
+      const y = wr - 140 + Math.floor(hash(i * 17) * 120);
+      ctx.fillStyle = hash(i * 3) > 0.5 ? '#2f6b3a' : '#1d4026'; ctx.fillRect(x, y, 6 + Math.floor(hash(i) * 6), 3); ctx.fillRect(x + 2, y - 2, 4, 2);
+    }
+    // rayos de sol entre las copas
+    ctx.fillStyle = 'rgba(255,240,170,0.07)';
+    for (let i = 0; i < 4; i++) {
+      const bx = x0 + 120 + i * 260; if (bx + 120 < cx0 || bx - 40 > cx1) continue;
+      ctx.beginPath(); ctx.moveTo(bx, wr - 170); ctx.lineTo(bx + 24, wr - 170); ctx.lineTo(bx + 110, wr); ctx.lineTo(bx + 70, wr); ctx.closePath(); ctx.fill();
+    }
+    // troncos y copas
+    for (const tx of J.trees) {
+      const x = tx * TILE + 2; if (x + 40 < cx0 || x - 40 > cx1) continue;
+      ctx.fillStyle = '#4a3220'; ctx.fillRect(x, wr - 150, 12, 154);
+      ctx.fillStyle = '#6b4a2c'; ctx.fillRect(x + 2, wr - 150, 3, 154);
+      ctx.fillStyle = '#3a2414'; for (let y = wr - 146; y < wr; y += 9) ctx.fillRect(x + 6 + ((y >> 3) % 2) * 2, y, 3, 1);
+      ctx.fillStyle = '#5f9f4a'; for (let y = wr - 120; y < wr; y += 23) ctx.fillRect(x + 9, y, 4, 2); // musgo
+      ctx.fillStyle = '#2f6b3a';
+      for (let k = 0; k < 7; k++) { const ox = Math.round(Math.cos(k * 0.9) * 26), oy = Math.round(Math.sin(k * 1.7) * 9); ctx.fillRect(x + 6 + ox - 12, wr - 160 + oy, 24, 10); }
+      ctx.fillStyle = '#3f8a46';
+      for (let k = 0; k < 5; k++) { const ox = Math.round(Math.cos(k * 1.3) * 20); ctx.fillRect(x + 6 + ox - 8, wr - 166 + k * 2, 16, 4); }
+    }
+    // lianas que cuelgan y se mecen
+    for (let i = 0; i < 12; i++) {
+      const x = x0 + 40 + Math.floor(hash(i * 43) * (x1 - x0 - 80)); if (x < cx0 - 10 || x > cx1 + 10) continue;
+      const len = 40 + Math.floor(hash(i * 11) * 80), y0 = wr - 162;
+      for (let y = 0; y < len; y += 2) { const sw = Math.round(Math.sin(tick * 0.02 + i + y * 0.02) * (y / len) * 3); ctx.fillStyle = '#3f6b2c'; ctx.fillRect(x + sw, y0 + y, 1, 2); if (y % 12 === 6) { ctx.fillStyle = '#5f9f4a'; ctx.fillRect(x + sw + 1, y0 + y, 2, 1); } }
+    }
+  }
+
+  // EL CAÑÓN DEL VALLE: farallón de roca al fondo y una gran catarata que cae
+  // detrás del puente colgante hasta el río
+  function renderCanyon(lv) {
+    const C = lv.canyon; if (!C) return;
+    const x0 = (C.x0 - 6) * TILE, x1 = (C.x1 + 6) * TILE;
+    if (x1 < Game.cam.x || x0 > Game.cam.x + BASE_W) return;
+    const rock = getBackTile(), rim = C.rimRow;
+    for (let c = C.x0 - 6; c < C.x1 + 6; c++) {
+      const d = Math.min(c - (C.x0 - 6), C.x1 + 6 - c);
+      const topRow = C.fall.top - 2 + Math.max(0, 6 - d) * 2 + Math.round(hash(c * 7) * 2);
+      for (let r = topRow; r < rim + 6; r++) {
+        if (isSolidCode(lv.tile(c, r))) continue;
+        const px = c * TILE, py = r * TILE;
+        ctx.drawImage(rock, px, py);
+        // estratos, grietas y matas de ichu en la pared
+        const band = Math.floor((r + Math.floor(hash(c >> 1) * 2)) / 2) % 3;
+        if (band !== 1) { ctx.fillStyle = band ? 'rgba(255,230,200,0.08)' : 'rgba(20,10,30,0.14)'; ctx.fillRect(px, py, TILE, TILE); }
+        const h = hash(c * 131 + r * 17);
+        if (h > 0.9) { ctx.fillStyle = 'rgba(25,15,30,0.55)'; ctx.fillRect(px + 5, py + 2, 1, 6); ctx.fillRect(px + 6, py + 7, 1, 5); }
+        else if (h > 0.82 && r < rim) { ctx.globalAlpha = 0.8; ctx.drawImage(T.ichu, px, py + 6); ctx.globalAlpha = 1; }
+        if (r >= rim) { ctx.fillStyle = 'rgba(10,10,30,0.35)'; ctx.fillRect(px, py, TILE, TILE); } // fondo del cañón en sombra
+      }
+      ctx.fillStyle = '#5f7e4c'; ctx.fillRect(c * TILE, topRow * TILE, TILE, 3);                         // pasto en lo alto del farallón
+    }
+    const river = (lv.liquids.find(l => l.kind === 'water' && l.x === C.x0) || { y: rim + 5 }).y * TILE + 4;
+    renderCurtain(C.fall.x * TILE + 8, C.fall.top * TILE, river, LIQ.water, 14, 46);
+  }
+  // cortina de una catarata: estrecha arriba, ancha abajo, con espuma y bruma
+  function renderCurtain(x, top, s, Pl, w0, w1) {
+    if (s < Game.cam.y || top > Game.cam.y + BASE_H) return;
+    const H = s - top;
+    for (let y = Math.max(top, Math.floor(Game.cam.y)); y < Math.min(s, Game.cam.y + BASE_H); y++) {
+      const k = (y - top) / H, w = Math.round(w0 + k * k * (w1 - w0) + Math.sin(y * 0.2 + tick * 0.3) * 2), a = Math.round(x - w / 2);
+      ctx.fillStyle = Pl.bands[1]; ctx.fillRect(a, y, w, 1);
+      ctx.fillStyle = Pl.bands[0]; ctx.fillRect(a, y, 2, 1); ctx.fillRect(a + w - 2, y, 2, 1);
+    }
+    for (let i = 0; i < 80; i++) {
+      const xx = hash(i * 13) - 0.5, yy = top + mod(hash(i * 7) * H + tick * (3 + hash(i * 3) * 2.5), H);
+      const k = (yy - top) / H, w = w0 + k * k * (w1 - w0);
+      ctx.fillStyle = i % 3 === 0 ? Pl.foam : i % 3 === 1 ? Pl.hi : Pl.streak[0];
+      ctx.fillRect(Math.round(x + xx * (w - 4)), Math.floor(yy), 1, Math.min(6, s - Math.floor(yy)));
+    }
+    for (let j = 0; j < 40; j++) {
+      const r = hash(j * 17 + Math.floor(tick / 2)); if (r < 0.25) continue;
+      ctx.fillStyle = r > 0.7 ? Pl.foam : Pl.hi;
+      ctx.fillRect(Math.round(x - w1 / 2 - 6 + hash(j * 3 + Math.floor(tick / 2)) * (w1 + 12)), Math.round(s - 2 - r * 10 * hash(j + Math.floor(tick / 2))), r > 0.9 ? 2 : 1, r > 0.9 ? 2 : 1);
+    }
+    ctx.globalAlpha = 0.35; ctx.fillStyle = '#ffffff';
+    for (let i = 0; i < 14; i++) { const life = mod(tick * 0.6 + i * 7, 30); ctx.fillRect(Math.round(x - w1 / 2 + hash(i * 41 + Math.floor((tick * 0.6 + i * 7) / 30)) * w1), Math.round(s - 4 - life), 3, 2); }
+    ctx.globalAlpha = 1;
+  }
 
   function renderLiquids(lv) {
     const t = tick, vx0 = Game.cam.x - 4, vx1 = Game.cam.x + BASE_W + 4, vy1 = Game.cam.y + BASE_H + 4;
@@ -596,6 +721,7 @@
         ctx.fillRect(x, sy, 1, 1);
       }
       if (L.fallTop) { renderFall(lv, L, Pl, X0, X1, wl, cx0, cx1, t); continue; }
+      if (L.kind === 'swamp') { renderSwamp(lv, L, Pl, X0, X1, wl, cx0, cx1, yBot, t); continue; }
       if (L.kind === 'mud' && !lv.liquids.some(N => N !== L && N.x + N.w === L.x) && !isSolidCode(lv.tile(L.x - 1, L.y))) renderPrecipice(L, Pl, X0, wl, t);
       // 3) vetas de corriente bajo la superficie (más rápidas arriba que al fondo)
       const depth = Math.max(8, Math.min(bot, wl + 44) - wl);
