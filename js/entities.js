@@ -639,7 +639,8 @@ class Eagle extends Actor {
       case 'circle': {
         // da vueltas alrededor del niño
         this.angle += 0.04;
-        const tx = p.cx + Math.cos(this.angle) * 86 - this.w / 2, ty = p.cy - 26 + Math.sin(this.angle) * 42 - this.h / 2;
+        // merodea SIEMPRE por encima del niño (40–70 px más arriba): nunca lo atraviesa
+        const tx = p.cx + Math.cos(this.angle) * 90 - this.w / 2, ty = p.cy - 55 + Math.sin(this.angle) * 15 - this.h / 2;
         const ox = this.x; this.x += (tx - this.x) * 0.07; this.y += (ty - this.y) * 0.07; this.face = this.x >= ox ? 1 : -1;
         if (!active) { this.state = 'leave'; this.t = 0; }
         else if (this.t > 110 + this.delay && !busy) { this.state = 'windup'; this.t = 0; g.audio('screech'); }
@@ -649,8 +650,9 @@ class Eagle extends Actor {
         // se encara al niño, retrocede un poco y abre las garras
         const vx = p.cx - this.cx, vy = p.cy - this.cy, d = Math.hypot(vx, vy) || 1;
         this.face = vx >= 0 ? 1 : -1;
-        this.x -= vx / d * 0.6; this.y -= vy / d * 0.6;
-        if (this.t > 38) { this.dx = vx / d * 4.4; this.dy = vy / d * 4.4; this.state = 'dive'; this.t = 0; g.audio('swoosh'); }
+        this.x -= vx / d * 0.3; this.y -= vy / d * 0.3;
+        this.aimX = p.cx; this.aimY = p.cy;
+        if (this.t > 38) { this.dx = vx / d * 4.4; this.dy = vy / d * 4.4; this.state = 'dive'; this.t = 0; g.audio('swoosh'); g.shake(2, 10); }
         break;
       }
       case 'dive':
@@ -671,6 +673,16 @@ class Eagle extends Actor {
   draw(ctx) {
     if (this.state === 'idle') return;
     const att = this.state === 'windup' || this.state === 'dive';
+    if (this.state === 'windup') {
+      // línea de mira punteada hacia el niño y "!" sobre el águila
+      const x0 = this.cx, y0 = this.cy, x1 = this.aimX || x0, y1 = this.aimY || y0;
+      const n = Math.floor(Math.hypot(x1 - x0, y1 - y0) / 6);
+      ctx.fillStyle = (Math.floor(this.t / 4) % 2) ? '#ff3b30' : '#ffd0c8';
+      for (let i = 1; i < n; i += 2) ctx.fillRect(Math.round(x0 + (x1 - x0) * i / n), Math.round(y0 + (y1 - y0) * i / n), 2, 2);
+      // el "!" nunca se sale de la pantalla: si el águila está fuera, se pega al borde
+      const g = Game, cy = Math.max(g.cam.y + 4, Math.min(g.cam.y + 216 - 20, this.y - 16)), cx = Math.max(g.cam.x + 10, Math.min(g.cam.x + 374, this.cx));
+      if (Math.floor(this.t / 5) % 2 === 0) drawText(ctx, '!', Math.round(cx), Math.round(cy), { scale: 2, color: '#ff3b30', align: 'center', shadow: true, shadowColor: '#ffffff' });
+    }
     const img = att ? E.eagle.attack : (Math.floor(this.animT / 8) % 2 ? E.eagle.flyA : E.eagle.flyB);
     ctx.save();
     ctx.translate(Math.round(this.cx), Math.round(this.cy));

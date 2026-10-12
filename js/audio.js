@@ -100,8 +100,20 @@ const AUDIO = (() => {
     },
     caw:     () => { const t = now(); tone(900, 0.22, 'sawtooth', 0.06, t, 520); tone(820, 0.28, 'sawtooth', 0.05, t + 0.26, 480); },
     // ave de presa: chillido agudo "kiii-arr" con vibrato
-    screech: () => { const t = now(); tone(2400, 0.35, 'sawtooth', 0.09, t, 1500); tone(2600, 0.3, 'square', 0.04, t + 0.02, 1700); tone(1900, 0.4, 'sawtooth', 0.07, t + 0.38, 900); },
-    swoosh:  () => { noise(0.45, 0.25, 600, 0, { type: 'bandpass', q: 0.8, sweep: 3000, attack: 0.15 }); },
+    // chillido de ave de presa: fuerte y agudo, con aspereza ("¡kiii-aaarr!")
+    screech: () => {
+      const t = now();
+      tone(2500, 0.45, 'sawtooth', 0.32, t, 1600); tone(3100, 0.4, 'square', 0.12, t + 0.01, 2000);
+      noise(0.4, 0.22, 3200, t, { type: 'bandpass', q: 3, sweep: 1800 });
+      tone(2100, 0.5, 'sawtooth', 0.28, t + 0.45, 1000); noise(0.45, 0.18, 2400, t + 0.45, { type: 'bandpass', q: 3, sweep: 1200 });
+    },
+    // el picado: silbido de viento que crece + otro chillido corto
+    swoosh:  () => {
+      const t = now();
+      noise(0.6, 0.6, 500, t, { type: 'bandpass', q: 0.9, sweep: 3500, attack: 0.12 });
+      noise(0.5, 0.35, 180, t, { attack: 0.1 });
+      tone(2800, 0.3, 'sawtooth', 0.25, t + 0.05, 1700);
+    },
     leaf:    () => { noise(0.25, 0.2, 3000, 0, { type: 'highpass' }); tone(500, 0.2, 'triangle', 0.15, 0, 900); },
     creak:   () => { const t = now(); tone(140, 0.6, 'sawtooth', 0.08, t, 90); tone(180, 0.5, 'sawtooth', 0.05, t + 0.3, 120); noise(0.4, 0.12, 300, t + 0.5); },
     sit:     () => { noise(0.12, 0.2, 700); [523, 659, 784].forEach((f, i) => tone(f, 0.2, 'triangle', 0.18, now() + 0.1 + i * 0.08)); },

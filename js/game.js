@@ -201,7 +201,11 @@
     if (body.onGround || snap) Game.floorY = p.cy;
     let focusY = Game.floorY, off = BASE_H * 0.62;
     if (p.cy > Game.floorY + 10) focusY = p.cy; // cayendo: lo seguimos ya
-    if (p.gliding && !p.onGround) { focusY = p.cy; off = BASE_H * 0.3; }   // planeando: mira abajo
+    if (p.gliding && !p.onGround) {
+      // planeando: mira abajo; si hay águilas cerca deja sitio arriba para verlas
+      const eagles = Game.entities.some(e => e instanceof Eagle && e.state !== 'idle' && e.state !== 'leave');
+      focusY = p.cy; off = BASE_H * (eagles ? 0.58 : 0.32);
+    }
     if (p.riding instanceof Cabra) {
       const descending = lv.mountain && p.cx > lv.mountain.peakX * TILE + 40;
       if (descending) { focusY = p.cy; off = BASE_H * 0.36; }                   // bajando: mira abajo
@@ -403,6 +407,7 @@
     ctx.restore();
     renderSnowfall(lv, camy);
     renderBirdWarnings();
+    renderAttackAlert();
     // luz fría y violácea del amanecer que se va disipando
     if (day < 1) { ctx.fillStyle = 'rgba(70,40,110,' + (0.22 * (1 - day)) + ')'; ctx.fillRect(0, 0, BASE_W, BASE_H); }
 
@@ -726,6 +731,21 @@
     ctx.globalAlpha = 1;
   }
 
+  // ¡bajo ataque!: el borde de la pantalla late en rojo mientras un águila
+  // se prepara (rápido) o está en picado (fijo e intenso)
+  function renderAttackAlert() {
+    let level = 0;
+    for (const e of Game.entities) if (e instanceof Eagle) {
+      if (e.state === 'dive') level = Math.max(level, 0.55);
+      else if (e.state === 'windup') level = Math.max(level, 0.25 + 0.25 * (Math.sin(tick * 0.6) * 0.5 + 0.5));
+    }
+    if (level <= 0) return;
+    const d = 28;
+    const edge = (x0, y0, x1, y1, x, y, w, h) => { const gr = ctx.createLinearGradient(x0, y0, x1, y1); gr.addColorStop(0, 'rgba(230,30,30,' + level + ')'); gr.addColorStop(1, 'rgba(230,30,30,0)'); ctx.fillStyle = gr; ctx.fillRect(x, y, w, h); };
+    edge(0, 0, d, 0, 0, 0, d, BASE_H); edge(BASE_W, 0, BASE_W - d, 0, BASE_W - d, 0, d, BASE_H);
+    edge(0, 0, 0, d, 0, 0, BASE_W, d); edge(0, BASE_H, 0, BASE_H - d, 0, BASE_H - d, BASE_W, d);
+  }
+
   // aviso "!" en el borde por donde va a entrar un cóndor
   function renderBirdWarnings() {
     for (const e of Game.entities) {
@@ -741,6 +761,12 @@
 
   // ── HUD ──────────────────────────────────────────────────────────────────
   function panel(x, y, w, h) { ctx.fillStyle = 'rgba(28,18,30,0.55)'; ctx.fillRect(x + 1, y, w - 2, h); ctx.fillRect(x, y + 1, w, h - 2); }
+  function hintBox(lines) {
+    const w = Math.max(...lines.map(l => textWidth(l))) + 16, h = lines.length * 11 + 6;
+    const hi = Math.floor(tick / 20) % 2 ? '#ffe68c' : '#ffffff';
+    panel(BASE_W / 2 - w / 2, 30, w, h);
+    lines.forEach((l, i) => drawText(ctx, l, BASE_W / 2, 34 + i * 11, { color: i === 0 ? hi : '#fff3d6', align: 'center' }));
+  }
   function renderHUD() {
     panel(6, 6, 46, 16);
     ctx.drawImage(OBJ.page, 10, 8);
@@ -756,6 +782,10 @@
       drawText(ctx, txt, BASE_W - 58, 11, { color: '#d9f1ff', align: 'right', shadow: true, shadowColor: '#00000088' });
     } else if (Game.zoneName) drawText(ctx, Game.zoneName, BASE_W - 58, 11, { color: '#fff3d6', align: 'right', shadow: true, shadowColor: '#00000088' });
 
+    // en la cumbre: explicar el parapente
+    const lf = Game.entities.find(e => e instanceof Leaf), pl = Game.player;
+    if (lf && !lf.taken && Math.abs(pl.cx - lf.cx) < 90 && Math.abs(pl.cy - lf.cy) < 60 && !pl.riding) hintBox(['TOMA LA HOJA DE PLÁTANO']);
+    else if (pl.gliding && pl.onGround) hintBox(['¡SALTA AL VACÍO PARA PLANEAR!', 'ESPACIO FRENA LA CAÍDA - ABAJO PICA']);
     // título al empezar
     if (Game.banner < 170) {
       const a = Math.min(1, (170 - Game.banner) / 40);
