@@ -83,6 +83,7 @@ class Player extends Actor {
     this.riding = null; this.mountCd = 0; this.lastMover = null;
     this.dropThrough = false; this.dropT = 0; this.surfT = 0; this.stickT = 0;
     this.dragged = false; this.dragT = 0; this.overEdge = false;
+    this.gliding = false; this.glideAir = 0;
     this.won = false; this.invuln = 0;
   }
   get jumpHeld() { return Input.held('jump') || Input.held('up'); }
@@ -121,8 +122,17 @@ class Player extends Actor {
       g.onPlayerJump(this);
     }
     if (!this.jumpHeld && this.vy < -PHYS.JUMP_CUT) this.vy = -PHYS.JUMP_CUT;
-    const gv = (this.vy < 0 && this.jumpHeld) ? PHYS.GRAV_HOLD : PHYS.GRAV;
-    this.vy = Math.min(this.vy + gv, PHYS.MAX_FALL);
+    if (this.gliding && !this.onGround && this.vy > 0) {
+      // planeando: caída lenta; abajo = picar más rápido, salto = frenar
+      const target = Input.held('down') ? 2.8 : (this.jumpHeld ? 0.7 : 1.3);
+      this.vy += (target - this.vy) * 0.12;
+      this.vx = Math.max(-2.0, Math.min(2.0, this.vx));
+      const G = level.glide;
+      if (G) { if (this.x < G.x0 * TS) { this.x = G.x0 * TS; this.vx = Math.max(0, this.vx); } if (this.x > G.x1 * TS) { this.x = G.x1 * TS; this.vx = Math.min(0, this.vx); } }
+    } else {
+      const gv = (this.vy < 0 && this.jumpHeld) ? PHYS.GRAV_HOLD : PHYS.GRAV;
+      this.vy = Math.min(this.vy + gv, PHYS.MAX_FALL);
+    }
 
     if (Input.held('down')) this.dropT = 6;
     this.dropThrough = this.dropT > 0;
@@ -164,6 +174,12 @@ class Player extends Actor {
     this.lastMover = onMover;
     if (this.surfT > 0) this.surfT--;
 
+    // al aterrizar después de planear, se suelta la hoja
+    if (this.gliding) {
+      if (!this.onGround) this.glideAir++;
+      else if (this.glideAir > 40) { this.gliding = false; g.addEntity(new FallingLeaf(this.cx, this.y - 14, this.facing)); g.audio('land'); }
+      else this.glideAir = 0;
+    }
     this.checkLiquids(g);
     this.animT++;
     if (this.x < 0) { this.x = 0; this.vx = 0; }
@@ -258,7 +274,17 @@ class Player extends Actor {
     else if (!this.onGround) img = this.vy < 0 ? P.jump : P.fall;
     else if (Math.abs(this.vx) > 0.25) { const sp = Math.max(4, 9 - Math.abs(this.vx) * 2); img = P.run[Math.floor(this.animT / sp) % 4]; }
     else img = P.idle[0];
+    const flying = this.gliding && !this.onGround && this.vy > 0;
+    if (flying) img = P.jump;
     ctx.drawImage(this.facing < 0 ? flipS(img) : img, Math.round(this.cx - 8), Math.round(this.y + this.h - 22));
+    if (this.gliding) {
+      // la hoja sobre la cabeza; en vuelo se inclina hacia donde vas
+      const lx = Math.round(this.cx - 16 + (flying ? Math.max(-3, Math.min(3, this.vx * 2)) : 0));
+      const ly = Math.round(this.y - (flying ? 20 : 12) + (flying ? Math.sin(this.animT * 0.15) : 0));
+      ctx.fillStyle = '#3a2a18';
+      if (flying) { ctx.fillRect(Math.round(this.cx - 5), ly + 7, 1, Math.round(this.y) - ly - 3); ctx.fillRect(Math.round(this.cx + 4), ly + 7, 1, Math.round(this.y) - ly - 3); }
+      ctx.drawImage(this.facing < 0 ? flipS(OBJ.leaf) : OBJ.leaf, lx, ly);
+    }
   }
   drawRider(ctx) {
     if (!this.riding) return;
@@ -328,7 +354,8 @@ class Cabra extends Mount {
       else this.vx *= 0.9;
       this.vx = Math.max(-PHYS.GOAT_MAX, Math.min(PHYS.GOAT_MAX, this.vx));
       if (this.onGround) {
-        if (g.level.goatEnd && this.cx > g.level.goatEnd * TS) {
+        // llegó a la cumbre (no basta con la columna: también hay que estar arriba)
+        if (g.level.goatEnd && this.cx > g.level.goatEnd * TS && this.y + this.h <= (g.level.goatEndRow || 999) * TS + 2) {
           // llegó a la cumbre: la cabra se queda pastando
           this.retired = true; this.vx = 0; this.rider.dismount(g, -4.2); g.audio('bleat'); g.onGoatDone();
         } else {
@@ -458,7 +485,7 @@ class Debris extends Actor {
     const s = this.hu.surfaceAt(this.cx);
     if (s === null) { ctx.drawImage(img, Math.round(this.cx - img.width / 2), Math.round(this.y - 1)); return; }
     ctx.save(); ctx.beginPath(); ctx.rect(this.x - 8, this.y - 40, this.w + 16, s + 2 - (this.y - 40)); ctx.clip();
-    ctx.drawImage(img, Math.round(this.cx - img.width / 2), Math.round(this.y - 1));
+    ctx.drawImage(img, Math.round(this.cx - img.width / 2), Math.round(this.y + 2)); // 3 px más hundido: flota de verdad
     ctx.restore();
     if (!this.landed) return;
     // ola de proa: el lodo se arremolina delante
@@ -509,6 +536,7 @@ class Condor extends Actor {
 class Pickup extends Actor {
   constructor(type, x, y) {
     super(x * TS + 3, y * TS + 5, 10, 11);
+    if (type === 'herb') { this.x -= 3; this.y -= 3; this.w = 16; this.h = 16; }
     this.type = type; this.animT = Math.random() * 10; this.baseY = this.y;
   }
   update(g) {
@@ -527,7 +555,22 @@ class Pickup extends Actor {
     g.audio('page'); g.pages++; g.burst(this.cx, this.cy, 'paper', 16);
   }
   draw(ctx) {
-    if (this.type === 'herb') { ctx.drawImage(OBJ.herb, Math.round(this.cx - 6), Math.round(this.cy - 5 + Math.sin(this.animT) * 1.5)); return; }
+    if (this.type === 'herb') {
+      // brillo que late + destello que gira: tiene que verse desde lejos
+      const bob = Math.sin(this.animT) * 1.5, cx = this.cx, cy = this.cy + bob;
+      const pulse = 0.35 + Math.sin(this.animT * 2.2) * 0.15;
+      ctx.fillStyle = 'rgba(255,240,140,' + pulse.toFixed(2) + ')';
+      ctx.beginPath(); ctx.arc(Math.round(cx), Math.round(cy), 12, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,220,' + (pulse + 0.2).toFixed(2) + ')';
+      ctx.beginPath(); ctx.arc(Math.round(cx), Math.round(cy), 8, 0, Math.PI * 2); ctx.fill();
+      ctx.drawImage(OBJ.herb, Math.round(cx - 8), Math.round(cy - 7));
+      for (let k = 0; k < 2; k++) {
+        const a = this.animT * 1.3 + k * Math.PI;
+        const sx = Math.round(cx + Math.cos(a) * 13), sy = Math.round(cy + Math.sin(a) * 9);
+        ctx.fillStyle = '#ffffff'; ctx.fillRect(sx, sy - 1, 1, 3); ctx.fillRect(sx - 1, sy, 3, 1);
+      }
+      return;
+    }
     // la hoja aletea con el viento, apoyada en el suelo
     const tilt = Math.sin(this.animT * 1.4) > 0 ? 0 : 1;
     ctx.drawImage(OBJ.page, Math.round(this.cx - 5 + tilt), Math.round(this.y + this.h - 11));
@@ -545,71 +588,221 @@ class Checkpoint extends Actor {
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
-// EL COLEGIO: escuela rural andina — paredes encaladas con zócalo azul, techo de
-// tejas, espadaña con campana y la bandera del Perú. Se entra por la puerta.
+
+
+// La hoja gigante del platanal de la cumbre: tómala y salta al vacío.
+class Leaf extends Actor {
+  constructor(x, y) { super(x * TS, y * TS - 30, 22, 30); this.taken = false; this.animT = 0; }
+  onRespawn() { this.taken = false; }
+  update(g) {
+    this.animT++;
+    const p = g.player;
+    if (!this.taken && !p.riding && p.overlaps(this)) { this.taken = true; p.gliding = true; p.glideAir = 0; g.audio('leaf'); g.burst(this.cx, this.y + 8, 'leaf', 14); }
+  }
+  draw(ctx) {
+    ctx.drawImage(OBJ.bananaPlant, Math.round(this.x), Math.round(this.y + this.h - 19));
+    if (!this.taken) {
+      // la hoja grande, colgando del platanal, se mece con el viento
+      const sw = Math.round(Math.sin(this.animT * 0.05) * 1.5);
+      ctx.drawImage(OBJ.leaf, Math.round(this.x - 6 + sw), Math.round(this.y + 2));
+    }
+  }
+}
+class FallingLeaf {
+  constructor(x, y, dir) { this.x = x; this.y = y; this.dir = dir; this.t = 0; }
+  update() { this.t++; this.x += Math.sin(this.t * 0.08) * 1.2 + this.dir * 0.4; this.y += 0.5; if (this.t > 120) this.dead = true; }
+  draw(ctx) { ctx.save(); ctx.globalAlpha = Math.min(1, (120 - this.t) / 30); ctx.translate(Math.round(this.x), Math.round(this.y)); ctx.rotate(Math.sin(this.t * 0.08) * 0.5); ctx.drawImage(OBJ.leaf, -16, -4); ctx.restore(); }
+}
+
+// ÁGUILA: mientras planeas, te rodea; luego chilla, se prepara y se lanza en
+// picado en línea recta hacia donde estabas. La dirección se fija al lanzarse:
+// apártate en el último momento.
+class Eagle extends Actor {
+  constructor(def) {
+    super(-9999, -9999, 24, 12);
+    this.rowMin = def.rowMin; this.rowMax = def.rowMax; this.delay = def.delay || 60;
+    this.state = 'idle'; this.t = 0; this.angle = Math.random() * 6; this.animT = 0; this.dirX = 1; this.dx = 0; this.dy = 0; this.face = 1;
+  }
+  onRespawn() { this.state = 'idle'; this.x = -9999; this.y = -9999; this.t = 0; }
+  get dangerous() { return this.state === 'dive'; }
+  get hitbox() { return { x: this.x + 4, y: this.y + 2, w: this.w - 8, h: this.h - 4 }; }
+  update(g) {
+    const p = g.player; this.animT++; this.t++;
+    const row = p.cy / TS;
+    const active = p.gliding && !p.onGround && row >= this.rowMin && row <= this.rowMax && g.state === 'play';
+    const busy = g.entities.some(o => o !== this && o instanceof Eagle && (o.state === 'windup' || o.state === 'dive'));
+    switch (this.state) {
+      case 'idle':
+        if (active) { this.state = 'circle'; this.t = 0; this.x = p.cx + (Math.random() < 0.5 ? -220 : 220); this.y = p.cy - 90; }
+        break;
+      case 'circle': {
+        // da vueltas alrededor del niño
+        this.angle += 0.04;
+        const tx = p.cx + Math.cos(this.angle) * 86 - this.w / 2, ty = p.cy - 26 + Math.sin(this.angle) * 42 - this.h / 2;
+        const ox = this.x; this.x += (tx - this.x) * 0.07; this.y += (ty - this.y) * 0.07; this.face = this.x >= ox ? 1 : -1;
+        if (!active) { this.state = 'leave'; this.t = 0; }
+        else if (this.t > 110 + this.delay && !busy) { this.state = 'windup'; this.t = 0; g.audio('screech'); }
+        break;
+      }
+      case 'windup': {
+        // se encara al niño, retrocede un poco y abre las garras
+        const vx = p.cx - this.cx, vy = p.cy - this.cy, d = Math.hypot(vx, vy) || 1;
+        this.face = vx >= 0 ? 1 : -1;
+        this.x -= vx / d * 0.6; this.y -= vy / d * 0.6;
+        if (this.t > 38) { this.dx = vx / d * 4.4; this.dy = vy / d * 4.4; this.state = 'dive'; this.t = 0; g.audio('swoosh'); }
+        break;
+      }
+      case 'dive':
+        this.x += this.dx; this.y += this.dy;
+        if (this.t > 60) { this.state = 'recover'; this.t = 0; }
+        break;
+      case 'recover':
+        this.x += this.dx * 0.5; this.y -= 1.8; this.dx *= 0.97;
+        if (this.t > 50) { this.state = active ? 'circle' : 'leave'; this.t = 0; this.delay = 40 + Math.random() * 80; }
+        break;
+      case 'leave':
+        this.y -= 2.2; this.x += this.face * 1.5;
+        if (this.t > 120) { this.state = 'idle'; this.x = -9999; this.y = -9999; }
+        if (active && this.t > 30) { this.state = 'circle'; this.t = 0; }
+        break;
+    }
+  }
+  draw(ctx) {
+    if (this.state === 'idle') return;
+    const att = this.state === 'windup' || this.state === 'dive';
+    const img = att ? E.eagle.attack : (Math.floor(this.animT / 8) % 2 ? E.eagle.flyA : E.eagle.flyB);
+    ctx.save();
+    ctx.translate(Math.round(this.cx), Math.round(this.cy));
+    if (this.state === 'dive') ctx.rotate(Math.atan2(this.dy, Math.abs(this.dx)) * 0.6 * (this.face));
+    if (this.face < 0) ctx.scale(-1, 1);
+    // tiembla un poco antes de lanzarse
+    const sh = this.state === 'windup' ? (this.t % 4 < 2 ? 1 : -1) : 0;
+    ctx.drawImage(img, -16 + sh, -10);
+    ctx.restore();
+  }
+}
+
+// EL COLEGIO: se cae a pedazos. Tablones clausurando la puerta, grietas,
+// tejas que faltan y puntales sosteniendo la pared. Aquí no hay clases...
 class School extends Actor {
   constructor(x, y) {
     const base = y * TS;
     super(x * TS - 60, base - 96, 120, 96);
-    this.base = base; this.animT = 0; this.done = false; this.bell = 0;
-    this.door = { x: x * TS - 10, y: base - 28, w: 20, h: 28 };
+    this.base = base; this.animT = 0; this.creak = 0;
   }
   update(g) {
-    this.animT += 0.1;
-    if (this.bell > 0) this.bell--;
+    this.animT++;
     const p = g.player;
-    if (!this.done && p.rectOverlaps(this.door.x + 4, this.door.y, this.door.w - 8, this.door.h)) {
-      this.done = true; this.bell = 200; p.won = true; g.gameComplete();
-    }
+    const near = Math.abs(p.cx - (this.x + 60)) < 70;
+    // al acercarte cruje y se desprende polvo y algún cascote
+    if (near && this.creak <= 0) { this.creak = 150; g.audio('creak'); }
+    if (this.creak > 0) this.creak--;
+    if (near && this.animT % 14 === 0) g.particles.push({ x: this.x + 10 + Math.random() * 100, y: this.base - 60 + Math.random() * 10, vx: 0, vy: 0.4, life: 60, max: 60, col: Math.random() < 0.5 ? '#c9a86a' : '#a3402a', size: Math.random() < 0.3 ? 2 : 1, grav: 0.08 });
   }
-  near(g) { return Math.abs(g.player.cx - (this.x + 60)) < 90; }
-  draw(ctx, g) {
+  draw(ctx) {
     const bx = Math.round(this.x), base = this.base;
+    ctx.save();
+    // el edificio entero está ladeado
+    ctx.translate(bx + 6, base); ctx.rotate(-0.035); ctx.translate(-(bx + 6), -base);
     const R = (c, x, y, w, h) => { ctx.fillStyle = c; ctx.fillRect(bx + x, base + y, w, h); };
-    // sombra en el suelo
     R('rgba(40,20,10,0.25)', 2, -2, 118, 2);
-    // muro encalado
-    R('#f1e8d6', 6, -46, 108, 46);
-    for (let y = -42; y < -12; y += 6) R('#e2d6bd', 6, y, 108, 1);
-    // zócalo azul
-    R('#3d6db3', 6, -12, 108, 12); R('#2b4f86', 6, -12, 108, 1); R('#2b4f86', 6, -1, 108, 1);
-    // ventanas
-    for (const wx of [14, 34, 74, 94]) {
-      R('#2b4f86', wx - 1, -36, 14, 18); R('#9fd3f0', wx, -35, 12, 16);
-      R('#d9f1ff', wx + 1, -34, 3, 1); R('#d9f1ff', wx + 1, -33, 1, 3);
-      R('#2b4f86', wx + 5, -35, 2, 16); R('#2b4f86', wx, -28, 12, 1);
-      R('#a06a30', wx - 2, -18, 16, 2);
-      R('#d8432f', wx + 1, -20, 2, 2); R('#c2185b', wx + 5, -20, 2, 2); R('#d8432f', wx + 9, -20, 2, 2); // macetas con flores
+    // muro sucio y descascarado
+    R('#d9ccb0', 6, -46, 108, 46);
+    for (let y = -42; y < -12; y += 6) R('#c6b693', 6, y, 108, 1);
+    for (const [x, y, w, h] of [[14, -44, 18, 9], [70, -30, 12, 14], [92, -42, 16, 8], [40, -20, 10, 7]]) R('#b98a55', x, y, w, h); // adobe al descubierto
+    R('#5e7fa8', 6, -12, 108, 12); R('#2b4f86', 6, -12, 108, 1);
+    for (let x = 10; x < 110; x += 13) R('#8aa2c0', x, -9, 5, 3); // pintura caída
+    // grietas
+    const crack = (pts) => { ctx.fillStyle = '#3a2414'; for (const [x, y] of pts) ctx.fillRect(bx + x, base + y, 1, 2); };
+    crack([[30, -46], [31, -44], [33, -42], [32, -40], [34, -38], [36, -36], [35, -34], [37, -32], [39, -30], [38, -28]]);
+    crack([[86, -46], [85, -44], [83, -42], [84, -40], [82, -38], [80, -36], [81, -34], [79, -32]]);
+    crack([[60, -12], [61, -14], [63, -16], [62, -18], [64, -20]]);
+    // ventanas rotas
+    for (const wx of [14, 94]) {
+      R('#2b4f86', wx - 1, -36, 14, 18); R('#1d1a24', wx, -35, 12, 16);
+      R('#9fd3f0', wx, -35, 4, 5); R('#9fd3f0', wx + 8, -26, 4, 7); R('#2b4f86', wx + 5, -35, 2, 16);
     }
-    // puerta (se abre cuando te acercas)
-    const open = this.near(g) || this.done;
-    R('#2b4f86', 49, -30, 22, 30);
-    if (open) { R('#3a2412', 50, -29, 20, 29); R('#8a5a30', 50, -29, 4, 29); R('#8a5a30', 66, -29, 4, 29); R('#ffd88a', 56, -24, 8, 6); }
-    else { R('#8a5a30', 50, -29, 20, 29); R('#6b4524', 59, -29, 2, 29); for (let y = -26; y < 0; y += 5) R('#6b4524', 50, y, 20, 1); R('#f6c94a', 56, -15, 2, 2); R('#f6c94a', 62, -15, 2, 2); }
-    R('#bdb5c6', 46, -1, 28, 1);
-    // letrero
-    R('#2b4f86', 36, -45, 48, 11); R('#ffffff', 37, -44, 46, 9);
-    drawText(ctx, 'COLEGIO', bx + 60, base - 43, { color: '#2b4f86', align: 'center' });
-    // techo de tejas (dos aguas visto de frente)
+    // puerta clausurada con tablones y cinta
+    R('#2b4f86', 49, -30, 22, 30); R('#3a2412', 50, -29, 20, 29);
+    ctx.save(); ctx.translate(bx + 60, base - 15);
+    for (const [ang, oy] of [[0.5, -6], [-0.5, -6], [0.1, 6]]) { ctx.save(); ctx.rotate(ang); ctx.fillStyle = '#8a5a30'; ctx.fillRect(-15, oy - 2, 30, 4); ctx.fillStyle = '#6b4524'; ctx.fillRect(-15, oy + 1, 30, 1); ctx.restore(); }
+    ctx.restore();
+    R('#d8432f', 28, -25, 64, 9); drawText(ctx, 'CLAUSURADO', bx + 60, base - 24, { color: '#ffffff', align: 'center' });
+    // techo con huecos y vigas a la vista
     for (let i = 0; i < 18; i++) {
       const y = -64 + i, inset = Math.round((17 - i) * 0.7);
-      R(i % 4 < 2 ? '#c4583a' : '#a3402a', -2 + inset, y, 124 - inset * 2, 1);
-      if (i % 4 === 3) for (let x = -2 + inset + ((i >> 2) % 2) * 3; x < 122 - inset; x += 6) R('#7f2f1f', x, y, 2, 1);
+      R(i % 4 < 2 ? '#b0553a' : '#8f3f2a', -2 + inset, y, 124 - inset * 2, 1);
     }
-    R('#7f2f1f', -2, -47, 124, 1); R('rgba(0,0,0,0.18)', 6, -46, 108, 3);
-    // espadaña con campana
-    R('#f1e8d6', 50, -86, 20, 22); R('#e2d6bd', 50, -66, 20, 2);
-    R('#f1e8d6', 54, -90, 12, 4); R('#f1e8d6', 58, -93, 4, 3);
-    R('#4a3a52', 55, -82, 10, 12);
-    const sw = this.bell > 0 ? Math.round(Math.sin(this.bell * 0.35) * 2) : 0;
-    R('#2a1f2d', 59, -82, 2, 2);
-    R('#e2b13c', 57 + sw, -80, 6, 6); R('#f6d36a', 58 + sw, -79, 2, 3); R('#9a6a18', 56 + sw, -75, 8, 1); R('#2a1f2d', 59 + sw * 2, -74, 2, 2);
-    // bandera del Perú
-    R('#d6d0e0', 128, -84, 1, 84); R('#f6c94a', 127, -86, 3, 2);
-    for (let c = 0; c < 18; c++) {
-      const wy = Math.round(Math.sin(this.animT * 1.4 - c * 0.45) * 1.2 * (c / 18));
-      R(c < 6 || c >= 12 ? '#d91023' : '#ffffff', 129 + c, -82 + wy, 1, 12);
+    for (const [x, y, w, h] of [[20, -62, 16, 9], [64, -58, 12, 8], [88, -63, 14, 11]]) { R('#4a3a52', x, y, w, h); for (let k = 0; k < w; k += 5) R('#6b4524', x + k, y, 2, h); }
+    R('#7f2f1f', -2, -47, 124, 1);
+    // tejas caídas en el suelo
+    for (const [x, c] of [[-6, '#b0553a'], [-2, '#8f3f2a'], [112, '#b0553a'], [118, '#8f3f2a'], [4, '#8f3f2a']]) R(c, x, -3, 5, 3);
+    // puntales de madera sosteniendo la pared
+    ctx.save(); ctx.translate(bx + 116, base); ctx.rotate(-0.75); ctx.fillStyle = '#6b4524'; ctx.fillRect(0, -2, 40, 4); ctx.fillStyle = '#8a5a30'; ctx.fillRect(0, -2, 40, 1); ctx.restore();
+    ctx.save(); ctx.translate(bx + 2, base); ctx.rotate(-2.35); ctx.fillStyle = '#6b4524'; ctx.fillRect(0, -2, 36, 4); ctx.restore();
+    // espadaña torcida con la campana colgando de un lado
+    ctx.save(); ctx.translate(bx + 60, base - 64); ctx.rotate(0.12);
+    ctx.fillStyle = '#d9ccb0'; ctx.fillRect(-10, -22, 20, 22); ctx.fillStyle = '#4a3a52'; ctx.fillRect(-5, -18, 10, 12);
+    ctx.fillStyle = '#e2b13c'; ctx.fillRect(-2, -14, 5, 6); ctx.fillStyle = '#3a2414'; ctx.fillRect(4, -22, 1, 6); ctx.fillRect(-9, -8, 1, 5);
+    ctx.restore();
+    ctx.restore();
+  }
+}
+
+// LA CLASE AL AIRE LIBRE: los alumnos sentados en el suelo y el profesor con
+// su pizarra. La meta de verdad es sentarte en el hueco junto a tus compañeros.
+const STUDENT_COLORS = [{ r: '#3f6fb8', R: '#27426e' }, { r: '#5c9f4a', R: '#3a7d36' }, { r: '#8a4cc0', R: '#5a3088' }, { r: '#f0913c', R: '#b45f1e' }];
+let _students = null;
+function studentSprites() {
+  if (_students) return _students;
+  _students = STUDENT_COLORS.map(c => PIX.fromRows(KID_TOP.concat(KID_LEGS.sit), Object.assign({}, PAL, c)));
+  return _students;
+}
+class OutdoorClass extends Actor {
+  constructor(x, y) {
+    const base = y * TS;
+    super(x * TS, base - 40, 200, 40);
+    this.base = base; this.animT = 0; this.done = false; this.sitT = 0;
+    // posiciones de los alumnos; el hueco libre (índice 2) es el tuyo
+    this.seats = [0, 22, 48, 74, 96].map(dx => x * TS + dx);
+    this.spot = this.seats[2];
+    this.board = x * TS + 128; this.teacherX = x * TS + 108;
+  }
+  update(g) {
+    this.animT++;
+    const p = g.player;
+    if (this.done) { this.sitT++; p.x += (this.spot - p.x) * 0.2; if (this.sitT === 40) g.gameComplete(); return; }
+    if (p.onGround && !p.riding && Math.abs(p.cx - (this.spot + 8)) < 14) {
+      this.done = true; p.won = true; p.vx = 0; g.audio('sit'); g.burst(this.spot + 8, this.base, 'dust', 8);
     }
+  }
+  draw(ctx, g) {
+    const base = this.base, sp = studentSprites();
+    // pizarra sobre un caballete
+    const bxp = this.board;
+    ctx.fillStyle = '#6b4524'; ctx.fillRect(bxp + 4, base - 30, 3, 30); ctx.fillRect(bxp + 41, base - 30, 3, 30); ctx.fillRect(bxp + 22, base - 26, 3, 26);
+    ctx.fillStyle = '#8a5a30'; ctx.fillRect(bxp, base - 52, 48, 30);
+    ctx.fillStyle = '#2f5a3e'; ctx.fillRect(bxp + 2, base - 50, 44, 26);
+    drawText(ctx, '2+2=4', bxp + 24, base - 46, { color: '#e8f0e0', align: 'center' });
+    drawText(ctx, 'AEIOU', bxp + 24, base - 36, { color: '#e8f0e0', align: 'center' });
+    // el profesor: escribe en la pizarra, y cuando llegas se gira y te señala el sitio
+    const near = Math.abs(g.player.cx - this.spot) < 120 && !this.done;
+    const timg = near ? flipS(OBJ.teacher) : OBJ.teacher;
+    ctx.drawImage(timg, Math.round(this.teacherX), base - 27 + (Math.floor(this.animT / 30) % 2 && !near ? 0 : 0));
+    if (!near && Math.floor(this.animT / 20) % 2) { ctx.fillStyle = '#ffffff'; ctx.fillRect(this.teacherX + 13, base - 16, 2, 1); }
+    // alumnos sentados en el suelo mirando la pizarra
+    this.seats.forEach((sx, i) => {
+      if (i === 2) {
+        // tu sitio: un pequeño poncho extendido en el suelo
+        if (!this.done) { const a = 0.25 + Math.sin(this.animT * 0.12) * 0.15; ctx.fillStyle = 'rgba(255,230,140,' + a.toFixed(2) + ')'; ctx.fillRect(sx - 3, base - 5, 22, 5); }
+        ctx.fillStyle = '#d8432f'; ctx.fillRect(sx + 1, base - 2, 14, 2);
+        ctx.fillStyle = '#f6c94a'; for (let k = 0; k < 14; k += 3) ctx.fillRect(sx + 1 + k, base - 2, 1, 1);
+        if (this.done) ctx.drawImage(P.sit, Math.round(g.player.x - 4), base - 22 + (this.sitT < 8 ? -8 + this.sitT : 0));
+        return;
+      }
+      const bob = Math.floor((this.animT + i * 23) / 50) % 2;
+      ctx.drawImage(sp[i % sp.length], sx, base - 22 + bob);
+    });
   }
 }
 
@@ -621,6 +814,9 @@ function makeEntity(def, level) {
     case 'huaico': return new Huaico(def, level);
     case 'checkpoint': return new Checkpoint(def.x, def.y);
     case 'school': return new School(def.x, def.y);
+    case 'outdoorClass': return new OutdoorClass(def.x, def.y);
+    case 'leaf': return new Leaf(def.x, def.y);
+    case 'eagle': return new Eagle(def);
     case 'page': return new Pickup('page', def.x, def.y);
     case 'herb': return new Pickup('herb', def.x, def.y);
     case 'condor': return new Condor(def);

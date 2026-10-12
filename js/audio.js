@@ -91,8 +91,20 @@ const AUDIO = (() => {
     drown:   () => { noise(0.6, 0.3, 400, 0, { sweep: 120 }); [300, 240, 190].forEach((f, i) => tone(f, 0.12, 'sine', 0.18, now() + i * 0.12, f * 0.6)); },
     mount:   () => { tone(330, 0.12, 'triangle', 0.22, 0, 520); tone(660, 0.18, 'triangle', 0.18, now() + 0.08); },
     bleat:   () => { const t = now(); for (let i = 0; i < 5; i++) tone(520 + (i % 2) * 40, 0.07, 'sawtooth', 0.07, t + i * 0.05, 480); },
-    munch:   () => { for (let i = 0; i < 4; i++) noise(0.05, 0.18, 1800, now() + i * 0.07, { type: 'bandpass', q: 1.5 }); SFX.bleat(); },
+    // ñam ñam: mordiscos crujientes, balido contento y campanita de premio
+    munch:   () => {
+      const t = now();
+      for (let i = 0; i < 3; i++) { noise(0.07, 0.45, 2600, t + i * 0.09, { type: 'bandpass', q: 0.9 }); noise(0.05, 0.25, 900, t + i * 0.09 + 0.02); }
+      for (let i = 0; i < 4; i++) tone(560 + (i % 2) * 60, 0.08, 'sawtooth', 0.09, t + 0.3 + i * 0.06, 520);
+      [784, 988, 1319, 1568].forEach((f, i) => tone(f, 0.18, 'triangle', 0.2, t + 0.12 + i * 0.07));
+    },
     caw:     () => { const t = now(); tone(900, 0.22, 'sawtooth', 0.06, t, 520); tone(820, 0.28, 'sawtooth', 0.05, t + 0.26, 480); },
+    // ave de presa: chillido agudo "kiii-arr" con vibrato
+    screech: () => { const t = now(); tone(2400, 0.35, 'sawtooth', 0.09, t, 1500); tone(2600, 0.3, 'square', 0.04, t + 0.02, 1700); tone(1900, 0.4, 'sawtooth', 0.07, t + 0.38, 900); },
+    swoosh:  () => { noise(0.45, 0.25, 600, 0, { type: 'bandpass', q: 0.8, sweep: 3000, attack: 0.15 }); },
+    leaf:    () => { noise(0.25, 0.2, 3000, 0, { type: 'highpass' }); tone(500, 0.2, 'triangle', 0.15, 0, 900); },
+    creak:   () => { const t = now(); tone(140, 0.6, 'sawtooth', 0.08, t, 90); tone(180, 0.5, 'sawtooth', 0.05, t + 0.3, 120); noise(0.4, 0.12, 300, t + 0.5); },
+    sit:     () => { noise(0.12, 0.2, 700); [523, 659, 784].forEach((f, i) => tone(f, 0.2, 'triangle', 0.18, now() + 0.1 + i * 0.08)); },
     boing:   () => { tone(200, 0.16, 'triangle', 0.16, 0, 420); noise(0.05, 0.08, 800); },
     rock:    () => { noise(0.2, 0.3, 450); tone(140, 0.16, 'sine', 0.25, 0, 60); },
     rumble:  () => { noise(0.8, 0.25, 220, 0, { attack: 0.2 }); },

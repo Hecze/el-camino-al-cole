@@ -111,7 +111,7 @@ const SUMMIT = 18;      // fila de la cumbre
 // salto entre salientes consecutivas cubre como mucho 4 casillas en horizontal.
 const ZIG = [0, 4, 1, -3, 1, 5, 2, -2, -5, -1, 3, -1, -4, 0, 4, 0];
 function mountainPath() {
-  const up = [], down = [];
+  const up = [];
   // subida (cara oeste): de la fila 141 a la 21, una saliente cada 3 filas
   const nUp = Math.round((G - 3 - (SUMMIT + 3)) / 3) + 1;
   for (let i = 0; i < nUp; i++) {
@@ -120,17 +120,7 @@ function mountainPath() {
     const x = Math.round(center + ZIG[i % ZIG.length] * 0.9);
     up.push([x - 1, row, i < 3 ? 4 : 3, row < 80 ? 'ledgeSnow' : 'ledge']);
   }
-  // bajada (cara este): una saliente cada 6 filas. La cabra rebota ~5 filas,
-  // así que nunca vuelve a caer en la saliente de la que acaba de bajar.
-  const nDown = 15;
-  for (let i = 0; i < nDown; i++) {
-    const row = SUMMIT + 4 + i * 6;
-    // zigzag izquierda-derecha: ninguna saliente queda justo debajo de la anterior
-    const center = 125 + (i / (nDown - 1)) * 16;
-    const x = Math.round(center + (i % 2 ? 4 : 0));
-    down.push([x - 1, row, 3, row < 80 ? 'ledgeSnow' : 'ledge']);
-  }
-  return { up, down };
+  return { up };
 }
 const MTN = mountainPath();
 const mid = (l) => l[0] + l[2] / 2;
@@ -139,14 +129,30 @@ const BIRDS = [];
 [124, 104, 84, 64, 46, 32].forEach((row, i) => {
   BIRDS.push({ type: 'condor', x0: 90, x1: 123, y: row - 1.5, speed: 1.4 + i * 0.12, phase: i * 0.7, dir: i % 2 ? -1 : 1 });
 });
-[52, 82].forEach((row, i) => {
-  BIRDS.push({ type: 'condor', x0: 124, x1: 156, y: row - 2, speed: 1.6 + i * 0.15, phase: i * 1.3, dir: i % 2 ? 1 : -1 });
-});
 // pasto para la cabra: algo apartado del camino (cuesta ir a por él)
 const HERBS = [];
 MTN.up.forEach((l, i) => { if (i % 4 === 2) HERBS.push({ type: 'herb', x: mid(l) + (i % 8 === 2 ? 3 : -3), y: l[1] - 3 }); });
 // puntos de control en la montaña (reapareces montado en la cabra)
-const MTN_CP = [MTN.up[10], MTN.up[20], MTN.up[30], MTN.down[5], MTN.down[10]].map(l => ({ type: 'checkpoint', x: Math.floor(mid(l)), y: l[1] }));
+const MTN_CP = [MTN.up[10], MTN.up[20], MTN.up[30]].map(l => ({ type: 'checkpoint', x: Math.floor(mid(l)), y: l[1] }));
+
+// Silueta de la montaña calculada a partir del camino: cada saliente queda
+// pegada a la roca (nada de salientes flotando en el aire).
+function mountainShape(peakX, peakRow, rows) {
+  const shape = [];
+  for (let r = 0; r < rows; r++) {
+    if (r < peakRow) { shape.push(null); continue; }
+    const d = r - peakRow;
+    let L = peakX - d * 0.24 - 1, R = peakX + d * 0.3 + 1;
+    for (const l of MTN.up) if (Math.abs(l[1] - r) <= 6) L = Math.min(L, l[0] - 3);
+    shape.push([L, R]);
+  }
+  // suavizar el borde izquierdo para que no tenga escalones bruscos
+  for (let pass = 0; pass < 3; pass++)
+    for (let r = peakRow + 1; r < rows - 1; r++) shape[r][0] = Math.min(shape[r][0], (shape[r - 1][0] + shape[r + 1][0]) / 2 + 0.5);
+  return shape;
+}
+// águilas que acechan mientras bajas planeando: cada una vigila una franja de altura
+const EAGLES = [[24, 58], [50, 84], [76, 106]].map((b, i) => ({ type: 'eagle', rowMin: b[0], rowMax: b[1], delay: 60 + i * 40 }));
 
 const LEVEL = {
   name: 'EL CAMINO AL COLE', w: 262, h: 150,
@@ -160,8 +166,12 @@ const LEVEL = {
   ],
   spawn: { x: 3, y: G },
   // la gran montaña: silueta de fondo con nieve en lo alto
-  mountain: { peakX: 121, peakRow: 10, slope: 0.2, snowRow: 78 },
-  goatEnd: 147,
+  mountain: { peakX: 121, peakRow: 10, snowRow: 78, shape: mountainShape(121, 10, 150) },
+  // cerro del que baja el huaico (tierra cálida)
+  hill: { peakX: 220, peakRow: 89, slopeL: 1.7, slopeR: 2.1 },
+  goatEnd: 118, goatEndRow: SUMMIT,
+  // al planear no puedes alejarte de la ladera este
+  glide: { x0: 119, x1: 164 },
   altitude: { baseRow: G, baseM: 3650, perRow: 13 },
   zones: [
     { x: 0,   name: 'EL VALLE',  music: 'valle' },
@@ -185,7 +195,7 @@ const LEVEL = {
     [160, 114, 16, 36, 'clay'], [176, 112, 16, 38, 'clay'], [192, 110, 16, 40, 'clay'], [208, 108, 14, 42, 'clay'],
     [222, 103, 40, 47, 'clay'],
   ],
-  platforms: [...MTN.up, ...MTN.down],
+  platforms: [...MTN.up],
   liquids: [
     // arroyos que bajan del cerro: caen en cascada a una quebrada estrecha
     [22, G, 3, 6, 'water', 1, G - 7],
@@ -205,8 +215,14 @@ const LEVEL = {
     ...MTN_CP,
     { type: 'checkpoint', x: 151, y: 110 },
     { type: 'rockfall', x: 82, y: G - 13, interval: 130 },
-    { type: 'huaico', x0: 160, x1: 222, interval: 84, speed: 0.75, inflow: { x: 219, top: 92 } },
-    { type: 'school', x: 240, y: 103 },
+    { type: 'checkpoint', x: 121, y: SUMMIT },
+    // en la cumbre crece un platanal: su hoja gigante sirve de parapente
+    { type: 'leaf', x: 123, y: SUMMIT },
+    ...EAGLES,
+    { type: 'huaico', x0: 160, x1: 222, interval: 84, speed: 0.75, inflow: { x: 218, top: 92 } },
+    // el colegio se cae a pedazos... la clase se da afuera, sentados en el suelo
+    { type: 'school', x: 231, y: 103 },
+    { type: 'outdoorClass', x: 243, y: 103 },
     ...BIRDS,
     ...HERBS,
     // las 3 hojas de tarea que se le volaron al niño, enganchadas en el camino

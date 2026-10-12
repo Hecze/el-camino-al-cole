@@ -155,7 +155,8 @@
     for (const e of Game.entities) { if (e instanceof Mount && !e.retired) e.reset(); if (e.onRespawn) e.onRespawn(Game); }
     Game.entities = Game.entities.filter(e => !(e instanceof Boulder));
     p.riding = null; p.x = Game.spawn.x; p.y = Game.spawn.y - p.h;
-    p.vx = 0; p.vy = 0; p.dragged = false; p.overEdge = false; p.stickT = 0; p.mountCd = 0; p.invuln = 50; p.lastMover = null;
+    p.vx = 0; p.vy = 0; p.dragged = false; p.overEdge = false; p.stickT = 0; p.gliding = false; p.glideAir = 0;
+    Game.entities = Game.entities.filter(e => !(e instanceof FallingLeaf)); p.mountCd = 0; p.invuln = 50; p.lastMover = null;
     const m = Game.spawnMount;
     if (m) { m.x = p.cx - m.w / 2; m.y = Game.spawn.y - m.h; m.vx = 0; m.vy = 0; p.mount(m, Game, true); }
     Game.floorY = p.cy;
@@ -200,6 +201,7 @@
     if (body.onGround || snap) Game.floorY = p.cy;
     let focusY = Game.floorY, off = BASE_H * 0.62;
     if (p.cy > Game.floorY + 10) focusY = p.cy; // cayendo: lo seguimos ya
+    if (p.gliding && !p.onGround) { focusY = p.cy; off = BASE_H * 0.3; }   // planeando: mira abajo
     if (p.riding instanceof Cabra) {
       const descending = lv.mountain && p.cx > lv.mountain.peakX * TILE + 40;
       if (descending) { focusY = p.cy; off = BASE_H * 0.36; }                   // bajando: mira abajo
@@ -337,6 +339,8 @@
         if (p.riding instanceof Cabra) continue;
         if (p.riding && !(e instanceof Cabra)) continue;
         if (aabb(body, { x: e.x, y: e.y - 6, w: e.w, h: e.h + 6 })) p.mount(e, Game);
+      } else if (e instanceof Eagle) {
+        if (e.dangerous && p.invuln <= 0 && aabb(hb, e.hitbox)) { Game.playerEnvDeath('bird'); return; }
       } else if (e instanceof Condor) {
         if (p.invuln <= 0 && aabb(hb, e.hitbox)) { Game.playerEnvDeath('bird'); return; }
       } else if (e instanceof Boulder) {
@@ -393,6 +397,7 @@
     ctx.save();
     ctx.translate(Math.round(-camx + sx), Math.round(-camy + sy));
     renderMountain(lv);
+    renderHill(lv);
     renderBackdrop(lv);
     renderTiles(lv);
     renderInflow(lv);
@@ -445,8 +450,8 @@
     const r0 = Math.max(M.peakRow, Math.floor(Game.cam.y / TILE) - 1), r1 = Math.min(lv.rows - 1, Math.ceil((Game.cam.y + BASE_H) / TILE));
     const c0 = Math.floor(Game.cam.x / TILE) - 1, c1 = Math.ceil((Game.cam.x + BASE_W) / TILE);
     for (let r = r0; r <= r1; r++) {
-      const half = (r - M.peakRow) * M.slope + 1;
-      const L = Math.round(M.peakX - half - hash(r * 13) * 1.5), R = Math.round(M.peakX + half + hash(r * 29) * 1.5);
+      const sh = M.shape[r]; if (!sh) continue;
+      const L = Math.round(sh[0] - hash(r * 13) * 1.5), R = Math.round(sh[1] + hash(r * 29) * 1.5);
       const snowLine = M.snowRow + Math.round(hash(r * 7) * 6 - 3);
       for (let c = Math.max(L, c0); c <= Math.min(R, c1); c++) {
         if (isSolidCode(lv.tile(c, r))) continue;
@@ -482,24 +487,61 @@
     // solo la cabeza de la roca va delante: lo que cae del escalón pasa por detrás
     for (const r of lv.fgRocks || []) for (let x = r[0]; x < r[0] + r[2]; x++) ctx.drawImage(T.mudRock, x * TILE, r[1] * TILE);
   }
-  // el huaico baja del cerro: cascada de lodo por donde entran troncos y lajas
+  // el cerro de tierra cálida de donde baja el huaico
+  let hillTile = null;
+  function renderHill(lv) {
+    const Hh = lv.hill; if (!Hh) return;
+    if (!hillTile) { hillTile = PIX.createCanvas(TILE, TILE); const c = hillTile.getContext('2d'); c.drawImage(T.clayBody, 0, 0); c.globalCompositeOperation = 'source-atop'; c.fillStyle = 'rgba(60,30,40,0.38)'; c.fillRect(0, 0, TILE, TILE); }
+    const r0 = Math.max(Hh.peakRow, Math.floor(Game.cam.y / TILE) - 1), r1 = Math.min(lv.rows - 1, Math.ceil((Game.cam.y + BASE_H) / TILE));
+    const c0 = Math.floor(Game.cam.x / TILE) - 1, c1 = Math.ceil((Game.cam.x + BASE_W) / TILE);
+    for (let r = r0; r <= r1; r++) {
+      const d = r - Hh.peakRow;
+      const L = Math.round(Hh.peakX - d * Hh.slopeL - 1 - hash(r * 11) * 1.5), R = Math.round(Hh.peakX + d * Hh.slopeR + 1 + hash(r * 37) * 1.5);
+      for (let c = Math.max(L, c0); c <= Math.min(R, c1); c++) {
+        if (isSolidCode(lv.tile(c, r)) || liquidKind(lv.tile(c, r))) continue;
+        const px = c * TILE, py = r * TILE;
+        ctx.drawImage(hillTile, px, py);
+        const band = Math.floor((r + Math.floor(hash(c >> 2) * 3)) / 3) % 3;
+        if (band !== 1) { ctx.fillStyle = band ? 'rgba(255,200,150,0.08)' : 'rgba(40,10,20,0.12)'; ctx.fillRect(px, py, TILE, TILE); }
+        const h = hash(c * 71 + r * 13);
+        if (h > 0.975) ctx.drawImage(T.cactus, px, py + 3);
+        else if (h > 0.94) { ctx.globalAlpha = 0.8; ctx.drawImage(T.ichu, px, py + 6); ctx.globalAlpha = 1; }
+        if (c > Hh.peakX) { ctx.fillStyle = 'rgba(30,10,30,0.18)'; ctx.fillRect(px, py, TILE, TILE); }
+      }
+    }
+  }
+  // el huaico baja del cerro: una cascada de lodo ancha y violenta que nace de
+  // una quebrada en la ladera; por ahí caen los troncos y lajas
   function renderInflow(lv) {
     const hu = Game.huaico; if (!hu || !hu.inflow) return;
     const Pl = LIQ.mud, x = hu.inflow.x, top = hu.inflow.y, s = hu.surfaceAt(x - 4);
-    if (x + 40 < Game.cam.x || x - 40 > Game.cam.x + BASE_W) return;
-    const rock = getBackTile();
-    for (let r = Math.floor(top / TILE) - 1; r * TILE < s; r++) for (let c = Math.floor(x / TILE) - 2; c <= Math.floor(x / TILE) + 2; c++) {
-      if (isSolidCode(lv.tile(c, r)) || liquidKind(lv.tile(c, r))) continue;
-      ctx.drawImage(T.clayBody, c * TILE, r * TILE); ctx.drawImage(rockShade || rock, c * TILE, r * TILE);
+    if (x + 80 < Game.cam.x || x - 80 > Game.cam.x + BASE_W || s < Game.cam.y) return;
+    const H = s - top;
+    // la quebrada: un tajo oscuro en la ladera
+    ctx.fillStyle = 'rgba(40,16,10,0.55)';
+    for (let y = top - 30; y < s; y += 2) { const k = (y - top + 30) / (H + 30); const w = 10 + k * k * 62; ctx.fillRect(Math.round(x - w / 2 - 4), y, Math.round(w + 8), 2); }
+    // la cortina de lodo: estrecha arriba, ancha y furiosa abajo
+    for (let y = top; y < s; y++) {
+      const k = (y - top) / H, w = Math.round(14 + k * k * 60 + Math.sin(y * 0.2 + tick * 0.3) * 2);
+      const a = Math.round(x - w / 2);
+      ctx.fillStyle = Pl.bands[1]; ctx.fillRect(a, y, w, 1);
+      ctx.fillStyle = Pl.bands[0]; ctx.fillRect(a, y, 2, 1); ctx.fillRect(a + w - 2, y, 2, 1);
     }
-    const a = x - 9, b = x + 9, H = s - top;
-    ctx.fillStyle = Pl.bands[1]; ctx.fillRect(a, top, b - a, H);
-    ctx.fillStyle = Pl.bands[0]; ctx.fillRect(a, top, 1, H); ctx.fillRect(b - 1, top, 1, H);
-    for (let xx = a + 1; xx < b - 1; xx++) for (let k = 0; k < 3; k++) {
-      const yy = top + mod(hash(xx * 13 + k * 31) * H + tick * (2.5 + hash(xx * 7 + k) * 1.5), H);
-      ctx.fillStyle = k === 0 ? Pl.foam : Pl.streak[k]; ctx.fillRect(xx, Math.floor(yy), 1, Math.min(5, s - Math.floor(yy)));
+    for (let i = 0; i < 70; i++) {
+      const xx = (hash(i * 13) - 0.5), yy = top + mod(hash(i * 7) * H + tick * (3 + hash(i * 3) * 2.5), H);
+      const k = (yy - top) / H, w = 14 + k * k * 60;
+      ctx.fillStyle = i % 3 === 0 ? Pl.foam : i % 3 === 1 ? Pl.hi : Pl.streak[0];
+      ctx.fillRect(Math.round(x + xx * (w - 4)), Math.floor(yy), 1, Math.min(6, s - Math.floor(yy)));
     }
-    for (let j = 0; j < 14; j++) { const r = hash(j * 17 + Math.floor(tick / 3)); if (r < 0.3) continue; ctx.fillStyle = r > 0.7 ? Pl.foam : Pl.hi; ctx.fillRect(a - 8 + Math.floor(hash(j * 3 + Math.floor(tick / 3)) * 34), s - 2 + Math.floor(r * 4), 2, 1); }
+    // salpicadura y espuma donde golpea el lodo
+    for (let j = 0; j < 40; j++) {
+      const r = hash(j * 17 + Math.floor(tick / 2)); if (r < 0.25) continue;
+      ctx.fillStyle = r > 0.7 ? Pl.foam : Pl.hi;
+      ctx.fillRect(Math.round(x - 34 + hash(j * 3 + Math.floor(tick / 2)) * 68), Math.round(s - 2 - r * 10 * hash(j + Math.floor(tick / 2))), r > 0.9 ? 2 : 1, r > 0.9 ? 2 : 1);
+    }
+    ctx.globalAlpha = 0.35; ctx.fillStyle = '#e8d2b0';
+    for (let i = 0; i < 12; i++) { const life = mod(tick * 0.6 + i * 7, 30); ctx.fillRect(Math.round(x - 30 + hash(i * 41 + Math.floor((tick * 0.6 + i * 7) / 30)) * 60), Math.round(s - 4 - life), 3, 2); }
+    ctx.globalAlpha = 1;
   }
   // el precipicio: el lodo se despeña al vacío por el borde del lecho
   function renderPrecipice(L, Pl, X0, wl, t) {
@@ -760,21 +802,21 @@
     ctx.fillStyle = 'rgba(18,14,28,' + (0.82 * a) + ')'; ctx.fillRect(0, 0, BASE_W, BASE_H);
     ctx.globalAlpha = a;
     const bob = Math.sin(tick / 12) * 2;
-    drawText(ctx, '¡LLEGASTE AL COLE!', BASE_W / 2, 30 + bob, { scale: 2, color: '#ffd166', align: 'center', shadow: true, shadowColor: '#5a2a12' });
+    drawText(ctx, '¡LLEGASTE A CLASES!', BASE_W / 2, 30 + bob, { scale: 2, color: '#ffd166', align: 'center', shadow: true, shadowColor: '#5a2a12' });
     const onTime = Game.arrival < CLASS_START;
-    drawText(ctx, onTime ? 'ANTES DE QUE SONARA LA CAMPANA DE LAS 8:00' : 'LA CAMPANA DE LAS 8:00 YA HABÍA SONADO...', BASE_W / 2, 54, { color: onTime ? '#f4e9d8' : '#f2917d', align: 'center' });
+    drawText(ctx, onTime ? 'AL AIRE LIBRE, ANTES DE LAS 8:00' : 'LA CLASE YA HABÍA EMPEZADO...', BASE_W / 2, 54, { color: onTime ? '#f4e9d8' : '#f2917d', align: 'center' });
     ctx.drawImage(LL.idle[0], BASE_W / 2 - 64, 74);
     ctx.drawImage(P.run[Math.floor(tick / 7) % 4], BASE_W / 2 - 8, 76);
     ctx.drawImage(GOAT.stand, BASE_W / 2 + 34, 81);
     const rows = [
       ['HOJAS DE TAREA', Game.pages + ' / 3', '#ffffff'],
-      ['HORA DE LLEGADA', clockText(Game.arrival) + (onTime ? '  ¡A TIEMPO!' : '  TARDE'), onTime ? '#9be7c4' : '#f2917d'],
+      ['LLEGADA', clockText(Game.arrival) + (onTime ? ' ¡A TIEMPO!' : ' TARDE'), onTime ? '#9be7c4' : '#f2917d'],
       ['PASTO PARA LA CABRA', '' + Game.herbs, '#8fd062'],
       ['CAÍDAS', '' + Game.deaths, '#f2917d'],
     ];
     rows.forEach((r, i) => {
-      drawText(ctx, r[0], BASE_W / 2 - 80, 112 + i * 13, { color: '#cdbde8' });
-      drawText(ctx, r[1], BASE_W / 2 + 80, 112 + i * 13, { color: r[2], align: 'right' });
+      drawText(ctx, r[0], BASE_W / 2 - 110, 112 + i * 13, { color: '#cdbde8' });
+      drawText(ctx, r[1], BASE_W / 2 + 110, 112 + i * 13, { color: r[2], align: 'right' });
     });
     if (Game.pages === 3) drawText(ctx, '¡TAREA COMPLETA! LA PROFE ESTARÁ ORGULLOSA', BASE_W / 2, 170, { color: '#9be7c4', align: 'center' });
     if (Game.stateT > 90 && Math.floor(tick / 24) % 2 === 0) drawText(ctx, 'PULSA PARA VOLVER AL MENÚ', BASE_W / 2, 194, { color: '#fff3d6', align: 'center' });
@@ -827,6 +869,38 @@
     drawText(ctx, 'PULSA PARA VOLVER', BASE_W / 2, 196, { color: '#fff3d6', align: 'center' });
   }
 
+  // ── fluidez ──────────────────────────────────────────────────────────────
+  // La lógica corre a 60 pasos fijos por segundo, pero la pantalla puede ir a
+  // 60, 120 o 144 Hz. Para que no haya tirones, dibujamos cada actor entre su
+  // posición anterior y la actual según el tiempo transcurrido (interpolación).
+  // Además la cámara se alinea al píxel del jugador: así el niño no "baila" un
+  // píxel adelante y atrás respecto a la cámara (eso se veía borroso y mareaba).
+  function actors() { return Game.player ? [Game.player, ...Game.entities] : []; }
+  function snapshot() {
+    for (const a of actors()) { a._px = a.x; a._py = a.y; }
+    Game.cam._px = Game.cam.x; Game.cam._py = Game.cam.y;
+  }
+  function renderSmooth(alpha) {
+    const live = Game.level && Game.state !== 'menu' && Game.state !== 'controls';
+    if (!live) { render(); return; }
+    alpha = clamp(alpha, 0, 1);
+    const list = actors(), cam = Game.cam;
+    for (const a of list) {
+      a._sx = a.x; a._sy = a.y;
+      if (a._px !== undefined && Math.abs(a.x - a._px) < 64 && Math.abs(a.y - a._py) < 64) {
+        a.x = a._px + (a.x - a._px) * alpha; a.y = a._py + (a.y - a._py) * alpha;
+      }
+    }
+    const cx = cam.x, cy = cam.y;
+    if (cam._px !== undefined && Math.abs(cx - cam._px) < 64 && Math.abs(cy - cam._py) < 64) { cam.x = cam._px + (cx - cam._px) * alpha; cam.y = cam._py + (cy - cam._py) * alpha; }
+    const p = Game.player;
+    cam.x = p.x + Math.round(cam.x - p.x);
+    cam.y = p.y + Math.round(cam.y - p.y);
+    render();
+    cam.x = cx; cam.y = cy;
+    for (const a of list) { a.x = a._sx; a.y = a._sy; }
+  }
+
   // ── bucle ────────────────────────────────────────────────────────────────
   let last = performance.now(), acc = 0;
   function frame(ts) {
@@ -835,9 +909,9 @@
     if (dt > 100) dt = 100;
     acc += dt;
     let guard = 0;
-    while (acc >= STEP && guard < 5) { update(); acc -= STEP; guard++; }
+    while (acc >= STEP && guard < 5) { snapshot(); update(); acc -= STEP; guard++; }
     if (guard >= 5) acc = 0;
-    render();
+    renderSmooth(acc / STEP);
   }
 
   // ── init ─────────────────────────────────────────────────────────────────
