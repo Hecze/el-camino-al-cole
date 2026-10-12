@@ -25,6 +25,20 @@
 
   let tick = 0;
 
+  // ── la hora del día ──────────────────────────────────────────────────────
+  // Sales de casa a las 6:20 con el sol saliendo; la clase empieza a las 8:00.
+  // Cada segundo de juego son 30 segundos del reloj (≈3 min 20 s para llegar).
+  const DAY_START = 6 * 60 + 20, CLASS_START = 8 * 60, CLOCK_RATE = 0.5;
+  const SKY_DAWN = ['#2e2f63', '#c46f8a', '#ffb877'], SKY_MORNING = ['#4f86c6', '#9cc8e8', '#f6dcb0'];
+  function clockMinutes() { return DAY_START + (Game.time / 60) * CLOCK_RATE; }
+  function clockText(m) { m = Math.floor(m == null ? clockMinutes() : m); return Math.floor(m / 60) + ':' + String(m % 60).padStart(2, '0'); }
+  function dayProgress() { return clamp((clockMinutes() - DAY_START) / (CLASS_START - DAY_START), 0, 1); }
+  function lerpColor(a, b, t) {
+    const pa = parseInt(a.slice(1), 16), pb = parseInt(b.slice(1), 16);
+    const ch = (s) => Math.round(((pa >> s) & 255) + (((pb >> s) & 255) - ((pa >> s) & 255)) * t);
+    return 'rgb(' + ch(16) + ',' + ch(8) + ',' + ch(0) + ')';
+  }
+
   // ── parallax ─────────────────────────────────────────────────────────────
   const strips = {};
   function buildStrip(def) {
@@ -129,6 +143,7 @@
   };
   Game.gameComplete = () => {
     if (Game.state !== 'play') return;
+    Game.arrival = clockMinutes();
     Game.state = 'win'; Game.stateT = 0;
     AUDIO.stopMusic(); AUDIO.play('bell'); AUDIO.play('win');
   };
@@ -224,7 +239,7 @@
       case 'pause': updatePause(tap); break;
       case 'respawn':
         Game.stateT++; updateParticles();
-        if (Game.stateT > 34) Game.respawn();
+        if (Game.stateT > 30 && (tap || Input.pressed('confirm') || Input.pressed('jump') || Input.pressed('up'))) { AUDIO.play('select'); Game.respawn(); }
         break;
       case 'win':
         Game.stateT++; updateParticles();
@@ -341,15 +356,21 @@
     let sx = 0, sy = 0;
     if (Game.shakeT > 0) { sx = rnd(-Game.shakeMag, Game.shakeMag); sy = rnd(-Game.shakeMag, Game.shakeMag); }
 
+    // el día avanza con el reloj: amanece al empezar, mañana clara al llegar
+    const day = dayProgress();
     const gr = ctx.createLinearGradient(0, 0, 0, BASE_H);
-    gr.addColorStop(0, lv.sky[0]); gr.addColorStop(0.6, lv.sky[1]); gr.addColorStop(1, lv.sky[2]);
+    for (let i = 0; i < 3; i++) gr.addColorStop([0, 0.6, 1][i], lerpColor(SKY_DAWN[i], SKY_MORNING[i], day));
     ctx.fillStyle = gr; ctx.fillRect(0, 0, BASE_W, BASE_H);
 
     const camx = Game.cam.x, camy = Game.cam.y;
     const anchor = lv.anchorRow * TILE - BASE_H * 0.62;
-    // sol
-    ctx.fillStyle = '#fff1c4'; ctx.beginPath(); ctx.arc(300, 40 - (camy - anchor) * 0.03, 14, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = 'rgba(255,241,196,0.25)'; ctx.beginPath(); ctx.arc(300, 40 - (camy - anchor) * 0.03, 22, 0, Math.PI * 2); ctx.fill();
+    // sol naciente por el este, detrás de los cerros
+    const sunX = 78 + day * 40, sunY = 112 - day * 82 - (camy - anchor) * 0.03;
+    const sunCol = lerpColor('#ffb066', '#fff3cf', day);
+    const glow = ctx.createRadialGradient(sunX, sunY, 4, sunX, sunY, 150 - day * 90);
+    glow.addColorStop(0, 'rgba(255,200,130,' + (0.75 - day * 0.45) + ')'); glow.addColorStop(1, 'rgba(255,170,110,0)');
+    ctx.fillStyle = glow; ctx.fillRect(0, 0, BASE_W, BASE_H);
+    ctx.fillStyle = sunCol; ctx.beginPath(); ctx.arc(sunX, sunY, 15, 0, Math.PI * 2); ctx.fill();
     for (let i = 0; i < lv.bgLayers.length; i++) {
       const L = lv.bgLayers[i];
       if (L.kind === 'clouds') { drawClouds(L, camx, -(camy - anchor) * 0.05, 'c' + i); drawSkyCondors(-(camy - anchor) * 0.06); continue; }
@@ -371,6 +392,8 @@
     if (Game.state !== 'respawn' && !p.won) { p.draw(ctx, Game); p.drawRider(ctx); }
     renderParticles();
     ctx.restore();
+    // luz fría y violácea del amanecer que se va disipando
+    if (day < 1) { ctx.fillStyle = 'rgba(70,40,110,' + (0.22 * (1 - day)) + ')'; ctx.fillRect(0, 0, BASE_W, BASE_H); }
 
     renderHUD();
     renderOverlay();
@@ -378,8 +401,12 @@
 
   // pared del risco detrás de las salientes (decorado, no colisiona)
   let backTile = null;
-  function renderBackdrop(lv) {
+  function getBackTile() {
     if (!backTile) { backTile = PIX.createCanvas(TILE, TILE); const g = backTile.getContext('2d'); g.drawImage(T.stone, 0, 0); g.globalCompositeOperation = 'source-atop'; g.fillStyle = 'rgba(40,30,60,0.55)'; g.fillRect(0, 0, TILE, TILE); }
+    return backTile;
+  }
+  function renderBackdrop(lv) {
+    const backTile = getBackTile();
     for (const r of lv.backdrop || []) {
       for (let y = r[1]; y < r[1] + r[3]; y++) for (let x = r[0]; x < r[0] + r[2]; x++) {
         // borde irregular a la izquierda: la roca "sale" de la montaña
@@ -435,6 +462,7 @@
         ctx.fillStyle = o <= -2 * Pl.amp + 0.5 && hash(x * 3 + Math.floor(t / 6)) > 0.35 ? Pl.foam : Pl.hi;
         ctx.fillRect(x, sy, 1, 1);
       }
+      if (L.fallTop) { renderFall(lv, L, Pl, X0, X1, wl, cx0, cx1, t); continue; }
       // 3) vetas de corriente bajo la superficie (más rápidas arriba que al fondo)
       const depth = Math.max(8, Math.min(bot, wl + 44) - wl);
       const nS = Math.floor(W * depth / (L.kind === 'mud' ? 90 : 150));
@@ -499,6 +527,51 @@
     }
   }
 
+  // Caída de agua: el arroyo baja del cerro por una pared de roca y se
+  // estrella en la quebrada. Por eso el cauce es tan estrecho.
+  function renderFall(lv, L, Pl, X0, X1, wl, cx0, cx1, t) {
+    const ft = L.fallTop * TILE, W = X1 - X0, H = wl - ft;
+    const cw = Math.round(Math.min(W - 6, 10 + W * 0.25)), a = Math.round(X0 + (W - cw) / 2), b = a + cw;
+    // pared de roca detrás (no pinta sobre el terreno sólido)
+    const rock = getBackTile();
+    for (let r = L.fallTop; r < L.y; r++) for (let c = L.x; c < L.x + L.w; c++) {
+      if (r === L.fallTop && L.w > 3 && (c === L.x || c === L.x + L.w - 1)) continue;
+      if (isSolidCode(lv.tile(c, r))) continue;
+      ctx.drawImage(rock, c * TILE, r * TILE);
+    }
+    // ichu en lo alto del peñasco
+    ctx.drawImage(T.ichu, a - 12, ft - T.ichu.height + 1);
+    // chorro de agua
+    ctx.fillStyle = Pl.bands[1]; ctx.fillRect(a, ft + 2, b - a, H);
+    ctx.fillStyle = Pl.bands[0]; ctx.fillRect(a, ft + 2, 1, H); ctx.fillRect(b - 1, ft + 2, 1, H);
+    ctx.fillStyle = Pl.bands[2]; ctx.fillRect(a + 1, ft + 2, 1, H); ctx.fillRect(b - 2, ft + 2, 1, H);
+    for (let x = a + 1; x < b - 1; x++) for (let k = 0; k < 3; k++) {
+      const sp = 3 + hash(x * 7 + k) * 2, len = 4 + Math.floor(hash(x * 3 + k * 11) * 6);
+      const yy = ft + 2 + mod(hash(x * 13 + k * 31) * H + t * sp, H);
+      ctx.fillStyle = k === 0 ? Pl.foam : k === 1 ? Pl.hi : Pl.streak[1];
+      ctx.fillRect(x, Math.floor(yy), 1, Math.min(len, wl - Math.floor(yy)));
+    }
+    // borde por donde rebosa el agua
+    for (let x = a - 1; x < b + 1; x++) { ctx.fillStyle = hash(x + Math.floor(t / 4)) > 0.5 ? Pl.foam : Pl.hi; ctx.fillRect(x, ft + 1 + (hash(x * 5) > 0.7 ? 1 : 0), 1, 2); }
+    // la poza hierve de espuma
+    for (let x = cx0; x < cx1; x++) {
+      const r = hash(x * 3 + Math.floor(t / 3));
+      if (r > 0.35) { ctx.fillStyle = r > 0.7 ? Pl.foam : Pl.hi; ctx.fillRect(x, wl - 1 + Math.floor(hash(x + Math.floor(t / 3) * 7) * 4), 1, r > 0.9 ? 2 : 1); }
+    }
+    for (let i = 0; i < 18; i++) {
+      const r = hash(i * 19 + Math.floor(t / 2));
+      ctx.fillStyle = r > 0.5 ? Pl.foam : Pl.hi;
+      ctx.fillRect(X0 + Math.floor(hash(i * 7 + Math.floor(t / 2)) * W), wl + 2 + Math.floor(r * 10), 2, 1);
+    }
+    // bruma que sube
+    ctx.globalAlpha = 0.45; ctx.fillStyle = '#ffffff';
+    for (let i = 0; i < 8; i++) {
+      const life = mod(t * 0.5 + i * 9, 24);
+      ctx.fillRect(X0 - 4 + Math.floor(hash(i * 41 + Math.floor((t * 0.5 + i * 9) / 24)) * (W + 8)), Math.floor(wl - life), 2, 2);
+    }
+    ctx.globalAlpha = 1;
+  }
+
   const DECOR_MAP = { cantuta: () => T.cantuta, ichu: () => T.ichu, maguey: () => T.maguey, sign: () => T.sign };
   function renderDecor(lv) {
     for (const d of lv.decor || []) {
@@ -511,7 +584,7 @@
   }
 
   function renderEntities() {
-    const back = e => e instanceof School || e instanceof Apacheta;
+    const back = e => e instanceof School;
     for (const e of Game.entities) if (back(e)) e.draw(ctx, Game);
     for (const e of Game.entities) if (!back(e) && !(e instanceof Mount)) e.draw(ctx, Game);
     for (const e of Game.entities) if (e instanceof Mount) e.draw(ctx, Game);
@@ -531,7 +604,10 @@
     panel(6, 6, 46, 16);
     ctx.drawImage(OBJ.page, 10, 8);
     drawText(ctx, Game.pages + '/3', 24, 11, { color: '#ffffff' });
-    if (Game.zoneName) drawText(ctx, Game.zoneName, BASE_W - 8, 9, { color: '#fff3d6', align: 'right', shadow: true, shadowColor: '#00000088' });
+    const late = clockMinutes() >= CLASS_START;
+    panel(BASE_W - 52, 6, 46, 16);
+    drawText(ctx, clockText(), BASE_W - 29, 11, { color: late ? '#f2917d' : '#fff3d6', align: 'center' });
+    if (Game.zoneName) drawText(ctx, Game.zoneName, BASE_W - 58, 11, { color: '#fff3d6', align: 'right', shadow: true, shadowColor: '#00000088' });
 
     // título al empezar
     if (Game.banner < 170) {
@@ -551,7 +627,8 @@
     if (Game.state === 'respawn') {
       const a = Math.min(1, Game.stateT / 16);
       ctx.fillStyle = 'rgba(11,10,18,' + (a * 0.85) + ')'; ctx.fillRect(0, 0, BASE_W, BASE_H);
-      drawText(ctx, '¡ACHACHÁU!', BASE_W / 2, BASE_H / 2 - 8, { scale: 2, color: '#ffd166', align: 'center', shadow: true });
+      drawText(ctx, '¡ACHACHÁU!', BASE_W / 2, BASE_H / 2 - 14, { scale: 2, color: '#ffd166', align: 'center', shadow: true });
+      if (Game.stateT > 30) drawText(ctx, 'PULSA PARA SEGUIR', BASE_W / 2, BASE_H / 2 + 14, { color: '#fff3d6', align: 'center' });
     }
   }
 
@@ -571,14 +648,14 @@
     ctx.globalAlpha = a;
     const bob = Math.sin(tick / 12) * 2;
     drawText(ctx, '¡LLEGASTE AL COLE!', BASE_W / 2, 30 + bob, { scale: 2, color: '#ffd166', align: 'center', shadow: true, shadowColor: '#5a2a12' });
-    drawText(ctx, 'JUSTO CUANDO SONABA LA CAMPANA.', BASE_W / 2, 54, { color: '#f4e9d8', align: 'center' });
+    const onTime = Game.arrival < CLASS_START;
+    drawText(ctx, onTime ? 'ANTES DE QUE SONARA LA CAMPANA DE LAS 8:00' : 'LA CAMPANA DE LAS 8:00 YA HABÍA SONADO...', BASE_W / 2, 54, { color: onTime ? '#f4e9d8' : '#f2917d', align: 'center' });
     ctx.drawImage(LL.idle[0], BASE_W / 2 - 64, 74);
     ctx.drawImage(P.run[Math.floor(tick / 7) % 4], BASE_W / 2 - 8, 76);
     ctx.drawImage(GOAT.stand, BASE_W / 2 + 34, 81);
-    const secs = Math.floor(Game.time / 60);
     const rows = [
       ['HOJAS DE TAREA', Game.pages + ' / 3', '#ffffff'],
-      ['TIEMPO', Math.floor(secs / 60) + ':' + String(secs % 60).padStart(2, '0'), '#9be7c4'],
+      ['HORA DE LLEGADA', clockText(Game.arrival) + (onTime ? '  ¡A TIEMPO!' : '  TARDE'), onTime ? '#9be7c4' : '#f2917d'],
       ['CAÍDAS', '' + Game.deaths, '#f2917d'],
     ];
     rows.forEach((r, i) => {

@@ -89,7 +89,6 @@ const AUDIO = (() => {
     crush:   () => { noise(0.35, 0.4, 500); tone(110, 0.3, 'sine', 0.35, 0, 40); },
     splash:  () => { noise(0.45, 0.32, 2500, 0, { type: 'bandpass', q: 0.6, sweep: 400 }); tone(600, 0.15, 'sine', 0.12, 0, 200); },
     drown:   () => { noise(0.6, 0.3, 400, 0, { sweep: 120 }); [300, 240, 190].forEach((f, i) => tone(f, 0.12, 'sine', 0.18, now() + i * 0.12, f * 0.6)); },
-    apacheta:() => { [659, 784, 988, 1319].forEach((f, i) => tone(f, 0.22, 'triangle', 0.2, now() + i * 0.08)); noise(0.1, 0.12, 900, now()); },
     mount:   () => { tone(330, 0.12, 'triangle', 0.22, 0, 520); tone(660, 0.18, 'triangle', 0.18, now() + 0.08); },
     bleat:   () => { const t = now(); for (let i = 0; i < 5; i++) tone(520 + (i % 2) * 40, 0.07, 'sawtooth', 0.07, t + i * 0.05, 480); },
     boing:   () => { tone(200, 0.16, 'triangle', 0.16, 0, 420); noise(0.05, 0.08, 800); },

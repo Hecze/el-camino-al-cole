@@ -408,20 +408,14 @@ class Pickup extends Actor {
   }
 }
 
-// Apacheta: montículo de piedras. Al pasar, el niño le ata una cinta: checkpoint.
-class Apacheta extends Actor {
-  constructor(x, y) { super(x * TS, y * TS - 12, 16, 12); this.on = false; this.animT = 0; this.spawn = { x: x * TS + 4, y: y * TS }; }
+// Punto de control invisible: al pasar por aquí, reapareces aquí.
+class Checkpoint extends Actor {
+  constructor(x, y) { super(x * TS, y * TS - 24, 16, 24); this.on = false; this.spawn = { x: x * TS + 4, y: y * TS }; }
   update(g) {
-    this.animT += 0.1;
     const p = g.player;
-    if (!this.on && (p.overlaps(this, 2) || (p.riding && p.riding.overlaps(this)))) {
-      this.on = true; g.setCheckpoint(this); g.audio('apacheta'); g.burst(this.cx, this.y, 'spark', 14);
-    }
+    if (!this.on && (p.overlaps(this) || (p.riding && p.riding.overlaps(this)))) { this.on = true; g.setCheckpoint(this); }
   }
-  draw(ctx) {
-    ctx.drawImage(T.apacheta, Math.round(this.x), Math.round(this.y));
-    if (this.on) ctx.drawImage(T.ribbon[Math.floor(this.animT * 1.5) % 2], Math.round(this.x + 8), Math.round(this.y - 6));
-  }
+  draw() {}
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -499,7 +493,7 @@ function makeEntity(def, level) {
     case 'cabra': return new Cabra(def.x * TS, def.y * TS);
     case 'rockfall': return new Rockfall(def.x, def.y, def.interval);
     case 'huaico': return new Huaico(def, level);
-    case 'apacheta': return new Apacheta(def.x, def.y);
+    case 'checkpoint': return new Checkpoint(def.x, def.y);
     case 'school': return new School(def.x, def.y);
     case 'page': return new Pickup('page', def.x, def.y);
     default: return null;

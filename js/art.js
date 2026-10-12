@@ -210,27 +210,6 @@ T.sign = spr([
   '.......KTK......',
   '......KKTKK.....',
 ]);
-// apacheta: montículo de piedras ofrendado al Apu (checkpoint)
-T.apacheta = spr([
-  '......KKK.......',
-  '.....KdsSK......',
-  '....KKSSSKK.....',
-  '...KdsKKdssK....',
-  '...KsSSKsSSK....',
-  '..KKKKdssKKKK...',
-  '..KdssSSSKdsSK..',
-  '.KKSSSKKKKSSSKK.',
-  '.KdssKdssSKdssK.',
-  'KKSSSKsSSSKSSSKK',
-  'KdssSKKKKKKdssSK',
-  'KKKKKKKKKKKKKKKK',
-]);
-// cinta de colores que se ata a la apacheta al activarla
-T.ribbon = [
-  spr(['K....', 'Krrr.', 'Kooo.', 'Kyyyy', 'Kggg.', 'Kuuu.', 'Kqq..']),
-  spr(['K....', 'K.rrr', 'Kooo.', 'K.yyy', 'Kggg.', 'K.uuu', 'Kqq..']),
-];
-
 // ─────────────────────────────────────────────────────────────────────────────
 // EL NIÑO (mirando a la derecha): chullo con orejeras, poncho y mochila. 16x22
 // ─────────────────────────────────────────────────────────────────────────────

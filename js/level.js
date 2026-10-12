@@ -80,7 +80,7 @@ function buildLevel(def) {
     for (let x = p[0]; x < p[0] + p[2]; x++) put(x, p[1], p[3]);
   const liquids = [];
   for (const l of def.liquids || []) {
-    liquids.push({ x: l[0], y: l[1], w: l[2], h: l[3], kind: l[4], flow: l[5] || 1 });
+    liquids.push({ x: l[0], y: l[1], w: l[2], h: l[3], kind: l[4], flow: l[5] || 1, fallTop: l[6] || 0 });
     for (let y = l[1]; y < l[1] + l[3]; y++)
       for (let x = l[0]; x < l[0] + l[2]; x++)
         put(x, y, (y === l[1] ? l[4] + 'Top' : l[4] + 'Body'));
@@ -98,7 +98,6 @@ function buildLevel(def) {
 // ─────────────────────────────────────────────────────────────────────────────
 const LEVEL = {
   name: 'EL CAMINO AL COLE', w: 240, h: 40,
-  sky: ['#4f86c6', '#9cc8e8', '#f6dcb0'],
   anchorRow: 34,
   bgLayers: [
     { kind: 'mountains', color: '#8c93c9', color2: '#6d72a6', y: 30.6, parallax: 0.08, vpar: 0.10, amp: 8.5, seed: 5, snow: true },
@@ -139,18 +138,20 @@ const LEVEL = {
     [93, 24, 2, 'ledge'], // atajo arriesgado con una hoja de tarea
   ],
   liquids: [
-    [22, 34, 3, 6, 'water', 1],
-    [56, 34, 5, 6, 'water', 1],
+    // arroyos que bajan del cerro: caen en cascada a una quebrada estrecha
+    [22, 34, 3, 6, 'water', 1, 27],
+    [56, 34, 5, 6, 'water', 1, 25],
     [151, 28, 14, 12, 'mud', -1], [165, 26, 14, 14, 'mud', -1], [179, 24, 14, 16, 'mud', -1], [193, 22, 12, 18, 'mud', -1],
   ],
   entities: [
     { type: 'llama', x: 9, y: 34 },
     { type: 'cabra', x: 91, y: 34 },
-    { type: 'apacheta', x: 39, y: 32 },
-    { type: 'apacheta', x: 64, y: 34 },
-    { type: 'apacheta', x: 88, y: 34 },
-    { type: 'apacheta', x: 122, y: 11 },
-    { type: 'apacheta', x: 148, y: 27 },
+    // puntos de control invisibles
+    { type: 'checkpoint', x: 39, y: 32 },
+    { type: 'checkpoint', x: 64, y: 34 },
+    { type: 'checkpoint', x: 88, y: 34 },
+    { type: 'checkpoint', x: 122, y: 11 },
+    { type: 'checkpoint', x: 148, y: 27 },
     { type: 'rockfall', x: 82, y: 21, interval: 130 },
     { type: 'huaico', x0: 151, x1: 205, interval: 76, speed: 0.85 },
     { type: 'school', x: 222, y: 20 },
