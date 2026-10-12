@@ -424,6 +424,7 @@
     renderCanyon(lv);
     renderJungle(lv);
     renderBackdrop(lv);
+    for (const e of Game.entities) if (e.drawBack) e.drawBack(ctx, Game);
     renderTiles(lv);
     renderInflow(lv);
     renderLiquids(lv);

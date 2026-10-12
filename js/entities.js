@@ -309,6 +309,19 @@ class Player extends Actor {
     }
   }
 
+  // ayuda flotante en el huaico: cómo escapar y cuánto falta
+  drawStruggleHint(ctx) {
+    const cx = Math.round(this.cx), top = Math.round(this.y - 30), k = Math.min(1, this.struggle / 7);
+    const bob = Math.round(Math.sin(this.dragT * 0.25) * 1.5);
+    const blink = Math.floor(this.dragT / 12) % 2 === 0;
+    drawText(ctx, '¡SALTA SIN PARAR!', cx, top + bob, { color: blink ? '#ffffff' : '#ffd166', align: 'center', shadow: true, shadowColor: '#000000' });
+    // barra de fuerza: se llena con cada salto y se vacía si paras
+    const w = 40, x = cx - w / 2, y = top + 11 + bob;
+    ctx.fillStyle = '#1d1622'; ctx.fillRect(x - 1, y - 1, w + 2, 6);
+    ctx.fillStyle = '#5a3a2a'; ctx.fillRect(x, y, w, 4);
+    ctx.fillStyle = k > 0.7 ? '#9be7c4' : '#ffd166'; ctx.fillRect(x, y, Math.round(w * k), 4);
+    ctx.fillStyle = 'rgba(255,255,255,0.35)'; ctx.fillRect(x, y, Math.round(w * k), 1);
+  }
   draw(ctx, g) {
     if (this.riding) return;
     if (this.swimming) {
@@ -330,6 +343,7 @@ class Player extends Actor {
       const lift = this.hop > 0 ? Math.round(Math.sin(this.hop / 8 * Math.PI) * (3 + this.struggle * 1.2)) : 0;
       ctx.drawImage(this.facing < 0 ? flipS(img) : img, Math.round(this.cx - 8 + jx), Math.round(this.y + this.h - 22 - lift));
       ctx.restore();
+      if (!this.overEdge) this.drawStruggleHint(ctx);
       return;
     }
     if (this.invuln > 0 && Math.floor(this.invuln / 4) % 2 === 0) return;
@@ -510,7 +524,7 @@ class Huaico {
 }
 class Debris extends Actor {
   constructor(kind, x, hu, y) {
-    const img = kind === 'log' ? OBJ.log : OBJ.slab;
+    const img = kind === 'log' ? OBJ.log : kind === 'roof' ? OBJ.roofRaft : OBJ.slab;
     super(x - img.width / 2 + 2, 0, img.width - 4, 8);
     this.kind = kind; this.img = img; this.hu = hu; this.isMover = true;
     this.dx = 0; this.dy = 0; this.t = Math.random() * 6; this.falling = false; this.fallT = 0; this.rot = 0;
@@ -549,7 +563,7 @@ class Debris extends Actor {
     const s = this.hu.surfaceAt(this.cx);
     if (s === null) { ctx.drawImage(img, Math.round(this.cx - img.width / 2), Math.round(this.y - 1)); return; }
     ctx.save(); ctx.beginPath(); ctx.rect(this.x - 8, this.y - 40, this.w + 16, s + 2 - (this.y - 40)); ctx.clip();
-    ctx.drawImage(img, Math.round(this.cx - img.width / 2), Math.round(this.y + 2)); // 3 px más hundido: flota de verdad
+    ctx.drawImage(img, Math.round(this.cx - img.width / 2), Math.round(this.y + (this.kind === 'roof' ? -1 : 2))); // hundido: flota de verdad (el techo, que es liviano, asoma más)
     ctx.restore();
     if (!this.landed) return;
     // ola de proa: el lodo se arremolina delante
@@ -557,6 +571,93 @@ class Debris extends Actor {
     const f = Math.floor(g.T / 5) % 2;
     ctx.fillRect(Math.round(this.x - 3 - f), Math.round(s), 3, 1);
     ctx.fillRect(Math.round(this.x + this.w + f), Math.round(s) + 1, 2, 1);
+  }
+}
+
+// Casa de adobe al fondo, al borde del huaico. Cuando te acercas cruje, tiembla
+// y se derrumba: los muros caen hacia los lados y el techo de calamina se
+// desliza al lodo, donde flota como una balsa junto con sus vigas.
+class CollapseHouse extends Actor {
+  constructor(x, y) {
+    super(x * TS - 32, y * TS + 4 - 60, 64, 60);
+    this.base = y * TS + 4; this.hx = x * TS; this.state = 'stand'; this.t = 0;
+  }
+  onRespawn() { this.state = 'stand'; this.t = 0; }
+  update(g) {
+    this.t++;
+    const p = g.player;
+    if (this.state === 'stand') {
+      if (p.cx > this.hx - 9 * TS && p.cx < this.hx + 4 * TS && g.state === 'play') { this.state = 'creak'; this.t = 0; g.audio('creak'); g.audio('rumble'); }
+    } else if (this.state === 'creak') {
+      if (this.t % 6 === 0) g.particles.push({ x: this.hx - 30 + Math.random() * 60, y: this.base - 58 + Math.random() * 6, vx: 0, vy: 0.3, life: 40, max: 40, col: Math.random() < 0.5 ? '#c9a86a' : '#8a6a4a', size: 1, grav: 0.08 });
+      if (this.t > 45) { this.state = 'fall'; this.t = 0; g.audio('crush'); g.audio('rock'); g.shake(3, 22); }
+    } else if (this.state === 'fall') {
+      if (this.t < 30 && this.t % 2 === 0) g.particles.push({ x: this.hx - 30 + Math.random() * 60, y: this.base - 40 + Math.random() * 26, vx: (Math.random() - 0.5) * 2.4, vy: -1.5 - Math.random() * 1.5, life: 50, max: 50, col: Math.random() < 0.6 ? '#b98a55' : '#94502d', size: Math.random() < 0.4 ? 2 : 1, grav: 0.18 });
+      if (this.t === 26) {
+        // el techo y las vigas caen al lodo y la corriente se los lleva
+        const hu = g.huaico;
+        if (hu) {
+          for (const [kind, dx, dy] of [['roof', 0, 40], ['log', -66, 30], ['log', 68, 26]]) {
+            const d = new Debris(kind, this.hx + dx, hu, this.base - dy); g.addEntity(d); g.movers.push(d);
+          }
+        }
+        g.burst(this.hx, this.base, 'mud', 26); g.audio('splash');
+      }
+      if (this.t > 60) { this.state = 'ruin'; this.t = 0; }
+    }
+  }
+  draw() {}
+  // se dibuja detrás del lodo (está al fondo), sobre un barranco de tierra
+  drawBack(ctx) {
+    const bx = Math.round(this.hx - 32), base = this.base - 14;   // el piso de la casa, sobre el barranco
+    const R = (c, x, y, w, h) => { ctx.fillStyle = c; ctx.fillRect(bx + x, base + y, w, h); };
+    // barranco que baja hasta el lodo (el huaico ya se comió parte de la orilla)
+    for (let x = -18; x < 82; x += 2) {
+      const edge = Math.abs(x - 32) > 40 ? Math.round((Math.abs(x - 32) - 40) * 0.9) : 0;
+      R('#6e4627', x, edge, 2, 30 - edge); R('#5a3b22', x, 8 + edge + ((x >> 1) % 3), 2, 22);
+      R('#7d9a62', x, edge - 1, 2, 2);
+    }
+    for (const [x, y] of [[-8, 6], [6, 10], [24, 7], [50, 11], [70, 8]]) R('#94502d', x, y, 4, 2);   // piedras en el barranco
+    if (this.state === 'ruin') {
+      // escombros: tocones de muro, adobes sueltos y un dintel caído
+      R('#a3753f', 2, -12, 8, 12); R('#b98a55', 3, -11, 6, 3); R('#a3753f', 54, -9, 9, 9);
+      for (const [x, w] of [[12, 6], [20, 5], [27, 7], [37, 6], [45, 5]]) R(x % 2 ? '#b98a55' : '#94502d', x, -4, w, 4);
+      R('#6b4524', 22, -7, 16, 3);
+      return;
+    }
+    const sh = this.state === 'creak' ? Math.round(Math.sin(this.t * 1.7) * Math.min(2, this.t / 15)) : 0;
+    const k = this.state === 'fall' ? Math.min(1, this.t / 26) : 0;   // avance del derrumbe
+    const wall = (side) => {
+      // cada muro gira hacia su lado sobre su base y cae por el barranco
+      ctx.save();
+      ctx.translate(bx + (side < 0 ? 2 : 62) + sh, base + k * 14); ctx.rotate(side * k * 1.3);
+      const ox = side < 0 ? 0 : -30;
+      ctx.fillStyle = '#b98a55'; ctx.fillRect(ox, -36, 30, 36);
+      ctx.fillStyle = '#a3753f'; for (let y = -34; y < 0; y += 5) ctx.fillRect(ox, y, 30, 1);
+      ctx.fillStyle = '#c9a06a'; for (let y = -32; y < 0; y += 10) for (let x = 2; x < 28; x += 9) ctx.fillRect(ox + x, y, 1, 4);
+      ctx.fillStyle = '#8a6040'; ctx.fillRect(ox, -2, 30, 2);   // zócalo
+      if (side < 0) { ctx.fillStyle = '#3a2412'; ctx.fillRect(ox + 17, -23, 11, 23); ctx.fillStyle = '#6b4524'; ctx.fillRect(ox + 18, -22, 9, 22); ctx.fillStyle = '#e2b13c'; ctx.fillRect(ox + 25, -12, 1, 2); }   // puerta
+      else {   // ventana con cortina
+        ctx.fillStyle = '#6b4524'; ctx.fillRect(ox + 7, -28, 12, 11); ctx.fillStyle = '#2b2030'; ctx.fillRect(ox + 8, -27, 10, 9);
+        ctx.fillStyle = '#d8432f'; ctx.fillRect(ox + 8, -27, 3, 9); ctx.fillStyle = '#6b4524'; ctx.fillRect(ox + 12, -27, 1, 9);
+      }
+      if (this.state !== 'stand') {   // grieta que se abre
+        ctx.fillStyle = '#3a2414'; const cx = ox + (side < 0 ? 26 : 3);
+        for (let i = 0; i < 6; i++) ctx.fillRect(cx + ((i % 2) ? -side : 0), -35 + i * 5, 1, 5);
+      }
+      ctx.restore();
+    };
+    wall(-1); wall(1);
+    // techo de calamina a dos aguas: en el derrumbe se desliza al lodo
+    if (!(this.state === 'fall' && this.t >= 26)) {
+      ctx.save(); ctx.translate(bx + 32 + sh, base - 44 + k * k * 40); ctx.rotate(k * 0.35);
+      for (let i = 0; i < 11; i++) { const w = 76 - (10 - i) * 6; ctx.fillStyle = i % 2 ? '#9aa0a8' : '#8a9098'; ctx.fillRect(Math.round(-w / 2), i - 10, w, 1); }
+      ctx.fillStyle = '#7d838c'; for (let x = -38; x < 38; x += 4) ctx.fillRect(x, 0, 2, 2);
+      ctx.fillStyle = 'rgba(150,70,30,0.7)'; ctx.fillRect(-24, -4, 9, 3); ctx.fillRect(12, -2, 11, 3);
+      ctx.fillStyle = '#5d636c'; ctx.fillRect(-39, 2, 78, 1);
+      ctx.fillStyle = '#d9ccb0'; ctx.fillRect(14, -16, 4, 7); ctx.fillStyle = '#8a8296'; ctx.fillRect(14, -17, 4, 1);   // chimenea
+      ctx.restore();
+    }
   }
 }
 
@@ -1187,6 +1288,7 @@ function makeEntity(def, level) {
     case 'cabra': return new Cabra(def.x * TS, def.y * TS);
     case 'rockfall': return new Rockfall(def.x, def.y, def.interval);
     case 'huaico': return new Huaico(def, level);
+    case 'collapseHouse': return new CollapseHouse(def.x, def.y);
     case 'checkpoint': return new Checkpoint(def.x, def.y, def.w, def.h);
     case 'house': return new House(def.x, def.y);
     case 'school': return new School(def.x, def.y);

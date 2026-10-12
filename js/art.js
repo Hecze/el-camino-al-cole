@@ -505,6 +505,17 @@ OBJ.log = spr(widen([
   '.KMMMMiMMMMMMMMMiMMMMMMMMiMMMMMMMMKtTK..',
   '..KKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKK...',
 ], 12, 18));
+// techo de calamina arrancado por el huaico, con sus vigas: flota como balsa
+OBJ.roofRaft = spr([
+  '...KKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKK...',
+  '..KssSssSssSssSssSssSssSssSssSssSssSssSssSssSssSssSssK..',
+  '.KsdSsdSOOSsdSsdSsdSsdSsdSsdSsOOsdSsdSsdSsdSsdSsdSsdSsK.',
+  '.KsSSsSOOOSsSSsSSsSSsSSsSSsSSsSSsSSsSSOOSsSSsSSsSSsSSsK.',
+  '.KSDSSDSSDSSDSSDSSDSSDSSDSSDSSDSSDSSDSSDSSDSSDSSDSSDSSK.',
+  '..KMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMK..',
+  '...KmmK.............KmmK.............KmmK...............',
+  '....KK...............KK...............KK................',
+]);
 // laja: roca plana grande que flota en el lodo
 OBJ.slab = spr(widen([
   '......KKKKKKKKKKKKKKKKK.......',

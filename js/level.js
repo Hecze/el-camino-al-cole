@@ -146,12 +146,13 @@ function buildLevel(def) {
 // ─────────────────────────────────────────────────────────────────────────────
 //  LA MARATÓN DE LOS ANDES — un solo nivel, de izquierda a derecha.
 //
-//   x 0–96     EL VALLE    · montado en la llama: pircas, cascadas y un derrumbe
-//   x 82–156   EL APU      · una montaña gigante: la cabra salta sola, tú la
-//                            guías. Subes por la cara oeste y bajas por la este.
-//   x 145–221  EL HUAICO   · quebrada cálida: salta de tronco en tronco contra
-//                            la corriente; abajo espera el precipicio.
-//   x 222–     EL COLEGIO
+//   x 0–96     EL VALLE        · montado en la llama: pircas, puente colgante y un derrumbe
+//   x 82–123   EL NEVADO       · la cabra salta sola por la montaña; tú la guías
+//   x 119–157  EL PARAPENTE    · bajada con la hoja de plátano, esquivando águilas
+//   x 145–268  CEJA DE SELVA   · el huaico: salta de tronco en tronco contra la
+//                                corriente; una casa se derrumba a tu paso
+//   x 269–388  LA SELVA BAJA   · agua quieta, caimanes, victorias regias y lianas
+//   x 389–     EL COLEGIO      · a la orilla del río; la clase es al aire libre
 // ─────────────────────────────────────────────────────────────────────────────
 const G = 144;          // fila del suelo del valle
 const SUMMIT = 18;      // fila de la cumbre
@@ -207,7 +208,7 @@ const EAGLES = [[24, 58], [50, 84], [76, 106]].map((b, i) => ({ type: 'eagle', r
 // Orden realista de pisos ecológicos, de oeste a este:
 //   valle quechua -> nevado -> (parapente por la vertiente oriental) ->
 //   ceja de selva con el huaico -> selva baja inundada -> colegio ribereño
-const SV = 245;          // primera columna de agua de la selva baja
+const SV = 269;          // primera columna de agua de la selva baja
 const SWID = 120;        // ancho de la selva baja
 const SCH = SV + SWID;   // donde empieza el pueblo ribereño del colegio
 const sx = (lx) => SV + lx;
@@ -237,11 +238,11 @@ const LEVEL = {
   // la gran montaña: silueta de fondo con nieve en lo alto
   mountain: { peakX: 121, peakRow: 10, snowRow: 78, shape: mountainShape(121, 10, 150) },
   // cerro del que baja el huaico (tierra cálida); su ladera nace tras la última roca fija
-  hill: { peakX: 220, peakRow: 89, slopeL: 0.75, slopeR: 2.1, x0: 208 },
+  hill: { peakX: 244, peakRow: 89, slopeL: 0.75, slopeR: 2.1, x0: 232 },
   // EL CAÑÓN DEL VALLE: puente colgante inca con una gran catarata al fondo
   canyon: { x0: 50, x1: 64, rimRow: G - 2, fall: { x: 57, top: G - 8 } },
   // LA SELVA: árboles, lianas y agua quieta
-  jungle: { x0: 228, x1: SV + SWID + 4, fade: 16, waterRow: 112, trees: [sx(5), sx(26), sx(35), sx(45), sx(53), sx(61), sx(68), sx(80), sx(90), sx(98), sx(106), sx(116)] },
+  jungle: { x0: 252, x1: SV + SWID + 4, fade: 16, waterRow: 112, trees: [sx(5), sx(26), sx(35), sx(45), sx(53), sx(61), sx(68), sx(80), sx(90), sx(98), sx(106), sx(116)] },
   goatEnd: 118, goatEndRow: SUMMIT,
   // al planear no puedes alejarte de la ladera este
   glide: { x0: 119, x1: 155.4 },   // a la derecha no pasa de la orilla: más allá está el precipicio del huaico
@@ -251,7 +252,7 @@ const LEVEL = {
     { x: 0,   name: 'EL VALLE',  music: 'valle' },
     { x: 86,  name: 'EL APU',    music: 'apu', alt: true },
     { x: 145, name: 'CEJA DE SELVA', music: 'huayco' },
-    { x: 228, name: 'LA SELVA',  music: 'selva' },
+    { x: 252, name: 'LA SELVA',  music: 'selva' },
     { x: SCH, name: 'EL COLEGIO', music: 'selva' },
   ],
   rects: [
@@ -268,9 +269,9 @@ const LEVEL = {
     [116, SUMMIT, 9, 1, 'summit'],
     // ── LA CEJA DE SELVA: el huaico (aterrizas en su orilla) ──
     [145, 110, 12, 40, 'jungle'],
-    [160, 114, 16, 36, 'jungle'], [176, 112, 16, 38, 'jungle'], [192, 110, 16, 40, 'jungle'], [208, 108, 14, 42, 'jungle'],
+    [160, 114, 22, 36, 'jungle'], [182, 112, 22, 38, 'jungle'], [204, 110, 22, 40, 'jungle'], [226, 108, 20, 42, 'jungle'],
     // salida del huaico y bajada escalonada hacia la selva baja
-    [222, 103, 11, 47, 'jungle'], [233, 106, 4, 44, 'jungle'], [237, 108, 4, 42, 'jungle'], [241, 110, 4, 40, 'jungle'],
+    [246, 103, 11, 47, 'jungle'], [257, 106, 4, 44, 'jungle'], [261, 108, 4, 42, 'jungle'], [265, 110, 4, 40, 'jungle'],
     // ── LA SELVA BAJA INUNDADA ──
     [SV, 118, SWID, 32, 'jungle'],                // fondo fangoso bajo el agua
     // parte 4: raíces de manglar que asoman
@@ -295,7 +296,7 @@ const LEVEL = {
     // el agua quieta de la selva
     [SV, 112, SWID - 6, 6, 'swamp', 0.15],
     // el huaico: cuatro escalones de lodo que bajan hacia el precipicio
-    [160, 111, 16, 3, 'mud', -1], [176, 109, 16, 3, 'mud', -1], [192, 107, 16, 3, 'mud', -1], [208, 105, 14, 3, 'mud', -1],
+    [160, 111, 22, 3, 'mud', -1], [182, 109, 22, 3, 'mud', -1], [204, 107, 22, 3, 'mud', -1], [226, 105, 20, 3, 'mud', -1],
   ],
   // rocas fijas en cada escalón del huaico; la primera para entrar desde la
   // orilla y la última como peldaño para el salto final a la orilla del colegio
@@ -303,7 +304,7 @@ const LEVEL = {
   //   parte 1: rocas para aprender · parte 2: descanso entre victorias regias · parte 3: para salir si caes
   swampRocks: [[sx(3), 111, 2, 7], [sx(8), 111, 2, 7], [sx(13), 111, 2, 7], [sx(18), 111, 2, 7], [sx(40), 111, 2, 7], [sx(52), 111, 2, 7], [sx(63), 111, 2, 7],
                [sx(72), 111, 2, 7], [sx(103), 111, 2, 7], [sx(110), 111, 2, 7]],
-  fgRocks: [[161, 111, 2, 3], [174, 109, 2, 5], [190, 107, 2, 5], [206, 105, 2, 5], [219, 104, 2, 4]],
+  fgRocks: [[161, 111, 2, 3], [180, 109, 2, 5], [202, 107, 2, 5], [224, 105, 2, 5], [243, 104, 2, 4]],
   entities: [
     // la casa del niño, con mamá en la puerta
     { type: 'house', x: 0, y: G },
@@ -316,7 +317,7 @@ const LEVEL = {
     { type: 'checkpoint', x: sx(44), y: 108 },
     { type: 'checkpoint', x: sx(72.5), y: 111 },
     { type: 'checkpoint', x: sx(99), y: 107 },
-    { type: 'checkpoint', x: 226, y: 103, w: 8 },        // al salir del huaico
+    { type: 'checkpoint', x: 250, y: 103, w: 8 },        // al salir del huaico
     { type: 'rockfall', x: 82, y: G - 13, interval: 130 },
     { type: 'checkpoint', x: 121, y: SUMMIT },
     // en la cumbre crece un platanal: su hoja gigante sirve de parapente
@@ -332,7 +333,9 @@ const LEVEL = {
     { type: 'caiman', x0: sx(43), x1: sx(71), leap: true },
     { type: 'caiman', x0: sx(71), x1: sx(95), leap: true },
     { type: 'caiman', x0: sx(97), x1: sx(114), leap: true },
-    { type: 'huaico', x0: 160, x1: 222, interval: 135, speed: 0.75, inflow: { x: 215, top: 92 } },
+    { type: 'huaico', x0: 160, x1: 246, interval: 135, speed: 0.75, inflow: { x: 239, top: 92 } },
+    // casa al borde del huaico: se derrumba cuando pasas y la corriente se lleva su techo y sus vigas
+    { type: 'collapseHouse', x: 213, y: 107 },
     // el colegio se cae a pedazos... la clase se da afuera, sentados en el suelo
     { type: 'school', x: SCH + 8, y: 110 },
     { type: 'outdoorClass', x: SCH + 16, y: 110 },
@@ -349,7 +352,7 @@ const LEVEL = {
     ['ichu', 78, G - 1], ['cantuta', 85, G - 1],
     // ceja de selva: helechos y bambú
     ['fern', 146, 109], ['bamboo', 149, 109], ['fern', 154, 109],
-    ['bamboo', 223, 102], ['fern', 226, 102], ['fern', 230, 102], ['bamboo', 238, 107],
+    ['bamboo', 247, 102], ['fern', 250, 102], ['fern', 254, 102], ['bamboo', 262, 107],
     // pueblo ribereño
     ['fern', SCH + 1, 109], ['bamboo', SCH + 3, 109], ['fern', SCH + 27, 109]
   ],
