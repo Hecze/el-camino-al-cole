@@ -8,12 +8,12 @@
   const onScreen = (x, w, pad = 40) => x + w > Game.cam.x - pad && x < Game.cam.x + VIEW.w + pad;
 
   // globo de diálogo con texto (encima de un personaje)
-  function bubble(ctx, cx, bottom, lines) {
+  function bubble(ctx, cx, bottom, lines, tx = cx) {
     const w = Math.max(...lines.map(l => textWidth(l))) + 8, h = lines.length * 9 + 3;
     const x = Math.round(cx - w / 2), y = Math.round(bottom - h - 4);
     R(ctx, '#1d1622', x - 1, y - 1, w + 2, h + 2);
     R(ctx, '#fffaf0', x, y, w, h);
-    R(ctx, '#fffaf0', Math.round(cx) - 1, y + h, 3, 2); R(ctx, '#fffaf0', Math.round(cx), y + h + 2, 1, 2);
+    R(ctx, '#fffaf0', Math.round(tx) - 1, y + h, 3, 2); R(ctx, '#fffaf0', Math.round(tx), y + h + 2, 1, 2);
     lines.forEach((l, i) => drawText(ctx, l, cx, y + 2 + i * 9, { color: '#27426e', align: 'center' }));
   }
 
@@ -66,15 +66,15 @@
     draw(ctx, g) {
       const x = Math.round(this.x), b = this.base;
       // caballete con el cartel
-      R(ctx, '#6b4524', x - 22, b - 18, 2, 18); R(ctx, '#6b4524', x - 8, b - 18, 2, 18);
-      R(ctx, '#1d1622', x - 39, b - 37, 50, 21); R(ctx, '#f6c94a', x - 38, b - 36, 48, 19);
-      drawText(ctx, 'FOTO CON', x - 14, b - 34, { color: '#962a22', align: 'center' });
-      drawText(ctx, 'ALPACA S/ 1', x - 14, b - 25, { color: '#27426e', align: 'center' });
+      R(ctx, '#6b4524', x - 60, b - 18, 2, 18); R(ctx, '#6b4524', x - 20, b - 18, 2, 18);
+      R(ctx, '#1d1622', x - 76, b - 37, 74, 21); R(ctx, '#f6c94a', x - 75, b - 36, 72, 19);
+      drawText(ctx, 'FOTO CON', x - 39, b - 34, { color: '#962a22', align: 'center' });
+      drawText(ctx, 'ALPACA S/ 1', x - 39, b - 25, { color: '#27426e', align: 'center' });
       const p = g.player, angry = this.angryT > 0 && this.angryT < 260;
       const img = OBJ.mom[angry && Math.floor(this.animT / 8) % 2 ? 1 : 0];
       ctx.drawImage(p.cx < x + 8 ? flipS(img) : img, x, b - 25);
-      if (angry) bubble(ctx, x + 8, b - 27, ['¡OYE, MI ALPACA!', '¡ME LA DEVUELVES, OÍSTE!']);
-      else if (!this.angryT && Math.abs(p.cx - x) < 110) bubble(ctx, x + 8, b - 27, ['¡FOTITO CON ALPACA,', 'CASERITO!']);
+      if (angry) bubble(ctx, x + 40, b - 40, ['¡OYE, MI ALPACA!', '¡ME LA DEVUELVES, OÍSTE!'], x + 8);
+      else if (!this.angryT && Math.abs(p.cx - x) < 110) bubble(ctx, x + 40, b - 40, ['¡FOTITO CON ALPACA,', 'CASERITO!'], x + 8);
     }
   }
 

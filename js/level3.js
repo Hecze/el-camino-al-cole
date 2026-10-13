@@ -140,10 +140,10 @@
     entities: [
       { type: 'state3' },
       // ── EL CUSCO ──
-      { type: 'sign3', x: 16.5, y: GC, lines: ['NO TOCAR LOS', 'MUROS INCAS'], color: 'white', post: 12 },
+      { type: 'sign3', x: 15.5, y: GC, lines: ['NO TOCAR LOS', 'MUROS INCAS'], color: 'white', post: 12 },
       { type: 'tourist', x: 9.5, y: GC, v: 0 },
-      { type: 'photoLady', x: 26, y: GC },
-      { type: 'alpaca', x: 28.5, y: GC, retireX: V + 60 },
+      { type: 'photoLady', x: 27, y: GC },
+      { type: 'alpaca', x: 29.5, y: GC, retireX: V + 60 },
       { type: 'tourist', x: 31, y: GC, v: 1 },
       { type: 'dancer', x: 34, y: GC, v: 0, phase: 0 }, { type: 'dancer', x: 37.5, y: GC, v: 1, phase: 3 }, { type: 'dancer', x: 41, y: GC, v: 0, phase: 6 },
       ...ALLEYS.map(([x0, x1], i) => ({ type: 'comparsa', x0, x1, y: GC, v: i % 2 })),
@@ -510,7 +510,7 @@
   CHAPTERS[2] = {
     num: 3, title: 'LA EXCURSIÓN A MACHU PICCHU', short: 'MACHU PICCHU', color: '#4f9a6a',
     goal: '¡ALCANZA A TU PROMO EN MACHU PICCHU!', goalShort: '¡A MACHU PICCHU!',
-    banner: ['LA EXCURSIÓN A MACHU PICCHU', '¡TE QUEDASTE DORMIDO! ALCANZA A TU PROMO'],
+    banner: ['LA EXCURSIÓN A MACHU PICCHU', '¡ALCANZA A TU PROMO!'],
     dayStart: 6 * 60 + 50,
     deathTitle: '¡ATATAU!',
     deathMsgs: {
