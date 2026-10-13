@@ -878,12 +878,6 @@
       B: { ch: ['Dm', 'Dm', 'Am', 'Am', 'G', 'G', 'E', 'Am'],
            mel: 'D5:2 F5:1 A5:1 D6:2 A5:2 | C6:1 A5:1 F5:1 A5:1 D5:4 | E5:2 A5:1 C6:1 E6:2 C6:2 | B5:1 A5:1 G5:1 A5:1 E5:4 | D5:1 G5:1 B5:1 D6:1 B5:2 G5:2 | F5:1 E5:1 D5:1 E5:1 G5:4 | E5:1 G#5:1 B5:1 E6:1 D6:2 B5:2 | A5:4 A4:4' },
     }, ['A', 'B', 'A', 'B'], cumbiaBass),
-    lima: makeSong(Object.assign({ bpm: 108, vol: 0.27, strum: '.D.U.D.U', drums: 'B.bbB.b.', kit: 'chicha', shaker: 'guiro', leadInst: 'eguitar' }, COSTA), {
-      A: { ch: ['Em', 'Em', 'D', 'D', 'C', 'D', 'Em', 'Em'],
-           mel: 'E5:1 G5:1 B5:1 E6:1 D6:2 B5:2 | G5:1 B5:1 E5:1 G5:1 F#5:2 E5:2 | D5:1 F#5:1 A5:1 D6:1 C6:2 A5:2 | F#5:1 A5:1 D5:1 F#5:1 E5:2 D5:2 | C5:2 E5:1 G5:1 C6:2 G5:2 | D5:2 F#5:1 A5:1 D6:2 A5:2 | B5:1 A5:1 G5:1 F#5:1 E5:2 B4:2 | E5:4 r:4' },
-      B: { ch: ['Am', 'Am', 'Em', 'Em', 'C', 'D', 'Em', 'Em'],
-           mel: 'A5:2 C6:1 A5:1 E5:2 A5:2 | G5:1 A5:1 G5:1 E5:1 C5:4 | B4:1 E5:1 G5:1 B5:1 A5:2 G5:2 | E5:2 G5:1 E5:1 B4:4 | C5:1 E5:1 G5:1 C6:1 B5:2 G5:2 | A5:1 F#5:1 D5:1 F#5:1 A5:4 | G5:1 F#5:1 E5:1 D5:1 B4:2 D5:2 | E5:8' },
-    }, ['A', 'B', 'A*', 'B'], cumbiaBass),
     // EL PLEBEYO (Felipe Pinglo Alva † 1936; dominio público en el Perú): vals
     // criollo en 3/4 (bar: 12) con guitarra: bordón en el 1, rasgueo en el 2 y el 3
     // y cajón. Transcripción propia de la melodía conocida (la de Jesús Vásquez,
