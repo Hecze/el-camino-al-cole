@@ -189,7 +189,7 @@ class Player extends Actor {
     // una saliente de la montaña la conservas
     if (this.gliding) {
       if (!this.onGround) this.glideAir++;
-      else if (this.glideAir > 40 && this.y > (level.glideLandRow || 0) * TS) { this.gliding = false; g.addEntity(new FallingLeaf(this.cx, this.y - 14, this.facing)); g.audio('land'); }
+      else if (this.glideAir > 40 && this.y > (level.glideLandRow || 0) * TS) { this.gliding = false; g.addEntity(new FallingLeaf(this.cx, this.y - 14, this.facing, this.glideImg)); g.audio('land'); }
       else this.glideAir = 0;
     }
     // caída desde muy alto a pie (sin hoja ni montura): pierdes
@@ -363,7 +363,8 @@ class Player extends Actor {
       const ly = Math.round(this.y - (flying ? 20 : 12) + (flying ? Math.sin(this.animT * 0.15) : 0));
       ctx.fillStyle = '#3a2a18';
       if (flying) { ctx.fillRect(Math.round(this.cx - 5), ly + 7, 1, Math.round(this.y) - ly - 3); ctx.fillRect(Math.round(this.cx + 4), ly + 7, 1, Math.round(this.y) - ly - 3); }
-      ctx.drawImage(this.facing < 0 ? flipS(OBJ.leaf) : OBJ.leaf, lx, ly);
+      const wing = this.glideImg || OBJ.leaf;   // un capítulo puede cambiar la hoja (el parapente de Miraflores)
+      ctx.drawImage(this.facing < 0 ? flipS(wing) : wing, lx, ly);
     }
   }
   drawRider(ctx) {
@@ -823,9 +824,9 @@ class Leaf extends Actor {
   }
 }
 class FallingLeaf {
-  constructor(x, y, dir) { this.x = x; this.y = y; this.dir = dir; this.t = 0; }
+  constructor(x, y, dir, img) { this.x = x; this.y = y; this.dir = dir; this.t = 0; this.img = img || OBJ.leaf; }
   update() { this.t++; this.x += Math.sin(this.t * 0.08) * 1.2 + this.dir * 0.4; this.y += 0.5; if (this.t > 120) this.dead = true; }
-  draw(ctx) { ctx.save(); ctx.globalAlpha = Math.min(1, (120 - this.t) / 30); ctx.translate(Math.round(this.x), Math.round(this.y)); ctx.rotate(Math.sin(this.t * 0.08) * 0.5); ctx.drawImage(OBJ.leaf, -16, -4); ctx.restore(); }
+  draw(ctx) { ctx.save(); ctx.globalAlpha = Math.min(1, (120 - this.t) / 30); ctx.translate(Math.round(this.x), Math.round(this.y)); ctx.rotate(Math.sin(this.t * 0.08) * 0.5); ctx.drawImage(this.img, -16, -4); ctx.restore(); }
 }
 
 // ÁGUILA: mientras planeas, te rodea; luego chilla, se prepara y se lanza en

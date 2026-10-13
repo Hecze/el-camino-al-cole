@@ -3,12 +3,15 @@
 // es la entrada; el capítulo pasa sobre todo en el Centro de Lima:
 //   x 0–195    EL DESIERTO      · baja las dunas en tabla de sandboard; cactus y tubulares
 //   x 196–315  LA PANAMERICANA  · combis que pasan: súbete a su techo para cruzar el aniego
-//   x 316–419  EN MOTOTAXI      · ¡lo manejas tú! baches, rampas y el tráfico de combis
-//   x 420–499  JR. DE LA UNIÓN  · balcones de madera, buzones sin tapa y carretillas
-//   x 500–559  PLAZA DE ARMAS   · Catedral, pileta, palomas, el grass y los húsares de Palacio
-//   x 560–655  BARRIO CHINO     · portada china, toldos, farolitos, emolientero y cambistas
-//   x 656–771  LAS AZOTEAS      · garúa, ladrillo, fierros, tanques, ropa tendida y perros chuscos
-//   x 772–     LA CASONA        · el concurso es en una casona colonial del Centro
+//   x 316–351  MIRAFLORES       · el malecón, el Parque del Amor y Larcomar; agarra el parapente
+//   x 352–409  LA COSTA VERDE   · bajas planeando sobre el mar hasta la playa de piedritas
+//   x 410–489  BARRANCO         · la Bajada de Baños, el Puente de los Suspiros y los murales
+//   x 490–593  EN MOTOTAXI      · ¡lo manejas tú! baches, rampas y el tráfico de combis
+//   x 594–673  JR. DE LA UNIÓN  · balcones de madera, buzones sin tapa y carretillas
+//   x 674–733  PLAZA DE ARMAS   · Catedral, pileta, palomas, el grass y los húsares de Palacio
+//   x 734–829  BARRIO CHINO     · portada china, toldos, farolitos, emolientero y cambistas
+//   x 830–945  LAS AZOTEAS      · garúa, ladrillo, fierros, tanques, ropa tendida y perros chuscos
+//   x 946–     LA CASONA        · el concurso es en una casona colonial del Centro
 // Todo lo propio del capítulo vive aquí: tiles, sprites, entidades, música y nivel.
 
 (() => {
@@ -34,6 +37,9 @@
     'o': '#9a9086', 'O': '#7a7168', 'n': '#b8aea2', 'N': '#5e564e',           // lajas del Centro
     'W': '#4a2c16', 'u': '#7a4a26', 'U': '#5a3418', 'z': '#a8703c',           // madera de balcón y cajones
     'v': '#2f7a46', 'V': '#1f5a32', 'x': '#5aa86a',                           // tejas verdes de la portada china
+    'i': '#c9b89c', 'I': '#a8977c', 'j': '#7e7264', 'J': '#e2d4ba',           // playa de piedritas de la Costa Verde
+    'k': '#9a8468', 'L': '#7e6a52', 'M': '#b39c7c',                           // acantilado de conglomerado
+    'S': '#5a9a4a', 'T': '#3f7a36', 'Q': '#d6cfc2',                           // grass del malecón y su sardinel
   };
   const tile = (rows) => PIX.fromRows(rows, CPAL);
   const T2 = {};
@@ -87,6 +93,20 @@
     'WWWWWWWWWWWWWWWW', 'WzzzzzzzzzzzzzzW', 'WuuuuuuuuuuuuuuW', 'WWWWWWWWWWWWWWWW', 'WzzzzzzzzzzzzzzW', 'WuuuuuuuuuuuuuuW',
     'WWWWWWWWWWWWWWWW', 'WzzzzzzzzzzzzzzW', 'WuuuuuuuuuuuuuuW', 'WWWWWWWWWWWWWWWW',
   ]);
+  // la Costa Verde: playa de canto rodado y el acantilado de conglomerado
+  T2.playa = tile([
+    'JJiJJiiJJJiJiJJJ', 'iijiiIijiiiIjiii', 'iIjjiiiiijjiiIii', 'iiiiIijiiiiiiiji', 'ijiiiiiiIijjiiii', 'iiiIjiiiiiiiIiii',
+    'iiiiiiijjiiiiiij', 'IiijiiiiiIiiijii', 'iiiiiIiiiiiiiiii', 'ijiiiiiijiiIiiii', 'iiiIiiiiiiiiijii', 'iiiiiijiiIiiiiii',
+    'iIiiiiiiiiiijiii', 'iiiiijiiIiiiiiIi', 'ijiiiiiiiiijiiii', 'iiiIiiiiiiiiiiii',
+  ]);
+  T2.cliff = tile([
+    'kkLkkkMkkkkjkkkk', 'kMkkjkkkLkkkkMkk', 'kkkkkkLkkMkkjkkk', 'LkkjkkkkkkkkkkLk', 'kkkkMkkjkkLkkkkk', 'kjkkkkkkkkkkMkjk',
+    'kkkLkkkMkkjkkkkk', 'kkkkkjkkkkkkLkkk', 'MkkkkkkkLkkkkkjk', 'kkjkkMkkkkjkkkkk', 'kkkkkkkjkkkkMkkk', 'kLkkjkkkkkkLkkkk',
+    'kkkkkkMkkjkkkkjk', 'kjkkLkkkkkkkMkkk', 'kkkkkkkjkkLkkkkk', 'kkMkkjkkkkkkkjkk',
+  ]);
+  T2.malecon = tile(['QQQQQQQQQQQQQQQQ', 'SSSSSSSSSSSSSSSS', 'STSSSSTSSSSSTSSS', 'TTTTTTTTTTTTTTTT'].concat([
+    'kkLkkkMkkkkjkkkk', 'kMkkjkkkLkkkkMkk', 'kkkkkkLkkMkkjkkk', 'LkkjkkkkkkkkkkLk', 'kkkkMkkjkkLkkkkk', 'kjkkkkkkkkkkMkjk',
+    'kkkLkkkMkkjkkkkk', 'kkkkkjkkkkkkLkkk', 'MkkkkkkkLkkkkkjk', 'kkjkkMkkkkjkkkkk', 'kkkkkkkjkkkkMkkk', 'kLkkjkkkkkkLkkkk']));
   T2.canopy = tile(['wwwwwwwwwwwwwwww', 'rrrrwwwwrrrrwwww', 'rrrrwwwwrrrrwwww', 'RRRRgggRRRRggggR', 'GGGGGGGGGGGGGGGG', '................']);
 
   Object.assign(TILE_SPECS, {
@@ -102,6 +122,9 @@
     balc:       { oneway: true, body: T2.balc },
     tejado:     { oneway: true, body: T2.tejado },
     crate:      { solid: true, top: T2.crate, body: T2.crate },
+    playa:      { solid: true, top: T2.playa, body: T2.cliff },
+    malecon:    { solid: true, top: T2.malecon, body: T2.cliff },
+    bajada:     { solid: true, top: T2.paving, body: T2.cliff },
   });
 
   // ───────────────────────────────────────────────────────────────────────────
@@ -182,6 +205,16 @@
     ambulante:{ h: '#3a2412', a: '#c98e62', s: '#f6c94a', v: '#7fb6d8', b: '#3a2412', p: '#5d5768', z: '#2a1f2d' },
     // mototaxista: gorra roja, polo amarillo y casaca abierta
     mototaxista: { h: '#c8322a', a: '#b87a52', s: '#f2c230', v: '#2b4f86', b: '#3a2412', p: '#3a3a52', z: '#2a1f2d' },
+    // ciclista del malecón: polo verde fosforito
+    ciclista: { h: '#2a1f2d', a: '#c98e62', s: '#7ae05a', v: '#7ae05a', b: '#2a1f2d', p: '#2a4a7a', z: '#2a1f2d' },
+    // parapentista: casaca naranja, casco blanco
+    parapentista: { h: '#f4efe4', a: '#c98e62', s: '#2a1f2d', v: '#f0913c', b: '#2a1f2d', p: '#3a3a52', z: '#2a1f2d' },
+    // surfista: traje de neopreno negro con franja celeste
+    surfista: { h: '#c9a24a', a: '#b87a52', s: '#5ac8e8', v: '#1d1622', b: '#1d1622', p: '#1d1622', z: '#b87a52' },
+    // pintor de murales: overol azul, gorra roja
+    pintor:   { h: '#d8432f', a: '#c98e62', s: '#f4efe4', v: '#3f6fb8', b: '#3f6fb8', p: '#3f6fb8', z: '#2a1f2d' },
+    // el abuelito de Barranco: canoso, chompa marrón
+    abuelo:   { h: '#e8e4dc', a: '#c98e62', s: '#f4efe4', v: '#7a4a26', b: '#3a2412', p: '#5d5768', z: '#2a1f2d' },
     // mozo del chifa: camisa blanca y chaleco negro
     mozo:     { h: '#1d1622', a: '#d9a070', s: '#fffaf0', v: '#1d1622', b: '#1d1622', p: '#1d1622', z: '#1d1622' },
     // guardián del parque: chaleco amarillo
@@ -231,6 +264,22 @@
     // mototaxista con su casco colgado del brazo
     mototaxista: limenoModel('mototaxista', 16, 24, 1, {
       front: (ctx, px, py, k) => { R(ctx, '#2a1f2d', px + 10, py + 10, 5, 4); R(ctx, '#f6c94a', px + 11, py + 10, 3, 2); if (k) R(ctx, '#b87a52', px - 1, py + 6, 2, 4); },
+    }),
+    // parapentista con su casco y las cuerdas del arnés
+    parapentista: limenoModel('parapentista', 16, 24, 2, {
+      front: (ctx, px, py, k) => { R(ctx, '#d8432f', px + 2, py + 13, 8, 2); if (k) R(ctx, '#c98e62', px + 10, py + 2, 2, 7); },
+    }),
+    // surfista con su tabla parada al lado
+    surfista: limenoModel('surfista', 20, 30, 2, {
+      back: (ctx, px, py) => { R(ctx, '#2a1f2d', px + 11, py - 6, 7, 30); R(ctx, '#f6c94a', px + 12, py - 5, 5, 28); R(ctx, '#d8432f', px + 14, py - 5, 1, 28); },
+    }),
+    // pintor con su brocha y manchas de pintura en el overol
+    pintor: limenoModel('pintor', 16, 24, 1, {
+      front: (ctx, px, py, k) => { R(ctx, '#f6c94a', px + 4, py + 15, 2, 2); R(ctx, '#d8432f', px + 7, py + 18, 2, 2); R(ctx, '#5c9f4a', px + 3, py + 11, 1, 2); R(ctx, '#6b4524', px + 11, py + (k ? 4 : 9), 1, 6); R(ctx, '#d8432f', px + 10, py + (k ? 2 : 7), 3, 3); },
+    }),
+    // el abuelito con su bastón
+    abuelo: limenoModel('abuelo', 14, 24, 1, {
+      front: (ctx, px, py) => { R(ctx, '#6b4524', px + 11, py + 8, 1, 16); R(ctx, '#6b4524', px + 9, py + 8, 3, 1); },
     }),
     // mozo del chifa con su secador al brazo
     mozo: limenoModel('mozo', 14, 24, 1, {
@@ -917,12 +966,12 @@
   // CARRETILLA del mercado: un cargador la empuja a toda velocidad por la
   // calle. Antes de entrar grita y aparece un "!" en el borde. Sáltala.
   class Carretilla extends Actor {
-    constructor(def) { super(-9999, ST * TS - 24, 40, 24); this.x0 = def.x0 * TS; this.x1 = def.x1 * TS; this.speed = def.speed || 1.6; this.load = def.load || 'papa'; this.gap = def.gap || 240; this.delay = def.delay || 0; this.hazardKind = 'carretilla'; this.onRespawn(); }
+    constructor(def) { const row = def.y || ST; super(-9999, row * TS - 24, 40, 24); this.row = row; this.x0 = def.x0 * TS; this.x1 = def.x1 * TS; this.speed = def.speed || 1.6; this.load = def.load || 'papa'; this.gap = def.gap || 240; this.delay = def.delay || 0; this.hazardKind = this.load === 'bici' ? 'bici' : 'carretilla'; this.onRespawn(); }
     // al reaparecer cambia un poco cuándo salen (igual para la pareja), así no te pilla siempre en el mismo sitio
     onRespawn(g) {
       this.state = 'wait'; this.t = 0; this.cd = 70 + this.delay + (g ? (g.deaths * 37) % 60 : 0); this.x = -9999;
       // si te atropellan seguido aquí, el tramo se afloja: va más lento y sale uno solo
-      if (g && g.lastDeath === 'carretilla' && g.player.cx > this.x0 - 80 && g.player.cx < this.x1) this.fails = (this.fails || 0) + 1;
+      if (g && g.lastDeath === this.hazardKind && g.player.cx > this.x0 - 80 && g.player.cx < this.x1) this.fails = (this.fails || 0) + 1;
       this.easy = (this.fails || 0) >= 3;
     }
     update(g) {
@@ -930,22 +979,32 @@
       const p = g.player, inZone = p.cx > this.x0 && p.cx < this.x1;
       if (this.state === 'wait') {
         if (this.easy && this.delay) return;
-        if (inZone && --this.cd <= 0 && g.cam.x + VIEW.w < this.x1 + 60) { this.state = 'warn'; this.t = 0; g.audio('shout'); g.toast('¡CUIDADO, CARRETILLA!'); }
+        if (inZone && --this.cd <= 0 && g.cam.x + VIEW.w < this.x1 + 60) { this.state = 'warn'; this.t = 0; g.audio('shout'); g.toast(this.load === 'bici' ? '¡RIN RIN! ¡BICI!' : '¡CUIDADO, CARRETILLA!'); if (this.load === 'bici') g.audio('bell'); }
         return;
       }
       if (this.state === 'warn') { if (this.t > 60) { this.state = 'drive'; this.t = 0; this.x = g.cam.x + VIEW.w + 6; } return; }
       this.x -= this.speed * (this.easy ? 0.75 : 1);
-      if (this.t % 6 === 0) g.particles.push({ x: this.x + 36, y: ST * TS - 1, vx: 0.4, vy: -0.3, life: 14, max: 14, col: '#b8aea2', size: 1, grav: 0 });
+      if (this.t % 6 === 0) g.particles.push({ x: this.x + 36, y: this.row * TS - 1, vx: 0.4, vy: -0.3, life: 14, max: 14, col: '#b8aea2', size: 1, grav: 0 });
       if (this.x + this.w < g.cam.x - 40 || this.x < this.x0 - 200) { this.state = 'wait'; this.cd = this.gap; this.x = -9999; }
     }
     hazardBox() { return this.state === 'drive' ? { x: this.x + 2, y: this.y + 9, w: this.w - 4, h: this.h - 9 } : null; }
     draw(ctx, g) {
       if (this.state === 'warn' && Math.floor(this.t / 5) % 2 === 0) {
-        const ex = g.cam.x + VIEW.w - 12, ey = ST * TS - 40;
+        const ex = g.cam.x + VIEW.w - 12, ey = this.row * TS - 40;
         drawText(ctx, '!', ex, ey, { scale: 2, color: '#ffffff', align: 'center', shadow: true, shadowColor: '#2a1f2d' });
       }
       if (this.state !== 'drive') return;
-      const x = Math.round(this.x), b = ST * TS, bob = Math.floor(this.t / 4) % 2;
+      const x = Math.round(this.x), b = this.row * TS, bob = Math.floor(this.t / 4) % 2;
+      if (this.load === 'bici') {
+        // ciclista de la ciclovía: casco, polo y la bici a toda velocidad
+        const leg = Math.floor(this.t / 4) % 2;
+        for (const wx of [x + 5, x + 23]) { R(ctx, '#1d1622', wx - 5, b - 10, 10, 10); R(ctx, '#9aa0a8', wx - 3, b - 8, 6, 6); R(ctx, '#1d1622', wx - 1, b - 6, 2, 2); }
+        R(ctx, '#d8432f', x + 5, b - 9, 18, 2); R(ctx, '#d8432f', x + 13, b - 15, 2, 7); R(ctx, '#2a1f2d', x + 4, b - 15, 4, 2);
+        ctx.save(); ctx.beginPath(); ctx.rect(x + 8, b - 32, 14, 17); ctx.clip(); ctx.drawImage(flipS(LIMENO.ciclista.idle), x + 9, b - 31); ctx.restore();
+        R(ctx, '#2a4a7a', x + 12 + leg * 2, b - 15, 2, 6); R(ctx, '#2a4a7a', x + 16 - leg * 2, b - 15, 2, 6);
+        R(ctx, '#f6c94a', x + 10, b - 33, 8, 3);   // casco
+        return;
+      }
       // la carga: sacos de papa o una ruma de naranjas
       if (this.load === 'papa') { for (const [sx, sy] of [[2, 8], [11, 8], [20, 8], [6, 3], [15, 3]]) { R(ctx, '#2a1f2d', x + sx - 1, b - 14 - sy - 1, 10, 7); R(ctx, '#c9a978', x + sx, b - 14 - sy, 8, 5); R(ctx, '#a88a5a', x + sx + 3, b - 14 - sy, 1, 5); } }
       else { for (let k = 0; k < 9; k++) { const ox = 3 + (k % 4) * 6 + (k >= 4 ? 3 : 0) + (k >= 7 ? 3 : 0), oy = k < 4 ? 4 : k < 7 ? 9 : 14; R(ctx, '#2a1f2d', x + ox - 1, b - 14 - oy - 1, 6, 6); R(ctx, '#f0913c', x + ox, b - 14 - oy, 4, 4); R(ctx, '#ffd08a', x + ox, b - 14 - oy, 1, 1); } }
@@ -960,10 +1019,10 @@
 
   // PALOMAS de la Plaza: picotean en el suelo y salen volando cuando pasas.
   class Palomas extends Actor {
-    constructor(def) { super(def.x0 * TS, ST * TS - 6, (def.x1 - def.x0) * TS, 6); this.n = def.n || 7; this.onRespawn(); }
+    constructor(def) { const row = def.y || ST; super(def.x0 * TS, row * TS - 6, (def.x1 - def.x0) * TS, 6); this.row = row; this.gull = def.kind === 'gaviota'; this.n = def.n || 7; this.onRespawn(); }
     onRespawn() {
       this.birds = [];
-      for (let i = 0; i < this.n; i++) this.birds.push({ x: this.x + 6 + h2(this.x + i * 7) * (this.w - 12), y: ST * TS, vx: 0, vy: 0, fly: false, f: h2(i * 3 + this.x) > 0.5 ? 1 : -1, t: i * 13, away: 0 });
+      for (let i = 0; i < this.n; i++) this.birds.push({ x: this.x + 6 + h2(this.x + i * 7) * (this.w - 12), y: this.row * TS, vx: 0, vy: 0, fly: false, f: h2(i * 3 + this.x) > 0.5 ? 1 : -1, t: i * 13, away: 0 });
     }
     update(g) {
       const p = g.player; let flap = false;
@@ -977,10 +1036,10 @@
         } else {
           b.x += b.vx; b.y += b.vy; b.vy = Math.max(-2.4, b.vy - 0.03); b.vx *= 1.01; b.away++;
           // vuelven cuando ya pasaste
-          if (b.away > 420 && Math.abs(p.cx - this.cx) > 260) { b.fly = false; b.away = 0; b.y = ST * TS; b.x = this.x + 6 + Math.random() * (this.w - 12); b.vx = 0; b.vy = 0; }
+          if (b.away > 420 && Math.abs(p.cx - this.cx) > 260) { b.fly = false; b.away = 0; b.y = this.row * TS; b.x = this.x + 6 + Math.random() * (this.w - 12); b.vx = 0; b.vy = 0; }
         }
       }
-      if (flap && g.near(this.cx, 300)) { g.audio('flap'); for (let i = 0; i < 5; i++) g.particles.push({ x: p.cx + (Math.random() - 0.5) * 30, y: ST * TS - 6, vx: (Math.random() - 0.5) * 1.2, vy: -0.4 - Math.random(), life: 40, max: 40, col: '#c9ccd4', size: 1, grav: 0.02 }); }
+      if (flap && g.near(this.cx, 300)) { g.audio('flap'); for (let i = 0; i < 5; i++) g.particles.push({ x: p.cx + (Math.random() - 0.5) * 30, y: this.row * TS - 6, vx: (Math.random() - 0.5) * 1.2, vy: -0.4 - Math.random(), life: 40, max: 40, col: '#c9ccd4', size: 1, grav: 0.02 }); }
     }
     draw(ctx) {
       for (const b of this.birds) {
@@ -988,15 +1047,15 @@
         if (b.fly && b.y < this.y - 400) continue;
         if (!b.fly) {
           const peck = b.t % 50 < 8;
-          R(ctx, '#7d8290', x - 3, y - 4, 6, 3); R(ctx, '#5d6270', x - 3 - b.f, y - 3, 2, 2);   // cuerpo y cola
+          R(ctx, this.gull ? '#f4efe4' : '#7d8290', x - 3, y - 4, 6, 3); R(ctx, this.gull ? '#8a8f9a' : '#5d6270', x - 3 - b.f, y - 3, 2, 2);   // cuerpo y cola
           const hx = x + b.f * 3 + (b.f < 0 ? -1 : 0);
-          R(ctx, '#4f8a7a', hx - (b.f < 0 ? 0 : 1), y - 5 + (peck ? 3 : 0), 2, 2); R(ctx, '#5d6270', hx, y - 6 + (peck ? 3 : 0), 2, 2);   // cuello tornasol y cabeza
+          R(ctx, this.gull ? '#f4efe4' : '#4f8a7a', hx - (b.f < 0 ? 0 : 1), y - 5 + (peck ? 3 : 0), 2, 2); R(ctx, this.gull ? '#ffffff' : '#5d6270', hx, y - 6 + (peck ? 3 : 0), 2, 2);   // cuello tornasol y cabeza
           R(ctx, '#d89a5a', hx + b.f, y - 5 + (peck ? 3 : 0), 1, 1);
           R(ctx, '#c8524a', x - 1, y - 1, 1, 1); R(ctx, '#c8524a', x + 1, y - 1, 1, 1);
         } else {
           const up = Math.floor(b.t / 4) % 2;
-          R(ctx, '#7d8290', x - 2, y - 2, 5, 2); R(ctx, '#5d6270', x + b.f * 3, y - 3, 2, 2);
-          R(ctx, '#9ca0ac', x - 4, y - (up ? 5 : 1), 4, 2); R(ctx, '#9ca0ac', x + 1, y - (up ? 5 : 1), 4, 2);
+          R(ctx, this.gull ? '#f4efe4' : '#7d8290', x - 2, y - 2, 5, 2); R(ctx, this.gull ? '#ffffff' : '#5d6270', x + b.f * 3, y - 3, 2, 2);
+          R(ctx, this.gull ? '#c9ccd4' : '#9ca0ac', x - 4, y - (up ? 5 : 1), 4, 2); R(ctx, '#9ca0ac', x + 1, y - (up ? 5 : 1), 4, 2);
         }
       }
     }
@@ -1192,6 +1251,225 @@
         R(ctx, '#f6c94a', 0, 15, 1, 3);
         ctx.restore();
       }
+    }
+  }
+
+  // ── MIRAFLORES Y BARRANCO ───────────────────────────────────────────────────
+  // el ala del parapente (reemplaza a la hoja de plátano del Cap. 1 al planear)
+  const WING = (() => {
+    const c = PIX.createCanvas(34, 12), ctx = c.getContext('2d'), cols = ['#d8432f', '#f6c94a', '#3f6fb8', '#f6c94a', '#d8432f'];
+    for (let x = 0; x < 34; x++) {
+      const t = (x - 16.5) / 16.5, top = Math.round(Math.pow(Math.abs(t), 2) * 6), h = 5 - Math.round(Math.abs(t) * 2);
+      R(ctx, '#2a1f2d', x, top, 1, h + 2); R(ctx, cols[Math.min(4, Math.floor(x / 7))], x, top + 1, 1, h);
+      if (x % 7 === 0) R(ctx, 'rgba(0,0,0,0.25)', x, top + 1, 1, h);
+    }
+    return c;
+  })();
+
+  // PARAPENTE listo para despegar en el borde del malecón: tócalo y salta al vacío
+  class Parapente extends Actor {
+    constructor(def) { super(def.x * TS, def.y * TS - 30, 22, 30); this.taken = false; this.t = 0; }
+    onRespawn() { this.taken = false; }
+    update(g) {
+      this.t++;
+      const p = g.player;
+      if (!this.taken && !p.riding && p.overlaps(this)) {
+        this.taken = true; p.gliding = true; p.glideAir = 0; p.glideImg = WING;
+        g.audio('swoosh'); g.toast('¡A VOLAR, CAUSA!'); g.burst(this.cx, this.y + 8, 'spark', 12);
+      }
+    }
+    draw(ctx) {
+      if (this.taken) return;
+      // el ala inflada por el viento, sujeta con sus cuerdas
+      const x = Math.round(this.x), y = Math.round(this.y), sw = Math.round(Math.sin(this.t * 0.06) * 2);
+      R(ctx, '#3a2a18', x + 4, y + 10 + sw, 1, 20 - sw); R(ctx, '#3a2a18', x + 18, y + 10 + sw, 1, 20 - sw);
+      ctx.drawImage(WING, x - 6, y + sw);
+    }
+  }
+
+  // PARAPENTES en el cielo de Miraflores (decorado)
+  class Vuelos extends Actor {
+    constructor(def) { super(def.x0 * TS, def.y * TS, (def.x1 - def.x0) * TS, 8); this.t = 0; }
+    update() { this.t++; }
+    drawBack(ctx) {
+      for (let k = 0; k < 3; k++) {
+        const x = Math.round(this.x + ((k * 230 + this.t * (0.3 + k * 0.1)) % this.w)), y = Math.round(this.y + k * 28 + Math.sin(this.t * 0.02 + k) * 6);
+        ctx.save(); ctx.globalAlpha = 0.85; ctx.drawImage(WING, x, y); ctx.restore();
+        R(ctx, '#3a2a18', x + 12, y + 6, 1, 10); R(ctx, '#3a2a18', x + 21, y + 6, 1, 10); R(ctx, '#2a1f2d', x + 14, y + 15, 6, 5);
+      }
+    }
+    draw() {}
+  }
+
+  // la baranda blanca del malecón y sus faroles (decorado, detrás de ti)
+  class Baranda extends Actor {
+    constructor(def) { super(def.x0 * TS, def.y * TS, (def.x1 - def.x0) * TS, 8); }
+    update() {}
+    drawBack(ctx, g) {
+      const x0 = Math.max(this.x, Math.floor(g.cam.x / 2) * 2 - 8), x1 = Math.min(this.x + this.w, g.cam.x + VIEW.w + 8), b = this.y;
+      R(ctx, '#f4efe4', x0, b - 14, x1 - x0, 3); R(ctx, '#d6cfc2', x0, b - 3, x1 - x0, 3);
+      for (let x = x0 - (x0 % 6); x < x1; x += 6) R(ctx, '#e8e2d4', x, b - 11, 3, 8);
+      for (let x = this.x + 40; x < this.x + this.w; x += 120) if (x > x0 - 10 && x < x1) { R(ctx, '#2a2530', x, b - 40, 2, 40); R(ctx, '#2a2530', x - 3, b - 44, 8, 4); R(ctx, '#ffe9a8', x - 2, b - 43, 6, 2); }
+    }
+    draw() {}
+  }
+
+  // PARQUE DEL AMOR: la escultura del beso y la banca ondulada de mosaico
+  class ParqueAmor extends Actor {
+    constructor(def) { super(def.x * TS, def.y * TS, 12 * TS, 8); this.base = def.y * TS; }
+    update() {}
+    drawBack(ctx) {
+      const x = Math.round(this.x), b = this.base;
+      // la banca de mosaico: muro bajo y ondulado de mayólicas de colores
+      const M = ['#d8432f', '#f6c94a', '#3f6fb8', '#5c9f4a', '#f08a7a', '#fffaf0', '#8a4cc0'];
+      for (let k = 0; k < 190; k += 3) {
+        const h = 14 + Math.round(Math.sin(k / 18) * 4);
+        for (let yy = 0; yy < h; yy += 3) R(ctx, M[Math.floor(h2(k * 7 + yy) * M.length)], x + k, b - h + yy, 3, 3);
+        R(ctx, '#2a1f2d', x + k, b - h - 1, 3, 1);
+      }
+      
+      // EL BESO: dos enamorados echados, de barro rojizo, besándose
+      const sx = x + 40, sb = b - 18;
+      R(ctx, '#8a8072', sx - 4, sb, 84, 18); R(ctx, '#a89c8c', sx - 4, sb, 84, 2);   // pedestal
+      R(ctx, '#a86a42', sx, sb - 12, 34, 12); R(ctx, '#b87a52', sx + 2, sb - 12, 30, 3);   // él, echado
+      R(ctx, '#a86a42', sx + 30, sb - 22, 14, 14); R(ctx, '#a86a42', sx + 40, sb - 26, 12, 10);   // abrazo, cabezas juntas
+      R(ctx, '#b87a52', sx + 44, sb - 18, 32, 10); R(ctx, '#a86a42', sx + 50, sb - 10, 26, 10);   // ella
+      R(ctx, '#8a4a2a', sx + 45, sb - 22, 3, 3);
+    }
+    draw() {}
+  }
+
+  // LARCOMAR: el centro comercial metido en el acantilado (se dibuja sobre la roca)
+  class Larcomar extends Actor {
+    constructor(def) { super(def.x0 * TS, def.y * TS, (def.x1 - def.x0) * TS, 8); }
+    update() {}
+    draw(ctx) {
+      const x = Math.round(this.x), y = Math.round(this.y), w = this.w;
+      for (let k = 0; k < 3; k++) {
+        const yy = y + k * 26, xx = x + k * 12, ww = w - k * 24;
+        R(ctx, '#e8e2d4', xx, yy, ww, 4); R(ctx, '#5a7086', xx + 2, yy + 4, ww - 4, 16); R(ctx, '#8fb3cf', xx + 4, yy + 5, ww - 8, 3);
+        for (let c = xx + 2; c < xx + ww - 2; c += 12) R(ctx, '#e8e2d4', c, yy + 4, 1, 16);
+        for (let c = 0; c < 4; c++) R(ctx, ['#d8432f', '#f6c94a', '#2a1f2d'][c % 3], xx + 10 + c * (ww / 5), yy + 14, 2, 4);   // gente
+        R(ctx, '#b8ae98', xx, yy + 20, ww, 3);
+      }
+      const tw = textWidth('LARCOMAR') + 8;
+      R(ctx, '#1d1622', x + w / 2 - tw / 2 - 1, y - 12, tw + 2, 11); R(ctx, '#fffaf0', x + w / 2 - tw / 2, y - 11, tw, 9);
+      drawText(ctx, 'LARCOMAR', x + w / 2, y - 10, { color: '#2b4f86', align: 'center' });
+    }
+  }
+
+  // EL MAR de la Costa Verde, detrás de la playa: olas que revientan y surfistas
+  class Mar extends Actor {
+    constructor(def) { super(def.x0 * TS, def.y * TS, (def.x1 - def.x0) * TS, 8); this.t = 0; }
+    update() { this.t++; }
+    drawBack(ctx, g) {
+      const x0 = Math.max(this.x, Math.floor(g.cam.x)), x1 = Math.min(this.x + this.w, g.cam.x + VIEW.w + 2), b = this.y, t = this.t;
+      if (x1 <= x0) return;
+      R(ctx, '#6f8b98', x0, b - 64, x1 - x0, 64); R(ctx, '#5f7d8c', x0, b - 40, x1 - x0, 40); R(ctx, '#7f9aa6', x0, b - 64, x1 - x0, 4);
+      // filas de espuma que avanzan hacia la orilla
+      for (let r = 0; r < 4; r++) {
+        const yy = b - 52 + r * 13 + ((t >> 3) + r * 5) % 6;
+        for (let x = x0 - (x0 % 4); x < x1; x += 4) if (h2(x * 3 + r * 101 + (t >> 4)) > 0.55) R(ctx, '#e8f0f2', x, yy, 3, 1);
+      }
+      R(ctx, '#e8f0f2', x0, b - 3, x1 - x0, 2);   // la orilla
+      // surfistas sobre la ola
+      for (let k = 0; k < 2; k++) {
+        const sx = Math.round(this.x + 60 + k * 300 + Math.sin(t * 0.01 + k * 2) * 80), sy = b - 30 - k * 12 + Math.round(Math.sin(t * 0.05 + k) * 2);
+        if (sx < x0 - 20 || sx > x1) continue;
+        R(ctx, '#e8f0f2', sx - 8, sy + 6, 22, 2);   // la ola que lo lleva
+        R(ctx, '#f6c94a', sx - 4, sy + 4, 14, 2); R(ctx, '#1d1622', sx + 1, sy - 4, 4, 8); R(ctx, '#b87a52', sx + 1, sy - 7, 4, 3);
+        R(ctx, '#1d1622', sx - 2, sy - 3, 3, 1); R(ctx, '#1d1622', sx + 5, sy - 3, 3, 1);   // brazos abiertos
+      }
+    }
+    draw() {}
+  }
+
+  // LA BAJADA DE BAÑOS: muros de piedra, árboles y faroles a los lados de la escalera
+  class Bajada extends Actor {
+    constructor(def) { super(def.x0 * TS, def.top * TS, (def.x1 - def.x0) * TS, (def.bottom - def.top) * TS); }
+    update() {}
+    drawBack(ctx) {
+      const x = Math.round(this.x), y = Math.round(this.y), w = this.w, h = this.h;
+      R(ctx, '#9a8f80', x, y, w, h); for (let yy = y; yy < y + h; yy += 8) for (let xx = x + ((yy >> 3) % 2) * 6; xx < x + w; xx += 12) R(ctx, '#857a6c', xx, yy, 11, 1);
+      // árboles que asoman y faroles de fierro
+      for (let k = 0; k < w; k += 70) {
+        const tx = x + k + 20, ty = y + 20 + ((k / 70) % 3) * 30;
+        R(ctx, '#3f6a32', tx - 14, ty - 10, 30, 18); R(ctx, '#5c8a3a', tx - 8, ty - 14, 20, 10); R(ctx, '#5a3a22', tx, ty + 8, 3, 20);
+        R(ctx, '#2a2530', tx + 30, ty + 6, 2, 24); R(ctx, '#2a2530', tx + 27, ty + 2, 8, 5); R(ctx, '#ffe9a8', tx + 29, ty + 3, 4, 3);
+      }
+    }
+    draw() {}
+  }
+
+  // EL PUENTE DE LOS SUSPIROS: dicen que si lo cruzas aguantando la respiración
+  // se cumple tu deseo. Aquí: crúzalo sin saltar y el reloj te regala un minuto.
+  class Suspiros extends Actor {
+    constructor(def) { super(def.x0 * TS, def.y * TS, (def.x1 - def.x0) * TS, 8); this.state = 'idle'; this.t = 0; }
+    update(g) {
+      this.t++;
+      const p = g.player, on = p.cx > this.x && p.cx < this.x + this.w;
+      if (this.state === 'idle' && on && p.onGround) { this.state = 'cross'; this.jumped = false; }
+      if (this.state === 'cross') {
+        if (!p.onGround) this.jumped = true;
+        if (p.cx < this.x - 4) this.state = 'idle';   // se regresó: vale volver a intentarlo
+        else if (p.cx > this.x + this.w) {
+          this.state = 'done';
+          if (!this.jumped) { g.time = Math.max(0, g.time - 200); g.audio('page'); g.toast('¡DESEO CONCEDIDO! +1 MIN'); g.burst(p.cx, p.cy, 'spark', 18); }
+          else { g.audio('nope'); g.toast('¡RESPIRASTE! NI MODO'); }
+        }
+      }
+    }
+    drawBack(ctx) {
+      // la quebrada bajo el puente: árboles y la bajada empedrada, allá abajo
+      const x = Math.round(this.x), y = Math.round(this.y), w = this.w;
+      R(ctx, '#4a5a3a', x, y + 4, w, 400); R(ctx, '#3f6a32', x, y + 20, w, 30); R(ctx, '#5c8a3a', x + 10, y + 14, w - 20, 12);
+      R(ctx, '#9a8f80', x + w / 2 - 12, y + 60, 24, 340);
+      // baranda de atrás y los faroles en las puntas
+      R(ctx, '#5a3418', x, y - 14, w, 2); for (let k = 0; k <= w; k += 8) R(ctx, '#5a3418', x + k, y - 14, 2, 14);
+      for (const lx of [x - 2, x + w - 2]) { R(ctx, '#2a2530', lx, y - 34, 3, 34); R(ctx, '#2a2530', lx - 2, y - 40, 7, 6); R(ctx, '#ffe9a8', lx - 1, y - 39, 5, 4); }
+    }
+    draw(ctx) {
+      // el tablado de madera
+      const x = Math.round(this.x), y = Math.round(this.y), w = this.w;
+      R(ctx, '#2a1a0e', x, y, w, 7); for (let k = 0; k < w; k += 6) R(ctx, '#8a5a30', x + k, y + 1, 5, 4);
+      R(ctx, '#5a3418', x, y + 5, w, 2); R(ctx, '#5a3418', x + 4, y + 7, 4, 10); R(ctx, '#5a3418', x + w - 8, y + 7, 4, 10);
+    }
+  }
+
+  // MURALES de Barranco pintados en las fachadas
+  class Murales extends Actor {
+    constructor(def) { super(def.x0 * TS, def.top * TS, (def.x1 - def.x0) * TS, (ST - def.top) * TS); }
+    update() {}
+    // se pinta delante de las casonas (que se dibujan después en la lista)
+    draw(ctx) {
+      const x = Math.round(this.x), y = Math.round(this.y), w = this.w, h = this.h - 10;
+      const C = ['#d8432f', '#f6c94a', '#3f6fb8', '#5c9f4a', '#f08a7a', '#8a4cc0', '#f0913c', '#2b9a9a'];
+      for (let k = 0; k < w; k += 24) for (let yy = 0; yy < h; yy += 12) R(ctx, C[Math.floor(h2(x + k * 5 + yy * 3) * C.length)], x + k, y + yy, 24, 12);
+      // un sol grande, una ola y un pez: el mural del barrio
+      const sx = x + w * 0.3, sy = y + h * 0.4;
+      for (let r = 0; r < 12; r++) R(ctx, '#ffd166', sx - 12 + r, sy - r, 24 - r * 2, 1);
+      for (let k = 0; k < 8; k++) R(ctx, '#ffd166', sx + Math.cos(k) * 18, sy - 6 + Math.sin(k) * 14, 3, 3);
+      for (let k = 0; k < 60; k += 2) R(ctx, '#fffaf0', x + w * 0.55 + k, y + h * 0.6 + Math.sin(k / 6) * 5, 2, 2);
+      R(ctx, '#f0913c', x + w * 0.75, y + h * 0.3, 18, 8); R(ctx, '#f0913c', x + w * 0.75 + 18, y + h * 0.3 - 2, 6, 12); R(ctx, '#2a1f2d', x + w * 0.75 + 3, y + h * 0.3 + 2, 2, 2);
+    }
+  }
+
+  // BALDE DE PINTURA del muralista: si lo pateas, todo se llena de colores
+  class Balde extends Actor {
+    constructor(def) { super(def.x * TS, ST * TS - 10, 10, 10); this.hit = false; }
+    onRespawn() { this.hit = false; }
+    update(g) {
+      const p = g.player;
+      if (!this.hit && p.overlaps(this)) {
+        this.hit = true; g.audio('splash'); g.toast('¡TE PINTASTE, CAUSA!');
+        const C = ['#d8432f', '#f6c94a', '#3f6fb8', '#5c9f4a', '#f08a7a', '#8a4cc0'];
+        for (let i = 0; i < 26; i++) g.particles.push({ x: this.cx, y: this.y, vx: (Math.random() - 0.5) * 3, vy: -1 - Math.random() * 2.5, life: 40, max: 40, col: C[i % C.length], size: 2, grav: 0.15 });
+      }
+    }
+    draw(ctx) {
+      const x = Math.round(this.x), y = Math.round(this.y);
+      if (this.hit) { R(ctx, '#9aa0a8', x - 2, y + 6, 10, 4); R(ctx, '#3f6fb8', x - 6, y + 9, 22, 1); R(ctx, '#d8432f', x + 8, y + 9, 8, 1); return; }
+      R(ctx, '#2a1f2d', x - 1, y, 12, 10); R(ctx, '#9aa0a8', x, y + 1, 10, 9); R(ctx, '#3f6fb8', x, y + 1, 10, 2); R(ctx, '#5d5768', x + 2, y - 3, 6, 1);
     }
   }
 
@@ -1470,6 +1748,17 @@
     g.fillStyle = '#f4efe4'; g.fillRect(bx - 1, by - 22, 3, 22); g.fillRect(bx - 6, by - 17, 13, 3);
     g.fillStyle = '#6f6a72'; g.fillRect(bx + 14, by - 12, 1, 12); g.fillRect(bx + 12, by - 9, 5, 1);   // antena
   };
+  // el mar desde el malecón: horizonte, el Morro Solar con su cruz y la espuma
+  const seaLayer = (seed, sea, sea2, morro) => (g, W, H) => {
+    const hz = morro ? 96 : 112;
+    g.fillStyle = sea; g.fillRect(0, hz, W, H - hz);
+    g.fillStyle = sea2; for (let y = hz + 3; y < H; y += 5) for (let x = 0; x < W; x += 6) if (h2(seed + x * 7 + y) > 0.72) g.fillRect(x, y, 4, 1);
+    if (morro) {
+      const mx = Math.floor(W * 0.62);
+      g.fillStyle = '#8f8c88'; for (let x = -90; x < 90; x += 2) { const hh = Math.round(26 * Math.cos((x / 90) * Math.PI / 2)); g.fillRect(mx + x, hz - hh, 2, hh); }
+      g.fillStyle = '#f4efe4'; g.fillRect(mx - 1, hz - 34, 2, 8); g.fillRect(mx - 3, hz - 31, 6, 1);
+    }
+  };
   // el Centro a lo lejos: casonas de dos pisos con balcones, torres de iglesia y cúpulas
   const COLONIAL = ['#d9c08a', '#c9b48a', '#b8c4c4', '#d0aea4', '#c8c0aa', '#b9a088'];
   const colonialLayer = (seed, haze, maxH, churches) => (g, W, H) => {
@@ -1603,15 +1892,15 @@
   // ───────────────────────────────────────────────────────────────────────────
   const H = 70;
   // azoteas del Centro: [desde, hasta, fila del techo, tile]
-  const BLD = [[656, 672, 43, 'roof'], [673, 686, 35, 'roofS'], [689, 704, 38, 'roof'], [706, 718, 40, 'roofS'],
-               [725, 740, 38, 'roof'], [743, 756, 41, 'roofS'], [759, 772, 39, 'roof']];
-  const CASONA = 772;   // donde empieza el patio de la casona del concurso
+  const BLD = [[830, 846, 43, 'roof'], [847, 860, 35, 'roofS'], [863, 878, 38, 'roof'], [880, 892, 40, 'roofS'],
+               [899, 914, 38, 'roof'], [917, 930, 41, 'roofS'], [933, 946, 39, 'roof']];
+  const CASONA = 946;   // donde empieza el patio de la casona del concurso
   // escalones del puente peatonal: macizos (te frenan), de 3 casillas y 2 filas de alto
   const FB_STEPS = [[283, GR - 2], [286, GR - 4], [289, GR - 6], [292, GR - 8], [295, GR - 10], [298, GR - 12]];
   const STOPS = [{ x: 213.5 }, { x: 240.5 }, { x: 266.5, peaje: true, wait: 120 }];
   // la calle del Centro (fila ST) con sus buzones sin tapa: [x, ancho]
-  const BUZONES = [[427, 2], [442, 3], [456, 3], [474, 3], [488, 3], [598, 3], [628, 3]];
-  const STREET = [420, 656];
+  const BUZONES = [[601, 2], [616, 3], [630, 3], [648, 3], [662, 3], [772, 3], [802, 3]];
+  const STREET = [594, 830];
   function streetRects() {
     const out = []; let x = STREET[0];
     for (const [bx, bw] of BUZONES) { out.push([x, ST, bx - x, H - ST, 'paving'], [bx, ST + 1, bw, H - ST - 1, 'paving']); x = bx + bw; }
@@ -1620,13 +1909,14 @@
   }
   // casonas de fondo: [desde, hasta, fila de la cornisa, color, letrero]
   const CASONAS = [
-    [420, 430, 36, '#e3c06a', 'BOTICA'], [430, 440, 34, '#9cc3d0', 'BAZAR'], [440, 454, 33, '#d99a8a', null], [454, 466, 35, '#e3c06a', 'JOYERÍA'],
-    [466, 480, 34, '#c4704a', 'CALZADO'], [480, 492, 35, '#e8e0cc', null], [492, 500, 36, '#9cc3d0', null],
-    [560, 578, 35, '#d9c08a', null], [578, 590, 34, '#d0aea4', 'BAZAR'], [590, 608, 35, '#e3c06a', 'IMPORTACIONES'], [608, 622, 34, '#b8322a', 'CHIFA'],
-    [622, 638, 35, '#9cc3d0', 'CASA DE CAMBIO'], [638, 656, 31, '#c9b48a', 'MERCADO CENTRAL'],
+    [454, 466, 35, '#d98a6a', null], [466, 478, 34, '#8ab0c8', 'GALERÍA'], [478, 490, 36, '#e3c06a', 'BODEGA'],
+    [594, 604, 36, '#e3c06a', 'BOTICA'], [604, 614, 34, '#9cc3d0', 'BAZAR'], [614, 628, 33, '#d99a8a', null], [628, 640, 35, '#e3c06a', 'JOYERÍA'],
+    [640, 654, 34, '#c4704a', 'CALZADO'], [654, 666, 35, '#e8e0cc', null], [666, 674, 36, '#9cc3d0', null],
+    [734, 752, 35, '#d9c08a', null], [752, 764, 34, '#d0aea4', 'BAZAR'], [764, 782, 35, '#e3c06a', 'IMPORTACIONES'], [782, 796, 34, '#b8322a', 'CHIFA'],
+    [796, 812, 35, '#9cc3d0', 'CASA DE CAMBIO'], [812, 830, 31, '#c9b48a', 'MERCADO CENTRAL'],
   ];
   // balcones de cajón que se pisan (Jr. de la Unión): [x, ancho, fila]
-  const BALCONES = [[434, 5, 43], [441, 5, 41], [448, 5, 43], [460, 5, 43], [467, 5, 41], [473, 6, 43]];
+  const BALCONES = [[608, 5, 43], [615, 5, 41], [622, 5, 43], [634, 5, 43], [641, 5, 41], [647, 6, 43]];
   const L2 = {
     name: 'EL CONCURSO EN LIMA', w: CASONA + 54, h: H, anchorRow: 46,
     dunes: DUNES,
@@ -1647,22 +1937,37 @@
       ] },
       // el Centro de Lima: cielo "panza de burro", el San Cristóbal con su cruz,
       // torres de iglesia y casonas con balcones
-      { x0: LIMA_X - 8, x1: LIMA_X + 4, anchorRow: 44, sky: { dawn: ['#6f7080', '#9a9aa6', '#bdbcbf'], morning: ['#8f929e', '#b4b6be', '#d2d1d2'], sun: false }, layers: [
+      // Miraflores: panza de burro sobre el mar, el Morro Solar al fondo
+      { x0: 302, x1: 316, anchorRow: 48, sky: { dawn: ['#6f7080', '#9a9aa6', '#bdbcbf'], morning: ['#8f929e', '#b4b6be', '#d2d1d2'], sun: false }, layers: [
+        { kind: 'hills', color: '#7f97a2', color2: '#7f97a2', y: 44, parallax: 0.04, vpar: 0.06, amp: 1, build: seaLayer(3, '#7f97a2', '#a9bcc4', true) },
+        { kind: 'hills', color: '#6f8b98', color2: '#6f8b98', y: 50, parallax: 0.2, vpar: 0.3, amp: 1, build: seaLayer(9, '#6f8b98', '#e8f0f2', false) },
+      ] },
+      // Barranco: casonas de colores sobre el acantilado y el mar detrás
+      { x0: 404, x1: 418, anchorRow: 46, sky: { dawn: ['#6f7080', '#9a9aa6', '#bdbcbf'], morning: ['#8f929e', '#b4b6be', '#d2d1d2'], sun: false }, layers: [
+        { kind: 'hills', color: '#7f97a2', color2: '#7f97a2', y: 44, parallax: 0.04, vpar: 0.06, amp: 1, build: seaLayer(5, '#7f97a2', '#a9bcc4', true) },
+        { kind: 'hills', color: '#a8a39a', color2: '#9a958c', y: 46, parallax: 0.2, vpar: 0.26, amp: 1, build: colonialLayer(17, '#7a706a', 26, true) },
+      ] },
+      { x0: 482, x1: 494, anchorRow: 44, sky: { dawn: ['#6f7080', '#9a9aa6', '#bdbcbf'], morning: ['#8f929e', '#b4b6be', '#d2d1d2'], sun: false }, layers: [
         { kind: 'hills', color: '#a59a92', color2: '#958a83', y: 40, parallax: 0.06, vpar: 0.08, amp: 1, build: sanCristobal(3, '#a59a92', '#857a73') },
         { kind: 'hills', color: '#a8a39a', color2: '#9a958c', y: 43, parallax: 0.14, vpar: 0.18, amp: 1, build: colonialLayer(11, '#8e8a86', 40, true) },
         { kind: 'hills', color: '#8a8580', color2: '#7a756f', y: 45.5, parallax: 0.3, vpar: 0.36, amp: 1, build: colonialLayer(29, '#6f6a66', 26, false) },
       ] },
     ],
     spawn: { x: 7, y: 36 },
-    goal: { x: CASONA + 17.5, y: 46 },   // la flecha de "¡POR AQUÍ!" apunta a tu sitio en el concurso
+    goal: { x: CASONA + 17.5, y: 46 },
+    // el parapente: planeas sobre la Costa Verde y lo sueltas al pisar la playa
+    glide: { x0: 340, x1: 404 }, glideLandRow: 60,   // la flecha de "¡POR AQUÍ!" apunta a tu sitio en el concurso
     zones: [
       { x: 0,   name: 'EL DESIERTO',     music: 'desierto' },
       { x: 196, name: 'LA PANAMERICANA', music: 'panamericana' },
-      { x: 330, name: 'EN MOTOTAXI',     music: 'panamericana' },
-      { x: 420, name: 'JR. DE LA UNIÓN', music: 'plebeyo' },
-      { x: 500, name: 'PLAZA DE ARMAS',  music: 'plebeyo' },
-      { x: 560, name: 'BARRIO CHINO',    music: 'plebeyo' },
-      { x: 656, name: 'LAS AZOTEAS',     music: 'plebeyo' },
+      { x: 316, name: 'MIRAFLORES',      music: 'desierto' },
+      { x: 352, name: 'LA COSTA VERDE',  music: 'desierto' },
+      { x: 410, name: 'BARRANCO',        music: 'plebeyo' },
+      { x: 504, name: 'EN MOTOTAXI',     music: 'panamericana' },
+      { x: 594, name: 'JR. DE LA UNIÓN', music: 'plebeyo' },
+      { x: 674, name: 'PLAZA DE ARMAS',  music: 'plebeyo' },
+      { x: 734, name: 'BARRIO CHINO',    music: 'plebeyo' },
+      { x: 830, name: 'LAS AZOTEAS',     music: 'plebeyo' },
       { x: CASONA + 2, name: 'LA CASONA', music: 'plebeyo' },
     ],
     rects: [
@@ -1671,21 +1976,27 @@
       [196, GR, 126, H - GR, 'asphalt'],
       [316, GR - 2, 1, 2, 'blockInvis'],                        // boca del túnel: solo entran las combis
       ...FB_STEPS.map(s => [s[0], s[1], 3, GR - s[1], 'conc']),   // escalera del puente peatonal
+      // ── MIRAFLORES: el malecón sobre el acantilado y la playa de la Costa Verde ──
+      [316, 44, 36, H - 44, 'malecon'],
+      [352, 64, 58, H - 64, 'playa'],
+      // ── BARRANCO: la Bajada de Baños (escalones de 2 filas), el Puente de los Suspiros y la calle ──
+      ...Array.from({ length: 9 }, (_, k) => [410 + 3 * k, 62 - 2 * k, 3, H - (62 - 2 * k), 'bajada']),
+      [437, ST, 7, H - ST, 'paving'], [444, ST, 10, 1, 'blockInvis'], [454, ST, 36, H - ST, 'paving'],
       // ── EL CENTRO: sobre el túnel de la Vía Expresa y la calle de lajas ──
-      [316, 44, 14, 10, 'conc'], [322, 54, 8, H - 54, 'conc'],
+      [490, 44, 14, 10, 'conc'], [496, 54, 8, H - 54, 'conc'],
       // la avenida del mototaxi, hasta la entrada del Jr. de la Unión
-      [330, ST, 90, H - ST, 'asphalt'],
+      [504, ST, 90, H - ST, 'asphalt'],
       // el tráfico: combis paradas que se pueden pisar
-      [347, ST - 2, 4, 2, 'blockInvis'], [380, ST - 2, 4, 2, 'blockInvis'], [385, ST - 2, 4, 2, 'blockInvis'],
+      [521, ST - 2, 4, 2, 'blockInvis'], [554, ST - 2, 4, 2, 'blockInvis'], [559, ST - 2, 4, 2, 'blockInvis'],
       ...streetRects(),
       // la pileta de la Plaza: taza grande y taza chica
-      [526, ST - 2, 9, 2, 'blockInvis'], [529, ST - 4, 3, 2, 'blockInvis'],
+      [700, ST - 2, 9, 2, 'blockInvis'], [703, ST - 4, 3, 2, 'blockInvis'],
       // cajones de fruta para subir del Mercado a las azoteas
-      [647, ST - 1, 4, 1, 'crate'], [651, ST - 2, 5, 2, 'crate'],
+      [821, ST - 1, 4, 1, 'crate'], [825, ST - 2, 5, 2, 'crate'],
       // ── LAS AZOTEAS ──
       ...BLD.map(b => [b[0], b[2], b[1] - b[0], H - b[2], b[3]]),
       // tanques de agua (sólidos)
-      [680, 33, 2, 2, 'blockInvis'], [729, 36, 2, 2, 'blockInvis'], [765, 37, 2, 2, 'blockInvis'],
+      [854, 33, 2, 2, 'blockInvis'], [903, 36, 2, 2, 'blockInvis'], [939, 37, 2, 2, 'blockInvis'],
       // ── LA CASONA: el patio ──
       [CASONA, 46, 54, H - 46, 'paving'],
     ],
@@ -1698,7 +2009,7 @@
       [301, 44, 15, 'steel'],
       // balcones del Jr. de la Unión y el tejado de la portada china
       ...BALCONES.map(b => [b[0], b[2], b[1], 'balc']),
-      [566, 42, 11, 'tejado'],
+      [740, 42, 11, 'tejado'],
     ],
     liquids: [
       // aniego: la tubería reventó y la pista está inundada
@@ -1729,102 +2040,138 @@
       { type: 'sign', x: 248, y: GR, lines: ['LIMA 12 KM'], style: 'post' },
       { type: 'vendor', x: 252, y: GR, shout: '¡GASEOSA, GALLETA, CHIFLES!', kind: 'cooler' },
       { type: 'peaje', x0: 262, x1: 272, y: GR - 6, price: 'S/ 6.10' },
-      { type: 'page', x: 266.5, y: GR - 7 },
       { type: 'sign', x: 283, y: GR, lines: ['SE VENDE TERRENO', 'TRATO DIRECTO'], style: 'board' },
       { type: 'footbridge', x0: 283, x1: 316, deck: 44, steps: FB_STEPS },
       { type: 'roadHint', x0: 273, x1: 300, text: '¡SUBE POR EL PUENTE PEATONAL!' },
       { type: 'tunnel', x: 316 },
+      // ── MIRAFLORES ──
+      { type: 'vuelos', x0: 330, x1: 430, y: 40 },
+      { type: 'baranda', x0: 316, x1: 352, y: 44 },
+      { type: 'checkpoint', x: 319, y: 44, help: 'AGARRA EL PARAPENTE Y SALTA' },
+      { type: 'sign', x: 318, y: 44, lines: ['MIRAFLORES'], style: 'post' },
+      { type: 'parqueAmor', x: 323, y: 44 },
+      { type: 'prop', kind: 'perro', x: 337, y: 44 },
+      { type: 'npc', x: 340.5, y: 44, model: 'ambulante', lines: ['¡CHOCOTEJAS DE ICA!', '¡LLÉVATE PARA LA PROFE!'] },
+      { type: 'carretilla', x0: 320, x1: 340, y: 44, speed: 1.6, gap: 260, load: 'bici' },
+      { type: 'larcomar', x0: 336, x1: 350, y: 48 },
+      { type: 'npc', x: 345.5, y: 44, model: 'parapentista', lines: ['¡VUELA CONMIGO, CAUSA!', '¡AGARRA EL PARAPENTE!', '¡SALTA, NO PASA NADA!'] },
+      { type: 'parapente', x: 348.5, y: 44 },
+      { type: 'hint', x: 349.2, y: 44, text: '¡AGARRA EL PARAPENTE!', arrow: 'down', r: 6, pass: 1, dy: 14, when: (g) => !g.player.gliding },
+      { type: 'hint', x: 351, y: 44, text: '¡SALTA AL VACÍO!', key: 'jump', arrow: 'right', r: 4, pass: 2, when: (g) => g.player.gliding && g.player.onGround },
+      { type: 'help', x0: 340, x1: 410, kind: 'fall', text: 'AGARRA EL PARAPENTE ANTES' },
+      { type: 'help', x0: 316, x1: 342, kind: 'bici', text: '¡SALTA LA BICI!' },
+      // ── LA COSTA VERDE ──
+      { type: 'mar', x0: 352, x1: 437, y: 64 },
+      { type: 'page', x: 381, y: 54 },   // la hoja que se voló: atrápala en el aire
+      { type: 'palomas', kind: 'gaviota', x0: 372, x1: 384, y: 64, n: 6 },
+      { type: 'npc', x: 391.5, y: 64, model: 'surfista', lines: ['¡QUÉ TAL OLA, CAUSA!', 'EL AGUA ESTÁ HELADA'] },
+      { type: 'npc', x: 400.5, y: 64, model: 'ambulante', lines: ['¡RASPADILLA, CAUSA!', '¿DE FRESA O DE PIÑA?'] },
+      { type: 'checkpoint', x: 404, y: 64, help: 'SUBE POR LA ESCALERA' },
+      // ── BARRANCO ──
+      { type: 'bajada', x0: 408, x1: 437, top: 30, bottom: 64 },
+      { type: 'sign', x: 413, y: 62, lines: ['BAJADA', 'DE BAÑOS'], style: 'board', col: '#fff3d6' },
+      { type: 'checkpoint', x: 438, y: ST, help: 'CRUZA SIN SALTAR: ¡+1 MIN!' },
+      { type: 'npc', x: 440.5, y: ST, model: 'abuelo', lines: ['CRÚZALO SIN RESPIRAR', '¡Y PIDE UN DESEO!'] },
+      { type: 'suspiros', x0: 444, x1: 454, y: ST },
+      { type: 'hint', x: 445, y: ST, text: ['¡SIN SALTAR!', 'PIDE UN DESEO'], arrow: 'right', r: 4, pass: 3 },
+      { type: 'murales', x0: 455, x1: 478, top: 39 },
+      { type: 'sign', x: 456, y: ST, lines: ['BARRANCO'], style: 'post' },
+      { type: 'npc', x: 462.5, y: ST, model: 'pintor', lines: ['¡CUIDADO, PINTURA FRESCA!', '¿TE GUSTA MI MURAL?'] },
+      { type: 'balde', x: 465 },
+      { type: 'npc', x: 472.5, y: ST, model: 'senora', lines: ['¡PICARONES CALIENTITOS!', '¿CON MIEL, CASERITO?'] },
+      { type: 'carretilla', x0: 456, x1: 484, speed: 1.8, gap: 220, load: 'bici' },
+      { type: 'help', x0: 454, x1: 490, kind: 'bici', text: '¡SALTA LA BICI!' },
       // ── JR. DE LA UNIÓN ──
       // casonas y balcones primero: se dibujan detrás de todo lo demás
       ...CASONAS.map(c => ({ type: 'casona', x0: c[0], x1: c[1], top: c[2], col: c[3], sign: c[4] })),
       ...BALCONES.map((b, i) => ({ type: 'balcon', x: b[0], w: b[1], y: b[2], col: ['#5a3418', '#2f5a3a', '#6a3a1a'][i % 3] })),
-      { type: 'checkpoint', x: 320, y: 44, help: 'SÚBETE AL MOTOTAXI Y ACELERA' },
+      { type: 'checkpoint', x: 494, y: 44, help: 'SÚBETE AL MOTOTAXI Y ACELERA' },
       // ── EN MOTOTAXI ──
-      { type: 'contramano', x0: 330, x1: 420 },
-      { type: 'npc', x: 323.5, y: 44, model: 'mototaxista', lines: ['¡SUBE, CAUSA, TE LLEVO!', '¡MANÉJALO TÚ NOMÁS!', '¡AL CENTRO, VOLANDO!'] },
-      { type: 'motoRide', x: 325, y: 44, model: 'rojo', end: 412 },
-      { type: 'hint', x: 326, y: 44, text: '¡SÚBETE AL MOTOTAXI!', arrow: 'down', r: 6, pass: 2, dy: 16, when: (g) => !g.player.riding },
-      { type: 'hint', x: 334, y: ST, text: '¡ACELERA!', key: 'right', r: 4, pass: 4, when: (g) => g.player.riding instanceof MotoRide },
-      { type: 'bache', x: 336 }, { type: 'bache', x: 339.5 },
-      { type: 'rampa', x: 343 },
-      { type: 'parkedCombi', x: 347, n: 1, line: '¡SUBE, SUBE, HAY SITIO!' },
-      { type: 'hint', x: 344, y: ST, text: 'SALTA', key: 'jump', r: 3, pass: 1, when: (g) => g.player.riding instanceof MotoRide },
-      { type: 'cruce', x: 358, line: '¡OE, CUIDADO, CAUSA!' },
-      { type: 'bache', x: 364 }, { type: 'bache', x: 366.5 }, { type: 'bache', x: 369 },
-      { type: 'sign', x: 373, y: ST, lines: ['¡VUELA,', 'CAUSA!'], style: 'board', col: '#f6c94a' },
-      { type: 'rampa', x: 375, big: true, power: 10.5 },
-      { type: 'parkedCombi', x: 380, n: 2, line: '¡LIMA, LIMA, LIMA!' }, { type: 'parkedCombi', x: 385, n: 3, line: '¡PIII! ¡QUÉ TRÁFICO!' },
-      { type: 'bache', x: 394 }, { type: 'bache', x: 397 },
-      { type: 'cruce', x: 400, line: '¡MAÑOSO, MÁS DESPACIO!' },
-      { type: 'sign', x: 409, y: ST, lines: ['AL CENTRO NO', 'ENTRAN MOTOTAXIS'], style: 'board' },
-      { type: 'checkpoint', x: 416, y: ST, help: 'SALTA LOS HUECOS EN EL BORDE' },
-      { type: 'sign', x: 323, y: 46.4, lines: ['BIENVENIDOS', 'A LIMA'], style: 'paint', col: '#f6c94a' },
-      { type: 'sign', x: 327, y: 44, lines: ['CENTRO DE LIMA'], style: 'post' },
-      { type: 'megafono', xs: [423.5, 617.5] },   // el ambulante del Jr. de la Unión y el del Mercado
-      { type: 'npc', x: 423.5, y: ST, model: 'ambulante', lines: ['¡CHICLE, CARAMELO, CHUPETÍN!', '¡A SOL NOMÁS, CAUSA!'] },
-      { type: 'hint', x: 427.5, y: ST, text: '¡SALTA EL HUECO!', key: 'jump', arrow: 'down', r: 6, pass: 1 },
+      { type: 'contramano', x0: 504, x1: 594 },
+      { type: 'npc', x: 497.5, y: 44, model: 'mototaxista', lines: ['¡SUBE, CAUSA, TE LLEVO!', '¡MANÉJALO TÚ NOMÁS!', '¡AL CENTRO, VOLANDO!'] },
+      { type: 'motoRide', x: 499, y: 44, model: 'rojo', end: 586 },
+      { type: 'hint', x: 500, y: 44, text: '¡SÚBETE AL MOTOTAXI!', arrow: 'down', r: 6, pass: 2, dy: 16, when: (g) => !g.player.riding },
+      { type: 'hint', x: 508, y: ST, text: '¡ACELERA!', key: 'right', r: 4, pass: 4, when: (g) => g.player.riding instanceof MotoRide },
+      { type: 'bache', x: 510 }, { type: 'bache', x: 513.5 },
+      { type: 'rampa', x: 517 },
+      { type: 'parkedCombi', x: 521, n: 1, line: '¡SUBE, SUBE, HAY SITIO!' },
+      { type: 'hint', x: 518, y: ST, text: 'SALTA', key: 'jump', r: 3, pass: 1, when: (g) => g.player.riding instanceof MotoRide },
+      { type: 'cruce', x: 532, line: '¡OE, CUIDADO, CAUSA!' },
+      { type: 'bache', x: 538 }, { type: 'bache', x: 540.5 }, { type: 'bache', x: 543 },
+      { type: 'sign', x: 547, y: ST, lines: ['¡VUELA,', 'CAUSA!'], style: 'board', col: '#f6c94a' },
+      { type: 'rampa', x: 549, big: true, power: 10.5 },
+      { type: 'parkedCombi', x: 554, n: 2, line: '¡LIMA, LIMA, LIMA!' }, { type: 'parkedCombi', x: 559, n: 3, line: '¡PIII! ¡QUÉ TRÁFICO!' },
+      { type: 'bache', x: 568 }, { type: 'bache', x: 571 },
+      { type: 'cruce', x: 574, line: '¡MAÑOSO, MÁS DESPACIO!' },
+      { type: 'sign', x: 583, y: ST, lines: ['AL CENTRO NO', 'ENTRAN MOTOTAXIS'], style: 'board' },
+      { type: 'checkpoint', x: 590, y: ST, help: 'SALTA LOS HUECOS EN EL BORDE' },
+      { type: 'sign', x: 497, y: 46.4, lines: ['AL CENTRO'], style: 'paint', col: '#f6c94a' },
+      { type: 'sign', x: 501, y: 44, lines: ['CENTRO DE LIMA'], style: 'post' },
+      { type: 'megafono', xs: [597.5, 791.5] },   // el ambulante del Jr. de la Unión y el del Mercado
+      { type: 'npc', x: 597.5, y: ST, model: 'ambulante', lines: ['¡CHICLE, CARAMELO, CHUPETÍN!', '¡A SOL NOMÁS, CAUSA!'] },
+      { type: 'hint', x: 601.5, y: ST, text: '¡SALTA EL HUECO!', key: 'jump', arrow: 'down', r: 6, pass: 1 },
       ...BUZONES.map(([x, w]) => ({ type: 'buzon', x, w })),
-      { type: 'hint', x: 436, y: 43, text: '¡SÚBETE AL BALCÓN!', arrow: 'down', r: 5, pass: 1, dy: 4 },
-      { type: 'help', x0: 420, x1: 500, kind: 'buzon', text: 'SALTA JUSTO EN EL BORDE' },
-      { type: 'help', x0: 420, x1: 560, kind: 'carretilla', text: '¡VE POR LOS BALCONES!' },
-      { type: 'carretilla', x0: 430, x1: 498, speed: 1.9, gap: 150, load: 'papa' },
-      { type: 'palomas', x0: 482, x1: 492, n: 6 },
-      { type: 'vendor', x: 494, y: ST, shout: '¡HELADO, HELADITO!', kind: 'cooler' },
+      { type: 'hint', x: 610, y: 43, text: '¡SÚBETE AL BALCÓN!', arrow: 'down', r: 5, pass: 1, dy: 4 },
+      { type: 'help', x0: 594, x1: 674, kind: 'buzon', text: 'SALTA JUSTO EN EL BORDE' },
+      { type: 'help', x0: 594, x1: 734, kind: 'carretilla', text: '¡VE POR LOS BALCONES!' },
+      { type: 'carretilla', x0: 604, x1: 672, speed: 1.9, gap: 150, load: 'papa' },
+      { type: 'palomas', x0: 656, x1: 666, n: 6 },
+      { type: 'vendor', x: 668, y: ST, shout: '¡HELADO, HELADITO!', kind: 'cooler' },
       // ── PLAZA DE ARMAS (respiro: nada te mata aquí) ──
-      { type: 'plazaFondo', x0: 500, x1: 560, cat: [501, 525], pal: [536, 560] },
-      { type: 'checkpoint', x: 502, y: ST },
+      { type: 'plazaFondo', x0: 674, x1: 734, cat: [675, 699], pal: [710, 734] },
+      { type: 'checkpoint', x: 676, y: ST },
       // el grass (pita el guardián), las palomas y la pileta son escenario que reacciona: entidades propias del capítulo
-      { type: 'grass', x0: 505, x1: 514 },
-      { type: 'palomas', x0: 517, x1: 525, n: 8 },
-      { type: 'pileta', x: 526 },
-      { type: 'palomas', x0: 536, x1: 545, n: 7 },
+      { type: 'grass', x0: 679, x1: 688 },
+      { type: 'palomas', x0: 691, x1: 699, n: 8 },
+      { type: 'pileta', x: 700 },
+      { type: 'palomas', x0: 710, x1: 719, n: 7 },
       // los húsares de Palacio
-      { type: 'npc', x: 546.5, y: ST, model: 'husar', flip: true, lines: ['¡SIGA, JOVEN, SIGA!', '¡AQUÍ NO SE JUEGA!'] },
-      { type: 'npc', x: 556.5, y: ST, model: 'husar', flip: true, lines: ['¡CORRE, QUE LLEGAS TARDE!', '¡EL CONCURSO ES POR ALLÁ!'] },
+      { type: 'npc', x: 720.5, y: ST, model: 'husar', flip: true, lines: ['¡SIGA, JOVEN, SIGA!', '¡AQUÍ NO SE JUEGA!'] },
+      { type: 'npc', x: 730.5, y: ST, model: 'husar', flip: true, lines: ['¡CORRE, QUE LLEGAS TARDE!', '¡EL CONCURSO ES POR ALLÁ!'] },
       // ── BARRIO CHINO Y MERCADO CENTRAL ──
-      { type: 'portadaChina', x0: 566, x1: 577, y: 42 },
+      { type: 'portadaChina', x0: 740, x1: 751, y: 42 },
       // el perro chusco del barrio duerme bajo la portada: sáltalo o pasa por el tejado
-      { type: 'dog', x0: 568, x1: 577, y: ST },
-      { type: 'checkpoint', x: 553, y: ST, help: 'LOS TOLDOS TE HACEN REBOTAR' },
-      { type: 'hint', x: 582.5, y: 43, text: '¡CAE EN EL TOLDO!', arrow: 'down', r: 6, pass: 1, dy: 4 },
-      { type: 'toldo', x0: 580, x1: 585, y: 43, col: ['#2b6fb8', '#fffaf0'], goods: 'fruta' },
-      { type: 'npc', x: 588.5, y: ST, model: 'emoliente', lines: ['¡EMOLIENTE, CALIENTITO!', '¿CON UÑA DE GATO?', '¡PARA LA GARÚA, CAUSA!'] },
-      { type: 'npc', x: 594.5, y: ST, model: 'cambista', lines: ['¿DÓLARES? ¿CAMBIO?', '¡A BUEN PRECIO, CASERITO!'] },
-      { type: 'carretilla', x0: 578, x1: 646, speed: 2.1, gap: 160, load: 'naranja' },
-      { type: 'carretilla', x0: 578, x1: 646, speed: 2.1, gap: 160, delay: 50, load: 'papa' },   // van de dos en dos
-      { type: 'help', x0: 562, x1: 580, kind: 'dog', text: '¡VE POR EL TEJADO!' },
-      { type: 'toldo', x0: 602, x1: 607, y: 43, col: ['#c8322a', '#fffaf0'], goods: 'papa' },
+      { type: 'dog', x0: 742, x1: 751, y: ST },
+      { type: 'checkpoint', x: 727, y: ST, help: 'LOS TOLDOS TE HACEN REBOTAR' },
+      { type: 'hint', x: 756.5, y: 43, text: '¡CAE EN EL TOLDO!', arrow: 'down', r: 6, pass: 1, dy: 4 },
+      { type: 'toldo', x0: 754, x1: 759, y: 43, col: ['#2b6fb8', '#fffaf0'], goods: 'fruta' },
+      { type: 'npc', x: 762.5, y: ST, model: 'emoliente', lines: ['¡EMOLIENTE, CALIENTITO!', '¿CON UÑA DE GATO?', '¡PARA LA GARÚA, CAUSA!'] },
+      { type: 'npc', x: 768.5, y: ST, model: 'cambista', lines: ['¿DÓLARES? ¿CAMBIO?', '¡A BUEN PRECIO, CASERITO!'] },
+      { type: 'carretilla', x0: 752, x1: 820, speed: 2.1, gap: 160, load: 'naranja' },
+      { type: 'carretilla', x0: 752, x1: 820, speed: 2.1, gap: 160, delay: 50, load: 'papa' },   // van de dos en dos
+      { type: 'help', x0: 736, x1: 754, kind: 'dog', text: '¡VE POR EL TEJADO!' },
+      { type: 'toldo', x0: 776, x1: 781, y: 43, col: ['#c8322a', '#fffaf0'], goods: 'papa' },
       // los farolitos del chifa se mecen y suenan al tocarlos (escenario propio del capítulo)
-      { type: 'farolitos', x0: 608, x1: 622, y: 41 },
-      { type: 'npc', x: 611.5, y: ST, model: 'mozo', lines: ['¡PASE, PASE, HAY CHAUFA!', '¡WANTÁN FRITO, CALIENTITO!'] },
-      { type: 'npc', x: 617.5, y: ST, model: 'ambulante', lines: ['¡A SOL, A SOL, A SOL!', '¡LLÉVATE TRES, CAUSA!'] },
-      { type: 'npc', x: 625.5, y: ST, model: 'cambista', lines: ['¡CAMBIO, DÓLAR, EURO!', '¿CUÁNTO CAMBIAS, PATA?'] },
-      { type: 'help', x0: 560, x1: 656, kind: 'carretilla', text: 'SALTA O SÚBETE A UN TOLDO' },
-      { type: 'help', x0: 560, x1: 656, kind: 'buzon', text: 'SALTA JUSTO EN EL BORDE' },
-      { type: 'toldo', x0: 634, x1: 639, y: 43, col: ['#2f7a46', '#f6c94a'], goods: 'fruta' },
-      { type: 'checkpoint', x: 644, y: ST },
-      { type: 'hint', x: 653, y: ST - 2, text: '¡A LAS AZOTEAS!', arrow: 'right', r: 7, pass: 3 },
+      { type: 'farolitos', x0: 782, x1: 796, y: 41 },
+      { type: 'npc', x: 785.5, y: ST, model: 'mozo', lines: ['¡PASE, PASE, HAY CHAUFA!', '¡WANTÁN FRITO, CALIENTITO!'] },
+      { type: 'npc', x: 791.5, y: ST, model: 'ambulante', lines: ['¡A SOL, A SOL, A SOL!', '¡LLÉVATE TRES, CAUSA!'] },
+      { type: 'npc', x: 799.5, y: ST, model: 'cambista', lines: ['¡CAMBIO, DÓLAR, EURO!', '¿CUÁNTO CAMBIAS, PATA?'] },
+      { type: 'help', x0: 734, x1: 830, kind: 'carretilla', text: 'SALTA O SÚBETE A UN TOLDO' },
+      { type: 'help', x0: 734, x1: 830, kind: 'buzon', text: 'SALTA JUSTO EN EL BORDE' },
+      { type: 'toldo', x0: 808, x1: 813, y: 43, col: ['#2f7a46', '#f6c94a'], goods: 'fruta' },
+      { type: 'checkpoint', x: 818, y: ST },
+      { type: 'hint', x: 827, y: ST - 2, text: '¡A LAS AZOTEAS!', arrow: 'right', r: 7, pass: 3 },
       // ── LAS AZOTEAS ──
       ...BLD.map(b => ({ type: 'facade', x0: b[0], x1: b[1], y: b[2] })),
-      { type: 'tank', x: 680, y: 35 }, { type: 'tank', x: 729, y: 38 }, { type: 'tank', x: 765, y: 39 },
-      { type: 'sign', x: 660, y: 44.6, lines: ['CUIDADO', 'CON EL PERRO'], style: 'paper', col: '#1d1622' },
-      { type: 'dog', x0: 656, x1: 662.5, y: 43 },
-      { type: 'help', x0: 656, x1: CASONA, kind: 'dog', text: 'SALTA AL PERRO Y SIGUE' },
-      { type: 'help', x0: 656, x1: CASONA, kind: 'fall', text: 'CAE EN LA ROPA PARA SUBIR' },
+      { type: 'tank', x: 854, y: 35 }, { type: 'tank', x: 903, y: 38 }, { type: 'tank', x: 939, y: 39 },
+      { type: 'sign', x: 834, y: 44.6, lines: ['CUIDADO', 'CON EL PERRO'], style: 'paper', col: '#1d1622' },
+      { type: 'dog', x0: 830, x1: 836.5, y: 43 },
+      { type: 'help', x0: 830, x1: CASONA, kind: 'dog', text: 'SALTA AL PERRO Y SIGUE' },
+      { type: 'help', x0: 830, x1: CASONA, kind: 'fall', text: 'CAE EN LA ROPA PARA SUBIR' },
       // la ropa tendida llega hasta la pared del edificio alto: si caes encima, rebotas
-      { type: 'clothesline', x0: 663, x1: 673, y: 41, base0: 43, base1: 43, hint: '¡SALTA SOBRE LA ROPA TENDIDA!' },
-      { type: 'page', x: 668, y: 32 },
-      { type: 'cable', x0: 684, y0: 33.5, x1: 694, y1: 36.5, shoes: true },
-      { type: 'checkpoint', x: 690.5, y: 38, help: 'SALTA AL PERRO Y SIGUE' },
-      { type: 'dog', x0: 695, x1: 704, y: 38 },
-      { type: 'rebar', x: 711, y: 40 },
-      { type: 'sign', x: 712, y: 41.6, lines: ['PROHIBIDO', 'ARROJAR BASURA'], style: 'paint', col: '#b8322a' },
-      { type: 'clothesline', x0: 717.5, x1: 725, y: 37, base0: 40, base1: 38, hint: '¡OTRA VEZ LA ROPA!' },
-      { type: 'dog', x0: 731, x1: 740, y: 38 },
-      { type: 'rebar', x: 748, y: 41 },
-      { type: 'sign', x: 750, y: 42.6, lines: ['HAY MAZAMORRA', 'MORADA'], style: 'paper' },
-      { type: 'cable', x0: 754, y0: 40, x1: 762, y1: 38 },
-      { type: 'sign', x: 768, y: 40.6, lines: ['SE HACEN', 'TAREAS'], style: 'paper', col: '#2b4f86' },
+      { type: 'clothesline', x0: 837, x1: 847, y: 41, base0: 43, base1: 43, hint: '¡SALTA SOBRE LA ROPA TENDIDA!' },
+      { type: 'page', x: 842, y: 32 },
+      { type: 'cable', x0: 858, y0: 33.5, x1: 868, y1: 36.5, shoes: true },
+      { type: 'checkpoint', x: 864.5, y: 38, help: 'SALTA AL PERRO Y SIGUE' },
+      { type: 'dog', x0: 869, x1: 878, y: 38 },
+      { type: 'rebar', x: 885, y: 40 },
+      { type: 'sign', x: 886, y: 41.6, lines: ['PROHIBIDO', 'ARROJAR BASURA'], style: 'paint', col: '#b8322a' },
+      { type: 'clothesline', x0: 891.5, x1: 899, y: 37, base0: 40, base1: 38, hint: '¡OTRA VEZ LA ROPA!' },
+      { type: 'dog', x0: 905, x1: 914, y: 38 },
+      { type: 'rebar', x: 922, y: 41 },
+      { type: 'sign', x: 924, y: 42.6, lines: ['HAY MAZAMORRA', 'MORADA'], style: 'paper' },
+      { type: 'cable', x0: 928, y0: 40, x1: 936, y1: 38 },
+      { type: 'sign', x: 942, y: 40.6, lines: ['SE HACEN', 'TAREAS'], style: 'paper', col: '#2b4f86' },
       // ── LA CASONA ──
       { type: 'checkpoint', x: CASONA + 3, y: 46 },
       { type: 'contest', x: CASONA + 10, y: 46 },
@@ -1856,6 +2203,16 @@
     facade: (d) => new Facade(d),
     contest: (d) => new Contest(d),
     motoRide: (d) => new MotoRide(d),
+    parapente: (d) => new Parapente(d),
+    baranda: (d) => new Baranda(d),
+    vuelos: (d) => new Vuelos(d),
+    parqueAmor: (d) => new ParqueAmor(d),
+    larcomar: (d) => new Larcomar(d),
+    mar: (d) => new Mar(d),
+    bajada: (d) => new Bajada(d),
+    suspiros: (d) => new Suspiros(d),
+    murales: (d) => new Murales(d),
+    balde: (d) => new Balde(d),
     rampa: (d) => new Rampa(d),
     bache: (d) => new Bache(d),
     parkedCombi: (d) => new ParkedCombi(d),
@@ -1882,13 +2239,13 @@
     num: 2, title: 'EL CONCURSO EN LIMA', short: 'LIMA', color: '#e0b47c',
     goal: '¡LLEGA AL CONCURSO ANTES DE LAS 8:00!', goalShort: '¡ANTES DE LAS 8:00!',
     banner: ['EL CONCURSO EN LIMA', '¡EL CONCURSO EMPIEZA A LAS 8:00!'],
-    dayStart: 6 * 60 + 40,   // el bus se malogró a las 6:40: hay menos tiempo que en los Andes
+    dayStart: 6 * 60 + 30,   // el bus se malogró a las 6:30: Miraflores, Barranco y el Centro hasta las 8:00
     deathTitle: '¡ASU MARE!',
     deathMsgs: {
       combi: '¡TE CHAPÓ LA COMBI!', buggy: '¡TE ATROPELLÓ EL TUBULAR!', cactus: '¡TE ESPINASTE CON EL CACTUS!',
       water: '¡TE CAÍSTE AL ANIEGO!', dog: '¡EL PERRO CHUSCO TE BOTÓ!', rebar: '¡TE CHUZASTE CON LOS FIERROS!',
       buzon: '¡TE CAÍSTE AL BUZÓN!', carretilla: '¡TE ATROPELLÓ LA CARRETILLA!',
-      fall: '¡TE FUISTE DE LA AZOTEA!', default: '¡QUÉ PASÓ, CAUSA!',
+      fall: '¡TE FUISTE PARA ABAJO!', bici: '¡TE CHOCÓ LA BICI!', default: '¡QUÉ PASÓ, CAUSA!',
     },
     tips: ['TABLA: TÓCALA, BAJA LAS DUNAS Y SALTA EN LAS CRESTAS.', 'COMBI: SÚBETE AL TECHO. MOTOTAXI: ¡MANÉJALO!', 'BALCONES, TOLDOS Y ROPA: SÚBETE ENCIMA.', 'BUZÓN, CARRETILLA Y PERRO: SÁLTALOS.'],
     onStart: (g) => { g.combiRides = 0; },
