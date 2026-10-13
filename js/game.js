@@ -163,7 +163,7 @@
     }, ms);
   };
   Game.setCheckpoint = (cp) => {
-    Game.spawn = { x: cp.spawn.x, y: cp.spawn.y };
+    Game.spawn = { x: cp.spawn.x, y: cp.spawn.y }; GUIDE.onCheckpoint(cp);
     const m = Game.player.riding;
     Game.spawnMount = m && !m.retired ? m : null;
   };
@@ -180,6 +180,7 @@
     else if (kind === 'dog') { AUDIO.play('bark'); AUDIO.play('crush'); Game.shake(3, 10); Game.burst(a.cx, a.cy, 'dust', 14); }
     else AUDIO.play('fall');
     Game.deaths++; Game.lastDeath = kind; Game.state = 'respawn'; Game.stateT = 0;
+    GUIDE.onDeath(Game); VOICE.play('muerte', 250);
   };
   Game.gameComplete = () => {
     if (Game.state !== 'play') return;
@@ -187,6 +188,7 @@
     Game.runMs = performance.now() - Game.runStart - Game.pausedMs;
     Game.state = 'win'; Game.stateT = 0; Game.winSel = 0;
     AUDIO.stopMusic(); AUDIO.play('bell'); AUDIO.play('win');
+    VOICE.play(Game.arrival < CLASS_START ? 'gana' : 'tarde', 900);
   };
 
   Game.respawn = function () {
@@ -200,7 +202,7 @@
     if (m) { m.x = p.cx - m.w / 2; m.y = Game.spawn.y - m.h; m.vx = 0; m.vy = 0; p.mount(m, Game, true); }
     Game.floorY = p.cy;
     updateCamera(true);
-    Input.clearJump();
+    Input.clearJump(); GUIDE.onRespawn(Game);
     Game.state = 'play'; Game.fade = 0.8;
   };
 
@@ -225,7 +227,7 @@
     Game.spawn = { x: px, y: lv.spawn.y * TILE }; Game.spawnMount = null;
     Game.zone = -1; Game.banner = 0; Game.toastMsg = null;
     Game.look = LOOK_X * 0.6; Game.floorY = Game.player.cy;
-    updateCamera(true);
+    updateCamera(true); GUIDE.start(Game); Game.lateTold = false;
     Game.state = 'play'; Game.stateT = 0; Game.fade = 1;
   }
 
@@ -508,6 +510,9 @@
     updateZone();
     updateSoroche();
     updateCamera(false);
+    GUIDE.update(Game);
+    // el reloj pasa las 8:00 sin haber llegado: "¡ya fuiste!"
+    if (!Game.lateTold && clockMinutes() >= CLASS_START) { Game.lateTold = true; VOICE.play('tarde'); }
     // el huaico hace temblar el suelo
     if (Game.zoneName === 'EL HUAICO' && tick % 90 === 0) Game.shake(1, 10);
   }
@@ -644,6 +649,7 @@
     if (day < 1) { ctx.fillStyle = 'rgba(70,40,110,' + (0.22 * (1 - day)) + ')'; ctx.fillRect(0, 0, BASE_W, BASE_H); }
 
     renderHUD();
+    if (Game.state === 'play') GUIDE.renderScreen(ctx, Game);
     renderOverlay();
     if (Game.rk) renderRank();
   }
@@ -1208,6 +1214,9 @@
       drawText(ctx, ch.deathTitle || '¡ACHACHÁU!', BASE_W / 2, BASE_H / 2 - 14, { scale: 2, color: '#ffd166', align: 'center', shadow: true });
       // la causa, con jerga (solo en los capítulos que la traen)
       if (msg) drawText(ctx, msg, BASE_W / 2, BASE_H / 2 + 8, { color: '#f2917d', align: 'center', shadow: true });
+      // muchas caídas en el mismo tramo: una pista (guide.js)
+      const help = GUIDE.deathLine();
+      if (help) drawText(ctx, help, BASE_W / 2, BASE_H / 2 - 40, { color: '#9be7c4', align: 'center', shadow: true });
       if (Game.stateT > 30) drawText(ctx, 'PULSA ESPACIO PARA SEGUIR', BASE_W / 2, BASE_H / 2 + (msg ? 26 : 14), { color: '#fff3d6', align: 'center' });
     }
   }

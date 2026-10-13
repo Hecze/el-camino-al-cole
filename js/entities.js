@@ -1397,7 +1397,7 @@ function makeEntity(def, level) {
     case 'collapseHouse': return new CollapseHouse(def.x, def.y);
     case 'striker': return new Striker(def);
     case 'mototaxi': return new Mototaxi(def);
-    case 'checkpoint': return new Checkpoint(def.x, def.y, def.w, def.h);
+    case 'checkpoint': { const c = new Checkpoint(def.x, def.y, def.w, def.h); c.help = def.help || null; return c; }   // help: ver guide.js
     case 'house': return new House(def.x, def.y);
     case 'school': return new School(def.x, def.y);
     case 'lily': return new LilyPad(def.x, level);

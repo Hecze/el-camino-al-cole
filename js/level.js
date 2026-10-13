@@ -255,6 +255,53 @@ const SWID = 120;        // ancho de la selva baja
 const SCH = SV + SWID;   // donde empieza el pueblo ribereño del colegio
 const sx = (lx) => SV + lx;
 
+// ── GUÍA (js/guide.js): pistas antes de cada mecánica nueva, gente que habla,
+// escenario que reacciona y ayudas si te caes seguido en el mismo tramo ─────
+const onFoot = (g) => !g.player.riding, onLlama = (g) => g.player.riding instanceof Llama, onGoat = (g) => g.player.riding instanceof Cabra;
+const GUIA = [
+  // EL VALLE
+  { type: 'npc', x: 2.75, y: G, model: 'mama', ghost: true, r: 9, lines: ['¡YA SON LAS SEIS Y VEINTE, HIJITO!', '¡SÚBETE A LA LLAMA, CORRE!', '¡NO TE OLVIDES TU TAREA!'] },
+  { type: 'hint', x: 10.5, y: G, text: '¡SÚBETE A LA LLAMA!', key: 'right', arrow: 'down', r: 10, pass: 1, dy: 22, when: onFoot },
+  { type: 'hint', x: 13.5, y: G, text: 'SALTA', key: 'jump', r: 3, pass: 1.5, when: onLlama },
+  { type: 'prop', kind: 'gallina', x: 18, y: G }, { type: 'prop', kind: 'cuy', x: 22, y: G },
+  { type: 'npc', x: 26, y: G, model: 'pastor', lines: ['¡BUENOS DÍAS, WAWA!', 'SALTA LAS PIRCAS CON LA LLAMA', '¡VAS TARDE, CAUSA!'] },
+  { type: 'prop', kind: 'flor', x: 29, y: G }, { type: 'prop', kind: 'gallina', x: 35, y: G, flip: true },
+  { type: 'npc', x: 41, y: G - 2, model: 'senora', lines: ['¡TU HOJA SE VOLÓ A LA PIRCA!', '¡CHOCLITO CON QUESO, CASERITO!', 'EL PUENTE AGUANTA, CRUZA NOMÁS'] },
+  { type: 'prop', kind: 'olla', x: 44, y: G - 2, bonus: 1 },
+  { type: 'hint', x: 47, y: G - 4, text: '¡TU TAREA!', arrow: 'down', r: 6, pass: 0.5, dy: 4 },
+  { type: 'prop', kind: 'flor', x: 68, y: G - 2 }, { type: 'prop', kind: 'perro', x: 72, y: G },
+  { type: 'prop', kind: 'manta', x: 74.5, y: G, w: 3 },
+  { type: 'hint', x: 76, y: G, text: ['¡CAEN PIEDRAS!', 'SÁLTALAS'], key: 'jump', arrow: 'right', r: 6, pass: 3 },
+  { type: 'help', x0: 48, x1: 66, text: 'CRUZA EL PUENTE SIN PARAR' },
+  { type: 'help', x0: 70, x1: 92, kind: 'rock', text: '¡SALTA CUANDO LLEGUE LA PIEDRA!' },
+  // EL APU: la cabra, el pasto, el soroche y los cóndores
+  { type: 'npc', x: 87.5, y: G, model: 'nino', lines: ['¡LA CABRA SUBE SOLITA!', 'ARRIBA HAY UN PLATANAL', '¡POR AHÍ ES MÁS CORTO, CAUSA!'] },
+  // si te quedas a pie al pie del cerro, la flecha de "¡POR AQUÍ!" señala a la cabra
+  { type: 'goal', x: 91, y: G, when: (g) => !onGoat(g) && g.player.cx > 70 * TILE, at: (g) => { const c = g.entities.find(e => e instanceof Cabra); return { x: c.cx, y: c.cy }; } },
+  { type: 'hint', x: 91.5, y: G, text: '¡SÚBETE A LA CABRA!', arrow: 'down', r: 7, pass: 1, when: (g) => !onGoat(g) },
+  { type: 'hint', x: 99, y: G, text: ['LA CABRA SALTA SOLA', 'TÚ SOLO GUÍALA'], key: 'right', r: 9, pass: 4, vr: 4, when: onGoat },
+  { type: 'hint', x: HERBS[0].x + 0.5, y: HERBS[0].y + 2.2, text: 'PASTO: ¡SÚPER SALTO!', arrow: 'down', r: 6, pass: 3, vr: 4, when: onGoat },
+  { type: 'hint', x: COCA[0].x + 0.5, y: COCA[0].y + 1.5, text: '¡COCA PARA EL SOROCHE!', arrow: 'down', r: 6, pass: 3, vr: 4 },
+  { type: 'help', x0: 92, x1: 126, kind: 'bird', text: '¡SI VES EL AVISO, ESPERA!' },
+  { type: 'help', x0: 92, x1: 126, text: 'TÚ SOLO GUÍA: LA CABRA SALTA' },
+  { type: 'npc', x: 117, y: SUMMIT, model: 'nina', lines: ['¡QUÉ TAL VISTA, OE!', '¡TÍRATE CON LA HOJA!'] },
+  { type: 'prop', kind: 'campana', x: 119.5, y: SUMMIT },
+  // CEJA DE SELVA: el huaico
+  { type: 'npc', x: 147.5, y: 110, model: 'senora', lines: ['¡AY, EL HUAICO, HIJITO!', '¡DE TRONCO EN TRONCO!', 'SI CAES, ¡SALTA, SALTA!'] },
+  { type: 'hint', x: 155, y: 110, text: ['¡SALTA DE TRONCO', 'EN TRONCO!'], arrow: 'right', r: 6, pass: 3 },
+  { type: 'help', x0: 157, x1: 246, kind: 'mud', text: 'EN EL LODO: ¡SALTA SIN PARAR!' },
+  { type: 'prop', kind: 'olla', x: 253, y: 103, bonus: 1 },
+  // LA SELVA BAJA
+  { type: 'npc', x: 262.5, y: 108, model: 'nino', lines: ['¡CUIDADO CON LOS LAGARTOS!', 'PISA LAS PIEDRAS, PATA', '¡NO TE METAS AL AGUA!'] },
+  { type: 'hint', x: SV - 1, y: 110, text: '¡DE PIEDRA EN PIEDRA!', arrow: 'right', r: 6, pass: 2 },
+  { type: 'hint', x: sx(21), y: 111, text: ['LAS HOJAS SE HUNDEN', '¡NO TE QUEDES!'], arrow: 'right', r: 5, pass: 2 },
+  { type: 'hint', x: sx(41), y: 111, text: '¡A LAS RAMAS!', arrow: 'up', r: 5, pass: 2 },
+  { type: 'help', x0: SV - 4, x1: SCH, kind: 'caiman', text: '¡NO NADES! VE POR ARRIBA' },
+  // EL COLEGIO
+  { type: 'prop', kind: 'campana', x: SCH + 9.5, y: 110 },
+  { type: 'npc', x: SCH + 11.5, y: 110, model: 'profa', flip: true, lines: ['¡APÚRATE, YA EMPIEZA LA CLASE!', 'HOY ES AFUERITA NOMÁS', '¡SIÉNTATE CON TUS AMIGOS!'] },
+];
+
 const LEVEL = {
   name: 'LA MARATÓN DE LOS ANDES', w: SCH + 53, h: 150,
   anchorRow: G,
@@ -277,6 +324,7 @@ const LEVEL = {
     ],
   },
   spawn: { x: 6, y: G },
+  goal: { x: SCH + 22, y: 110 },   // la flecha de "¡POR AQUÍ!" apunta acá al final
   // la gran montaña: silueta de fondo con nieve en lo alto
   mountain: { peakX: 121, peakRow: 10, snowRow: 78, shape: mountainShape(121, 10, 150) },
   // cerro del que baja el huaico (tierra cálida); su ladera nace tras la última roca fija
@@ -356,11 +404,11 @@ const LEVEL = {
     { type: 'cabra', x: 91, y: G },
     // puntos de control invisibles: el valle y la subida son cortos, así que el
     // primero está en la cumbre, antes del parapente
-    { type: 'checkpoint', x: 151, y: 110, w: 14, h: 10 },   // toda la orilla donde aterriza el parapente
+    { type: 'checkpoint', x: 151, y: 110, w: 14, h: 10, help: 'SI CAES AL LODO: ¡SALTA, SALTA!' },   // toda la orilla donde aterriza el parapente
     // un solo punto de control en la selva: en la orilla, antes de entrar al agua
-    { type: 'checkpoint', x: SV - 4, y: 110, w: 4 },
+    { type: 'checkpoint', x: SV - 4, y: 110, w: 4, help: 'NO TE QUEDES MUCHO EN LAS HOJAS' },
     { type: 'rockfall', x: 82, y: G - 13, interval: 130 },
-    { type: 'checkpoint', x: 121, y: SUMMIT },
+    { type: 'checkpoint', x: 121, y: SUMMIT, help: '¡APÁRTATE CUANDO SE LANCE EL ÁGUILA!' },
     // en la cumbre crece un platanal: su hoja gigante sirve de parapente
     { type: 'leaf', x: 123, y: SUMMIT },
     ...EAGLES,
@@ -391,6 +439,7 @@ const LEVEL = {
     ...BIRDS,
     ...HERBS,
     ...COCA,
+    ...GUIA,
     // las 3 hojas de tarea que se le volaron al niño, enganchadas en el camino
     { type: 'page', x: 47, y: G - 5 },                                            // sobre la pirca alta
     { type: 'page', x: MTN.up[19][0] - 5, y: MTN.up[19][1] - 6 },                 // en el aire, junto al risco
