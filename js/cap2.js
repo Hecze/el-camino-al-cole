@@ -125,6 +125,7 @@
     playa:      { solid: true, top: T2.playa, body: T2.cliff },
     malecon:    { solid: true, top: T2.malecon, body: T2.cliff },
     bajada:     { solid: true, top: T2.paving, body: T2.brick },
+    avenida:    { solid: true, top: T2.asphalt, body: T2.conc },
   });
 
   // ───────────────────────────────────────────────────────────────────────────
@@ -875,25 +876,6 @@
       if (this.state === 'sleep') { const z = Math.floor(this.t / 30) % 3; drawText(ctx, 'Z', x + 12 + z * 2, y - 6 - z * 3, { color: '#fffaf0', shadow: true, shadowColor: '#2a1f2d' }); }
       else if (this.state === 'alert' || (this.state === 'chase' && Math.floor(this.t / 30) % 2 === 0)) bubble(ctx, '¡GUAU!', x + 9, y - 2, '#d8432f');
     }
-  }
-  // CABLES de luz entre edificios, con zapatillas colgadas
-  class Cable extends Actor {
-    constructor(def) { super(def.x0 * TS, def.y0 * TS, (def.x1 - def.x0) * TS, 8); this.y1 = def.y1 * TS; this.shoes = def.shoes; }
-    update() {}
-    drawBack(ctx) {
-      const x0 = this.x, x1 = this.x + this.w, y0 = this.y, y1 = this.y1;
-      for (let c = 0; c < 2; c++) for (let x = x0; x < x1; x++) {
-        const t = (x - x0) / (x1 - x0), y = y0 + (y1 - y0) * t + Math.sin(Math.PI * t) * (10 + c * 5) + c * 3;
-        R(ctx, '#1d1a22', x, y, 1, 1);
-        if (this.shoes && c === 0 && Math.abs(t - 0.45) < 0.005) {
-          // un par de zapatillas colgando de los pasadores
-          R(ctx, '#efe2c8', x, y, 1, 9); R(ctx, '#efe2c8', x + 3, y, 1, 7);
-          R(ctx, '#fffaf0', x - 3, y + 9, 6, 3); R(ctx, '#d8432f', x - 3, y + 11, 6, 1);
-          R(ctx, '#fffaf0', x + 1, y + 7, 6, 3); R(ctx, '#2b6fb8', x + 1, y + 9, 6, 1);
-        }
-      }
-    }
-    draw() {}
   }
   // ventanas en las fachadas
   class Facade extends Actor {
@@ -1696,6 +1678,55 @@
     }
   }
 
+  // LA AVENIDA hacia el Centro: casas a medio terminar con fierros y tanques en el
+  // techo, tiendas con letrero pintado y un panel publicitario.
+  const AV_SHOPS = ['POLLERÍA', 'CHIFA', 'BODEGA', 'LAVANDERÍA', 'FERRETERÍA', 'MENÚ S/ 12', 'CABINAS', 'SE ALQUILA', 'BOTICA', 'JUGUERÍA'];
+  const AV_WALLS = ['#b8644a', '#e3c06a', '#9cc3d0', '#e8e0cc', '#b8644a', '#d0aea4', '#b8d4a8', '#b8644a'];
+  class Avenida extends Actor {
+    constructor(def) {
+      super(def.x0 * TS, ST * TS - 160, (def.x1 - def.x0) * TS, 160);
+      this.houses = []; let tx = def.x0, n = 0;
+      while (tx < def.x1) {
+        const w = 5 + Math.floor(h2(n * 3 + 7) * 3), skip = (def.skip || []).some(([a, b]) => tx + w > a && tx < b);
+        if (!skip) this.houses.push({ x: tx * TS, w: w * TS - 4, floors: 2 + (h2(n * 5 + 1) > 0.5 ? 1 : 0), wall: AV_WALLS[n % AV_WALLS.length], shop: AV_SHOPS[n % AV_SHOPS.length], n });
+        tx += skip ? 1 : w; n++;
+      }
+      this.panel = def.panel * TS;
+    }
+    update() {}
+    drawBack(ctx) {
+      const b = ST * TS, c0 = Game.cam.x - 40, c1 = Game.cam.x + VIEW.w + 40;
+      for (const h of this.houses) {
+        if (h.x > c1 || h.x + h.w < c0) continue;
+        const x = h.x, w = h.w, top = b - h.floors * 34 - 4, brick = h.wall === '#b8644a';
+        R(ctx, '#2a1f2d', x - 1, top - 1, w + 2, b - top + 1); R(ctx, h.wall, x, top, w, b - top);
+        if (brick) for (let yy = top + 2; yy < b - 30; yy += 4) for (let xx = x + ((yy >> 2) % 2) * 4; xx < x + w; xx += 8) R(ctx, '#9a5038', xx, yy, 7, 1);
+        else R(ctx, 'rgba(0,0,0,0.12)', x + w - 4, top, 4, b - top);
+        // pisos de arriba: ventanas con rejas
+        for (let f = 1; f < h.floors; f++) {
+          const fy = b - 34 * (f + 1) + 6;
+          for (let wx = x + 6; wx + 14 < x + w; wx += 22) { R(ctx, '#2a1f2d', wx - 1, fy - 1, 16, 16); R(ctx, '#9fb3c4', wx, fy, 14, 14); for (let k = 2; k < 14; k += 4) R(ctx, '#3a3440', wx + k, fy, 1, 14); }
+        }
+        // el techo sin terminar: fierros de columna y, a veces, el tanque negro
+        for (let k = 3; k < w; k += Math.max(10, w - 6)) R(ctx, '#5d5768', x + k, top - 12, 1, 12), R(ctx, '#5d5768', x + k + 2, top - 10, 1, 10);
+        if (h2(h.n * 9 + 2) > 0.4) { const tx = x + w - 22; R(ctx, '#1d1a20', tx, top - 16, 14, 16); R(ctx, '#2e2a32', tx + 2, top - 16, 10, 2); R(ctx, '#1d1a20', tx + 4, top - 19, 6, 3); }
+        if (h2(h.n * 4 + 8) > 0.5) for (let k = 0; k < 4; k++) R(ctx, ['#d8432f', '#3f6fb8', '#f6c94a', '#f4efe4'][k], x + 6 + k * 7, top - 4 + (k % 2), 5, 6);   // ropa tendida
+        // primer piso: la tienda con su letrero pintado y la reja enrollable
+        R(ctx, '#2a1f2d', x + 2, b - 30, w - 4, 30); R(ctx, '#f4efe4', x + 3, b - 29, w - 6, 9);
+        drawText(ctx, h.shop, x + w / 2, b - 27, { color: h.n % 2 ? '#d8432f' : '#2b4f86', align: 'center' });
+        if (h2(h.n * 7) > 0.45) { R(ctx, '#3a3440', x + 4, b - 20, w - 8, 20); R(ctx, '#f6c94a', x + 6, b - 18, w - 12, 9); R(ctx, '#d9d2c4', x + 6, b - 9, w - 12, 9); }
+        else { R(ctx, '#7f8890', x + 4, b - 20, w - 8, 20); for (let yy = b - 19; yy < b; yy += 2) R(ctx, '#626a72', x + 4, yy, w - 8, 1); }
+      }
+      // panel publicitario en su poste
+      if (this.panel > c0 - 120 && this.panel < c1) {
+        const px = this.panel, t = b - 150; R(ctx, '#3a3440', px + 40, t + 46, 4, b - t - 46);
+        R(ctx, '#1d1622', px - 2, t - 2, 88, 50); R(ctx, '#f6c94a', px, t, 84, 46); R(ctx, '#d8432f', px, t, 84, 6);
+        drawText(ctx, '¡CEBICHE!', px + 42, t + 10, { color: '#2a1f2d', align: 'center' }); drawText(ctx, 'EL PEJE', px + 42, t + 22, { color: '#d8432f', align: 'center' }); drawText(ctx, 'S/ 15', px + 42, t + 34, { color: '#2b4f86', align: 'center' });
+      }
+    }
+    draw() {}
+  }
+
   // RAMPA de tablas en la pista: el mototaxi sale volando (a pie no pasa nada)
   class Rampa extends Actor {
     constructor(def) { super(def.x * TS, ST * TS - 12, 32, 12); this.power = def.power || 8.5; this.big = !!def.big; this.t = 0; this.told = false; }
@@ -2170,7 +2201,7 @@
       // ── EL CENTRO: sobre el túnel de la Vía Expresa y la calle de lajas ──
       [490, 44, 14, 10, 'conc'], [496, 54, 8, H - 54, 'conc'],
       // la avenida del mototaxi, hasta la entrada del Jr. de la Unión
-      [504, ST, 90, H - ST, 'asphalt'],
+      [504, ST, 90, H - ST, 'avenida'],
       // el tráfico: combis paradas que se pueden pisar
       [521, ST - 2, 4, 2, 'blockInvis'], [554, ST - 2, 4, 2, 'blockInvis'], [559, ST - 2, 4, 2, 'blockInvis'],
       ...streetRects(),
@@ -2273,6 +2304,7 @@
       ...BALCONES.map((b, i) => ({ type: 'balcon', x: b[0], w: b[1], y: b[2], col: ['#5a3418', '#2f5a3a', '#6a3a1a'][i % 3] })),
       { type: 'checkpoint', x: 494, y: 44, help: 'SÚBETE AL MOTOTAXI Y ACELERA' },
       // ── EN MOTOTAXI ──
+      { type: 'avenida', x0: 504, x1: 594, skip: [[521, 532]], panel: 562 },
       { type: 'contramano', x0: 504, x1: 594 },
       { type: 'npc', x: 497.5, y: 44, model: 'mototaxista', lines: ['¡TE PRESTO MI MOTO, CAUSA!', '¡AL CENTRO, VOLANDO!'] },
       { type: 'motoRide', x: 499, y: 44, model: 'rojo', end: 586 },
@@ -2348,7 +2380,6 @@
       // la ropa tendida llega hasta la pared del edificio alto: si caes encima, rebotas
       { type: 'clothesline', x0: 837, x1: 847, y: 41, base0: 43, base1: 43, hint: '¡SALTA SOBRE LA ROPA TENDIDA!' },
       { type: 'page', x: 842, y: 32 },
-      { type: 'cable', x0: 858, y0: 33.5, x1: 868, y1: 36.5, shoes: true },
       { type: 'checkpoint', x: 864.5, y: 38, help: 'SALTA AL PERRO Y SIGUE' },
       { type: 'dog', x0: 869, x1: 878, y: 38 },
       { type: 'rebar', x: 885, y: 40 },
@@ -2357,7 +2388,6 @@
       { type: 'dog', x0: 905, x1: 914, y: 38 },
       { type: 'rebar', x: 922, y: 41 },
       { type: 'sign', x: 924, y: 42.6, lines: ['HAY MAZAMORRA', 'MORADA'], style: 'paper' },
-      { type: 'cable', x0: 928, y0: 40, x1: 936, y1: 38 },
       { type: 'sign', x: 942, y: 40.6, lines: ['SE HACEN', 'TAREAS'], style: 'paper', col: '#2b4f86' },
       // ── LA CASONA ──
       { type: 'checkpoint', x: CASONA + 3, y: 46 },
@@ -2386,7 +2416,6 @@
     tank: (d) => new WaterTank(d),
     clothesline: (d) => new Clothesline(d),
     dog: (d) => new Dog(d),
-    cable: (d) => new Cable(d),
     facade: (d) => new Facade(d),
     contest: (d) => new Contest(d),
     motoRide: (d) => new MotoRide(d),
@@ -2397,6 +2426,7 @@
     larcomar: (d) => new Larcomar(d),
     mar: (d) => new Mar(d),
     bajada: (d) => new Bajada(d),
+    avenida: (d) => new Avenida(d),
     suspiros: (d) => new Suspiros(d),
     murales: (d) => new Murales(d),
     balde: (d) => new Balde(d),
