@@ -278,7 +278,7 @@ class Player extends Actor {
     if (this.overEdge) {
       // cayendo por el precipicio
       this.vy = Math.min(this.vy + 0.35, 7); this.y += this.vy; this.x -= 0.5;
-      if (this.dragT > 50) g.playerEnvDeath('fall');
+      if (this.dragT > 50) g.playerEnvDeath('huaico');   // suena igual que una caída
       return;
     }
     const s = hu.surfaceAt(this.cx);

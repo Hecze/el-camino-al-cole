@@ -162,7 +162,7 @@
     if (kind === 'water') { AUDIO.play('splash'); Game.burst(a.cx, a.y + a.h, 'splash', 18); }
     else if (kind === 'mud') AUDIO.play('drown');
     else if (kind === 'caiman') { AUDIO.play('snap'); AUDIO.play('splash'); Game.shake(3, 10); Game.burst(a.cx, a.cy, 'swampSplash', 20); }
-    else if (kind === 'bird') { AUDIO.play('crush'); Game.shake(3, 10); Game.burst(a.cx, a.cy, 'feather', 16); }
+    else if (kind === 'bird' || kind === 'eagle') { AUDIO.play('crush'); Game.shake(3, 10); Game.burst(a.cx, a.cy, 'feather', 16); }
     else if (kind === 'rock') { AUDIO.play('crush'); Game.shake(4, 12); Game.burst(a.cx, a.cy, 'rock', 14); }
     else if (kind === 'combi' || kind === 'buggy') { AUDIO.play('crush'); AUDIO.play('honk'); Game.shake(4, 12); Game.burst(a.cx, a.cy, 'dust', 18); }
     else if (kind === 'cactus' || kind === 'rebar') { AUDIO.play('ouch'); Game.shake(2, 8); Game.burst(a.cx, a.cy, 'spark', 12); }
@@ -478,7 +478,7 @@
         if (p.riding && !(e instanceof Cabra)) continue;
         if (aabb(body, { x: e.x, y: e.y - 6, w: e.w, h: e.h + 6 })) p.mount(e, Game);
       } else if (e instanceof Eagle) {
-        if (e.dangerous && p.invuln <= 0 && aabb(hb, e.hitbox)) { Game.playerEnvDeath('bird'); return; }
+        if (e.dangerous && p.invuln <= 0 && aabb(hb, e.hitbox)) { Game.playerEnvDeath('eagle'); return; }
       } else if (e instanceof Caiman) {
         if (e.dangerous && p.invuln <= 0 && aabb(hb, e.hitbox)) { Game.playerEnvDeath('caiman'); return; }
       } else if (e instanceof Condor) {

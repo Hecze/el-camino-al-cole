@@ -376,5 +376,10 @@ const CHAPTERS = [{
   num: 1, title: 'LA MARATÓN DE LOS ANDES', short: 'LOS ANDES', color: '#8a6fa6',
   goal: '¡LLEGA AL COLE ANTES DE LAS 8:00!', goalShort: '¡ANTES DE LAS 8:00!',
   banner: ['LA MARATÓN DE LOS ANDES', '¡LLEGA A TIEMPO A CLASES!'],
+  deathMsgs: {
+    huaico: '¡TE LLEVÓ EL HUAICO, CAUSA!', mud: '¡TE LLEVÓ EL HUAICO, CAUSA!', water: '¡EL RÍO TE JALÓ, COMPADRE!',
+    bird: '¡EL CÓNDOR TE CHOTEÓ!', eagle: '¡EL ÁGUILA TE LLEVÓ DE PIQUEO!', caiman: '¡EL CAIMÁN TE HIZO CEBICHE!',
+    rock: '¡TE CAYÓ UN PEDRONÓN, HERMANITO!', fall: '¡TE FUISTE AL BARRANCO, PE!', default: '¡CUIDADO, PUES!',
+  },
   level: buildLevel(LEVEL),
 }];
