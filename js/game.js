@@ -314,9 +314,10 @@
     const LC = { t: '#e8dcd0', o: '#a8423e', P: beat ? '#ffa8a0' : '#e07a7a' };
     LUNG.forEach((r, j) => { for (let i = 0; i < r.length; i++) if (LC[r[i]]) { ctx.fillStyle = LC[r[i]]; ctx.fillRect(x - 15 + i + (beat && r[i] !== 't' ? (i < 5 ? -1 : 1) : 0), y + 2 + j, 1, 1); } });
     ctx.fillStyle = '#1d1622'; ctx.fillRect(x, y + 3, w, 6);
+    // barra de OXÍGENO: llena abajo, se vacía al subir; vacía = soroche
     const col = k < 0.5 ? '#9be7c4' : k < 0.8 ? '#ffd166' : '#f2917d';
     const blink = Game.soroche && Math.floor(tick / 10) % 2;
-    ctx.fillStyle = blink ? '#ffffff' : col; ctx.fillRect(x + 1, y + 4, Math.round((w - 2) * k), 4);
+    ctx.fillStyle = blink ? '#f2917d' : col; ctx.fillRect(x + 1, y + 4, Math.max(Game.soroche ? 2 : 0, Math.round((w - 2) * (1 - k))), 4);
     if (Game.cocaFlash > 0) { Game.cocaFlash--; ctx.fillStyle = 'rgba(155,231,196,' + (Game.cocaFlash / 30).toFixed(2) + ')'; ctx.fillRect(x - 18, y, w + 22, 12); }
   }
   // la vista ondula y se ve doble, con un tinte verdoso
@@ -1179,11 +1180,14 @@
   }
 
   // ¡bajo ataque!: líneas de velocidad estilo manga que convergen hacia el
-  // niño. Pocas y titilantes mientras el águila se prepara; densas en el picado.
+  // niño. Pocas y titilantes mientras el águila (o el puma) se prepara; densas en el picado.
   function renderAttackAlert() {
     let n = 0;
     for (const e of Game.entities) if (e instanceof Eagle) {
       if (e.state === 'dive') n = Math.max(n, 46);
+      else if (e.state === 'windup') n = Math.max(n, 18);
+    } else if (e instanceof Puma) {
+      if (e.state === 'leap') n = Math.max(n, 46);
       else if (e.state === 'windup') n = Math.max(n, 18);
     }
     if (!n) return;

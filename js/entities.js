@@ -735,7 +735,7 @@ class Condor extends Actor {
 // queda quieta y recién cuando el niño sale de la pantalla cuenta como caída.
 class Puma extends Actor {
   constructor(def) {
-    super(def.x * TS, def.y * TS - 12, 26, 12);
+    super(def.x * TS, def.y * TS - 16, 30, 16);
     this.homeX = this.x; this.homeY = this.y; this.homeFace = def.face || 1; this.snowy = !!def.snowy;
     this.onRespawn();
   }
@@ -801,19 +801,16 @@ class Puma extends Actor {
   }
   draw(ctx) {
     // su repisa de roca (con nieve arriba si está alto)
-    const rx = Math.round(this.homeX - 3), ry = Math.round(this.homeY + this.h);
-    ctx.fillStyle = '#5d5768'; ctx.fillRect(rx, ry, this.w + 6, 6); ctx.fillRect(rx + 3, ry + 6, this.w, 3); ctx.fillRect(rx + 8, ry + 9, this.w - 10, 2);
-    ctx.fillStyle = '#8a8296'; ctx.fillRect(rx + 1, ry, this.w + 4, 2);
-    if (this.snowy) { ctx.fillStyle = '#f4f8ff'; ctx.fillRect(rx, ry - 1, this.w + 6, 2); }
+    const rw = 40, rx = Math.round(this.homeX + this.w / 2 - rw / 2), ry = Math.round(this.homeY + this.h);
+    ctx.fillStyle = '#5d5768'; ctx.fillRect(rx, ry, rw, 6); ctx.fillRect(rx + 3, ry + 6, rw - 6, 3); ctx.fillRect(rx + 9, ry + 9, rw - 18, 2);
+    ctx.fillStyle = '#8a8296'; ctx.fillRect(rx + 1, ry, rw - 2, 2);
+    if (this.snowy) { ctx.fillStyle = '#f4f8ff'; ctx.fillRect(rx, ry - 1, rw, 2); }
     if (this.state === 'gone') return;
     if (this.state === 'wait' || this.state === 'windup') {
       const img = E.puma.crouch, wind = this.state === 'windup';
       const sh = wind ? (this.t % 4 < 2 ? 1 : -1) : 0;
-      ctx.drawImage(this.face < 0 ? flipS(img) : img, Math.round(this.cx - img.width / 2 + sh), Math.round(this.y + this.h - img.height + (wind ? 1 : 0)));
-      // la cola se mueve: más rápido cuando está por saltar
-      const tk = Math.floor(this.t / (wind ? 3 : 14)) % 2, tx = this.face > 0 ? Math.round(this.cx - img.width / 2) - 1 : Math.round(this.cx + img.width / 2);
-      ctx.fillStyle = '#5a3a22'; ctx.fillRect(tx, Math.round(this.y + this.h - 6 - tk * 2), 2, 3);
-      if (wind) drawText(ctx, '!', Math.round(this.cx), Math.round(this.y - 14 - (this.t % 10 < 5 ? 1 : 0)), { scale: 2, color: '#ffffff', align: 'center', shadow: true, shadowColor: '#2a1f2d' });
+      ctx.drawImage(this.face < 0 ? flipS(img) : img, Math.round(this.cx - img.width / 2 + sh), Math.round(this.y + this.h - img.height + 1));
+      if (wind) drawText(ctx, '!', Math.round(this.cx), Math.round(this.y - 18 - (this.t % 10 < 5 ? 1 : 0)), { scale: 2, color: '#ffffff', align: 'center', shadow: true, shadowColor: '#2a1f2d' });
       return;
     }
     if (this.state !== 'carry') this.drawLeap(ctx);
