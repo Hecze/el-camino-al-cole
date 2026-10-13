@@ -1,16 +1,20 @@
 // cap2.js — CAPÍTULO 2 · EL CONCURSO EN LIMA. El niño viaja a Lima para un
-// concurso escolar, pero el bus se malogra en pleno desierto de Ica. Cuatro
-// tramos de izquierda a derecha:
+// concurso escolar, pero el bus se malogra en pleno desierto de Ica. El viaje
+// es la entrada; el capítulo pasa sobre todo en el Centro de Lima:
 //   x 0–195    EL DESIERTO      · baja las dunas en tabla de sandboard; cactus y tubulares
-//   x 196–345  LA PANAMERICANA  · combis que pasan: súbete a su techo para cruzar los aniegos
-//   x 346–509  LAS AZOTEAS      · garúa, ladrillo, fierros, tanques, ropa tendida y perros chuscos
-//   x 510–     EL COLEGIO       · el jurado del concurso espera
+//   x 196–315  LA PANAMERICANA  · combis que pasan: súbete a su techo para cruzar el aniego
+//   x 316–409  JR. DE LA UNIÓN  · balcones de madera, buzones sin tapa y carretillas
+//   x 410–469  PLAZA DE ARMAS   · Catedral, pileta, palomas, el grass y los húsares de Palacio
+//   x 470–565  BARRIO CHINO     · portada china, toldos, farolitos, emolientero y cambistas
+//   x 566–681  LAS AZOTEAS      · garúa, ladrillo, fierros, tanques, ropa tendida y perros chuscos
+//   x 682–     LA CASONA        · el concurso es en una casona colonial del Centro
 // Todo lo propio del capítulo vive aquí: tiles, sprites, entidades, música y nivel.
 
 (() => {
   'use strict';
   const TS = TILE;
   const GR = 56;            // fila de la pista (y del fondo de las dunas)
+  const ST = 46;            // fila de la calle en el Centro de Lima
   const h2 = (n) => { n = (n | 0) ^ 0x2545f491; n = Math.imul(n ^ (n >>> 15), 0x2c1b3c6d); n = Math.imul(n ^ (n >>> 12), 0x297a2d39); n ^= n >>> 15; return (n >>> 0) / 4294967296; };
   const R = (ctx, c, x, y, w, h) => { ctx.fillStyle = c; ctx.fillRect(Math.round(x), Math.round(y), w, h); };
 
@@ -26,6 +30,9 @@
     'p': '#d9a59a', 'P': '#c48e83', 'q': '#e8bdb2',                           // pared tarrajeada y pintada
     'g': '#9aa0a8', 'G': '#6d737c', 'w': '#dfe3e8',                           // metal
     'r': '#c8322a', 'R': '#8f1f1a', 'y': '#f2c230',
+    'o': '#9a9086', 'O': '#7a7168', 'n': '#b8aea2', 'N': '#5e564e',           // lajas del Centro
+    'W': '#4a2c16', 'u': '#7a4a26', 'U': '#5a3418', 'z': '#a8703c',           // madera de balcón y cajones
+    'v': '#2f7a46', 'V': '#1f5a32', 'x': '#5aa86a',                           // tejas verdes de la portada china
   };
   const tile = (rows) => PIX.fromRows(rows, CPAL);
   const T2 = {};
@@ -62,6 +69,23 @@
     'CCCCCCCCcCCCCCCC', 'CcCCCCCCCCCCCCCC', 'CCCCCCCCCCCCCcCC', 'CCCCCcCCCCCCCCCC', 'CCCCCCCCCCCCCCCC', 'CCCCCCCCCCcCCCCC', 'CCcCCCCCCCCCCCCC', 'DCCCCCCCCCCCCCCD']);
   T2.conc = tile(['CCCCCCCCcCCCCCCC', 'CcCCCCCCCCCCCCCC', 'CCCCCCCCCCCCCcCC', 'CCCCCcCCCCCCCCCC', 'CCCCCCCCCCCCCCCC', 'CCCCCCCCCCcCCCCC', 'CCcCCCCCCCCCCCCC', 'CCCCCCCCCCCCCCCC',
     'CCCCCCCCcCCCCCCC', 'CcCCCCCCCCCCCCCC', 'CCCCCCCCCCCCCcCC', 'CCCCCcCCCCCCCCCC', 'CCCCCCCCCCCCCCCC', 'CCCCCCCCCCcCCCCC', 'CCcCCCCCCCCCCCCC', 'DCCCCCCCCCCCCCCD']);
+  // lajas de piedra del Centro (Jr. de la Unión, la Plaza y el Barrio Chino)
+  T2.paving = tile([
+    'nnnnnnnnnnnnnnnn', 'oooooooNoooooooN', 'oooooooNoooooooN', 'ooOoooONoooOoooN', 'NNNNNNNNNNNNNNNN',
+    'oooNoooooooNoooo', 'oOoNoooooOoNoooo', 'oooNoooooooNoOoo', 'NNNNNNNNNNNNNNNN',
+    'oooooooNoooooooN', 'ooooOooNoooooooN', 'oooooooNooooOooN', 'NNNNNNNNNNNNNNNN',
+    'oooNoooooooNoooo', 'oooNooOooooNoooo', 'NNNNNNNNNNNNNNNN',
+  ]);
+  // techito de un balcón de cajón (se pisa desde abajo)
+  T2.balc = tile(['WWWWWWWWWWWWWWWW', 'zzzzzzzzzzzzzzzz', 'uuuuuuuuuuuuuuuu', 'UuUUUuUUUuUUUuUU', 'WWWWWWWWWWWWWWWW']);
+  // tejado verde de la portada china
+  T2.tejado = tile(['VVVVVVVVVVVVVVVV', 'xvxvxvxvxvxvxvxv', 'vvvvvvvvvvvvvvvv', 'VvVVvVVvVVvVVvVV', 'rrrrrrrrrrrrrrrr', 'RRRRRRRRRRRRRRRR']);
+  // cajones de fruta apilados en el Mercado Central
+  T2.crate = tile([
+    'WWWWWWWWWWWWWWWW', 'WzzzzzzzzzzzzzzW', 'WuuuuuuuuuuuuuuW', 'WWWWWWWWWWWWWWWW', 'WzzzzzzzzzzzzzzW', 'WuuuuuuuuuuuuuuW',
+    'WWWWWWWWWWWWWWWW', 'WzzzzzzzzzzzzzzW', 'WuuuuuuuuuuuuuuW', 'WWWWWWWWWWWWWWWW', 'WzzzzzzzzzzzzzzW', 'WuuuuuuuuuuuuuuW',
+    'WWWWWWWWWWWWWWWW', 'WzzzzzzzzzzzzzzW', 'WuuuuuuuuuuuuuuW', 'WWWWWWWWWWWWWWWW',
+  ]);
   T2.canopy = tile(['wwwwwwwwwwwwwwww', 'rrrrwwwwrrrrwwww', 'rrrrwwwwrrrrwwww', 'RRRRgggRRRRggggR', 'GGGGGGGGGGGGGGGG', '................']);
 
   Object.assign(TILE_SPECS, {
@@ -73,6 +97,10 @@
     steel:      { oneway: true, body: T2.steel },
     conc:       { solid: true, top: T2.concTop, body: T2.conc },
     canopy:     { oneway: true, body: T2.canopy },
+    paving:     { solid: true, top: T2.paving, body: T2.conc },
+    balc:       { oneway: true, body: T2.balc },
+    tejado:     { oneway: true, body: T2.tejado },
+    crate:      { solid: true, top: T2.crate, body: T2.crate },
   });
 
   // ───────────────────────────────────────────────────────────────────────────
@@ -129,6 +157,36 @@
     sleep: PIX.fromRows(['..................', '..................', '..................', '..................', '..........KK......',
       '.........KBK......', '..KKKKKKKbbbKK....', '.KbbbwwbbbbKbbK...', 'KbbbwwwbbbbbbbbK..', 'KBbbbbbbbbbbbBKK..', '.KKKKKKKKKKKKK....', '..................'], DPAL),
   };
+
+  // LIMEÑOS del Centro: un solo molde de 12x24 que se viste según el oficio.
+  // h pelo o gorra · a piel · s camisa · v chaleco o casaca · b correa · p pantalón · z zapatos
+  const MAN = [
+    '....KKKK....', '...KhhhhK...', '..KhhhhhhK..', '..KhaaaaaK..', '..KaKaaKaK..', '..KaaaaaaK..',
+    '...KaRRaK...', '....KaaK....', '..KvvssvvK..', '.KvvvssvvvK.', '.KvvvssvvvK.', '.KavvssvvaK.',
+    '.KaKvssvKaK.', '...KbbbbK...', '...KppppK...', '...KppppK...', '...KpKKpK...', '...KpKKpK...',
+    '...KpKKpK...', '...KpKKpK...', '...KpKKpK...', '..KzzKKzzK..', '..KzzKKzzK..', '..KKKKKKKK..',
+  ];
+  const MAN_TALK = MAN.map((r, i) => i === 6 ? '...KaKKaK...' : r);
+  const MAN_STEP = MAN.map((r, i) => i >= 16 && i <= 20 ? ['...KpK.KpK..', '..KpK..KpK..', '..KpK...KpK.', '.KpK....KpK.', '.KpK....KpK.'][i - 16] : i >= 21 ? ['KzzK....KzzK', 'KzzK....KzzK', 'KKKK....KKKK'][i - 21] : r);
+  const ROLES = {
+    // húsar de Junín, la guardia de Palacio: casaca roja, correaje blanco, casco negro
+    guard:    { h: '#1d1622', a: '#c98e62', s: '#f4efe4', v: '#b8282a', b: '#f4efe4', p: '#1f2a4a', z: '#1d1622' },
+    // cambista: chaleco verde con su fotocheck, camisa blanca
+    cambista: { h: '#2a1f2d', a: '#d9a070', s: '#f4efe4', v: '#2f8a4a', b: '#3a2412', p: '#3a3a52', z: '#3a2412' },
+    // emolientero: mandil blanco sobre polo azul y gorrita
+    emoliente:{ h: '#3f6fb8', a: '#b87a52', s: '#fffaf0', v: '#3f6fb8', b: '#fffaf0', p: '#4a4a5a', z: '#2a1f2d' },
+    // cargador del mercado: polo naranja, gorra al revés
+    cargador: { h: '#d8432f', a: '#a86a42', s: '#f0913c', v: '#f0913c', b: '#3a2412', p: '#2b4f86', z: '#2a1f2d' },
+    // ambulante de golosinas: casaca celeste
+    ambulante:{ h: '#3a2412', a: '#c98e62', s: '#f6c94a', v: '#7fb6d8', b: '#3a2412', p: '#5d5768', z: '#2a1f2d' },
+    // guardián del parque: chaleco amarillo
+    sereno:   { h: '#2a1f2d', a: '#b87a52', s: '#3a4a5c', v: '#f2d230', b: '#2a1f2d', p: '#3a4a5c', z: '#1d1622' },
+  };
+  const LIMENO = {};
+  for (const r in ROLES) {
+    const pal = Object.assign({ '.': null, K: '#2a1f2d', R: '#7a2a2a' }, ROLES[r]);
+    LIMENO[r] = { idle: PIX.fromRows(MAN, pal), talk: PIX.fromRows(MAN_TALK, pal), step: PIX.fromRows(MAN_STEP, pal) };
+  }
 
   // ───────────────────────────────────────────────────────────────────────────
   //  ENTIDADES
@@ -718,8 +776,414 @@
     }
   }
 
-  // ── EL COLEGIO ──────────────────────────────────────────────────────────────
-  // El concurso en el patio: el jurado en su mesa, los otros concursantes con
+  // ── EL CENTRO DE LIMA ───────────────────────────────────────────────────────
+  // CASONA colonial de fondo: fachada pintada (amarillo, celeste, rosado...),
+  // cornisa, ventanas con reja y portón de madera. No choca: es decorado.
+  // Sus balcones son entidades aparte (Balcon) y SÍ se pisan.
+  class Casona extends Actor {
+    constructor(def) { super(def.x0 * TS, def.top * TS, (def.x1 - def.x0) * TS, (ST - def.top) * TS); this.col = def.col; this.sign = def.sign; this.seed = def.x0; this.door = def.door !== false; }
+    update() {}
+    drawBack(ctx) {
+      const x = Math.round(this.x), y = Math.round(this.y), w = this.w, b = ST * TS, c = this.col;
+      R(ctx, c, x, y, w, b - y);
+      R(ctx, 'rgba(0,0,0,0.10)', x + w - 3, y, 3, b - y);                 // canto en sombra
+      R(ctx, 'rgba(255,255,255,0.35)', x, y, w, 2); R(ctx, '#fffaf0', x - 1, y - 3, w + 2, 3); R(ctx, 'rgba(0,0,0,0.18)', x - 1, y, w + 2, 1);   // cornisa blanca
+      R(ctx, 'rgba(0,0,0,0.12)', x, b - 10, w, 10);                       // zócalo
+      // pilastras
+      for (const px of [x + 2, x + w - 6]) { R(ctx, 'rgba(255,255,255,0.25)', px, y + 2, 4, b - y - 12); }
+      // ventanas del primer piso con reja (si no hay portón)
+      const nWin = Math.max(1, Math.floor((w - 16) / 40));
+      for (let k = 0; k < nWin; k++) {
+        const wx = x + 12 + k * ((w - 24) / nWin) + ((w - 24) / nWin - 14) / 2, wy = b - 34;
+        if (this.door && k === Math.floor(nWin / 2)) continue;
+        R(ctx, '#2a2230', wx, wy, 14, 20); R(ctx, '#3a4a5c', wx + 1, wy + 1, 12, 18);
+        for (let r = 2; r < 14; r += 3) R(ctx, '#1d1622', wx + r, wy, 1, 20);
+        R(ctx, '#fffaf0', wx - 2, wy - 2, 18, 2);
+      }
+      // ventanas altas (detrás de los balcones o solas, con persiana)
+      for (let k = 0; k < Math.floor(w / 36); k++) {
+        const wx = x + 10 + k * 36, wy = y + 10;
+        if (wy + 18 > b - 40) break;
+        R(ctx, '#fffaf0', wx - 2, wy - 2, 16, 2); R(ctx, '#5a4030', wx, wy, 12, 18); R(ctx, '#7a5a40', wx + 1, wy + 1, 4, 16); R(ctx, '#7a5a40', wx + 7, wy + 1, 4, 16);
+      }
+      // portón de madera con clavos, en arco
+      if (this.door) {
+        const dx = Math.round(x + w / 2 - 11);
+        R(ctx, '#fffaf0', dx - 3, b - 44, 28, 44); R(ctx, '#4a2c16', dx, b - 40, 22, 40); R(ctx, '#4a2c16', dx + 3, b - 43, 16, 3);
+        R(ctx, '#2a1a0e', dx + 10, b - 40, 2, 40);
+        for (let r = 0; r < 4; r++) for (const nx of [dx + 4, dx + 16]) R(ctx, '#c9a24a', nx, b - 34 + r * 8, 2, 2);
+      }
+      if (this.sign) {
+        const tw = textWidth(this.sign) + 8, sx = Math.round(x + w / 2 - tw / 2), sy = b - 72;
+        R(ctx, '#1d1622', sx - 1, sy - 1, tw + 2, 11); R(ctx, '#fff3d6', sx, sy, tw, 9);
+        drawText(ctx, this.sign, x + w / 2, sy + 1, { color: '#8f1f1a', align: 'center' });
+      }
+    }
+    draw() {}
+  }
+
+  // BALCÓN DE CAJÓN: la caja de madera tallada con celosía, colgada de la
+  // fachada. Su techito es una plancha que se pisa (el tile 'balc').
+  class Balcon extends Actor {
+    constructor(def) { super(def.x * TS, def.y * TS, def.w * TS, 8); this.col = def.col || '#5a3418'; }
+    update() {}
+    drawBack(ctx) {
+      const x = Math.round(this.x), y = Math.round(this.y) + 5, w = this.w, c = this.col;
+      R(ctx, 'rgba(0,0,0,0.25)', x + 2, y, w - 2, 20);                       // sombra en la pared
+      R(ctx, c, x + 1, y, w - 2, 16);
+      // celosía: rombitos de madera
+      for (let yy = y + 2; yy < y + 10; yy += 3) for (let xx = x + 4 + ((yy >> 1) % 2) * 2; xx < x + w - 4; xx += 4) R(ctx, 'rgba(255,230,180,0.3)', xx, yy, 2, 1);
+      for (let k = x + 3; k < x + w - 3; k += 12) R(ctx, 'rgba(0,0,0,0.3)', k, y + 1, 1, 10);   // montantes
+      R(ctx, 'rgba(0,0,0,0.25)', x + 1, y + 11, w - 2, 1);
+      for (let k = x + 4; k < x + w - 4; k += 6) R(ctx, 'rgba(255,230,180,0.2)', k, y + 12, 3, 3);   // tableros de abajo
+      R(ctx, '#2a1a0e', x, y + 16, w, 2);
+      // canes (las ménsulas que lo sostienen)
+      for (const k of [x + 3, x + w - 7]) { R(ctx, c, k, y + 18, 4, 3); R(ctx, c, k + 1, y + 21, 2, 3); }
+    }
+    draw() {}
+  }
+
+  // BUZÓN SIN TAPA: hueco en la vereda. La tapa está a un lado y alguien
+  // dejó un cono. Si caes, pierdes.
+  class Buzon extends Actor {
+    constructor(def) { super(def.x * TS, ST * TS, def.w * TS, TS); this.hazardKind = 'buzon'; }
+    update() {}
+    hazardBox() { return { x: this.x + 3, y: this.y + 6, w: this.w - 6, h: 10 }; }
+    drawBack(ctx) {
+      const x = Math.round(this.x), y = Math.round(this.y);
+      R(ctx, '#141018', x, y, this.w, TS); R(ctx, '#2a2530', x, y, this.w, 2);
+      for (let k = 0; k < this.w; k += 3) R(ctx, '#3a3442', x + k, y + 4 + (k % 2) * 6, 1, 1);
+    }
+    draw(ctx) {
+      const x = Math.round(this.x), y = Math.round(this.y);
+      // la tapa, apoyada al lado del hueco
+      R(ctx, '#2a2530', x - 7, y - 11, 5, 11); R(ctx, '#4a4452', x - 6, y - 10, 3, 9); R(ctx, '#2a2530', x - 5, y - 8, 1, 1);
+      // el cono naranja
+      const cx = x + this.w + 4;
+      R(ctx, '#d8632f', cx, y - 10, 4, 10); R(ctx, '#d8632f', cx - 1, y - 5, 6, 5); R(ctx, '#fffaf0', cx, y - 7, 4, 2); R(ctx, '#2a1f2d', cx - 2, y - 1, 8, 1);
+    }
+  }
+
+  // CARRETILLA del mercado: un cargador la empuja a toda velocidad por la
+  // calle. Antes de entrar grita y aparece un "!" en el borde. Sáltala.
+  class Carretilla extends Actor {
+    constructor(def) { super(-9999, ST * TS - 24, 40, 24); this.x0 = def.x0 * TS; this.x1 = def.x1 * TS; this.speed = def.speed || 1.6; this.load = def.load || 'papa'; this.hazardKind = 'carretilla'; this.onRespawn(); }
+    onRespawn() { this.state = 'wait'; this.t = 0; this.cd = 70; this.x = -9999; }
+    update(g) {
+      this.t++;
+      const p = g.player, inZone = p.cx > this.x0 && p.cx < this.x1;
+      if (this.state === 'wait') {
+        if (inZone && --this.cd <= 0 && g.cam.x + VIEW.w < this.x1 + 60) { this.state = 'warn'; this.t = 0; g.audio('shout'); g.toast('¡CUIDADO, CARRETILLA!'); }
+        return;
+      }
+      if (this.state === 'warn') { if (this.t > 60) { this.state = 'drive'; this.t = 0; this.x = g.cam.x + VIEW.w + 6; } return; }
+      this.x -= this.speed;
+      if (this.t % 6 === 0) g.particles.push({ x: this.x + 36, y: ST * TS - 1, vx: 0.4, vy: -0.3, life: 14, max: 14, col: '#b8aea2', size: 1, grav: 0 });
+      if (this.x + this.w < g.cam.x - 40 || this.x < this.x0 - 200) { this.state = 'wait'; this.cd = 200 + Math.floor(Math.random() * 120); this.x = -9999; }
+    }
+    hazardBox() { return this.state === 'drive' ? { x: this.x + 2, y: this.y + 9, w: this.w - 4, h: this.h - 9 } : null; }
+    draw(ctx, g) {
+      if (this.state === 'warn' && Math.floor(this.t / 5) % 2 === 0) {
+        const ex = g.cam.x + VIEW.w - 12, ey = ST * TS - 40;
+        drawText(ctx, '!', ex, ey, { scale: 2, color: '#ffffff', align: 'center', shadow: true, shadowColor: '#2a1f2d' });
+      }
+      if (this.state !== 'drive') return;
+      const x = Math.round(this.x), b = ST * TS, bob = Math.floor(this.t / 4) % 2;
+      // la carga: sacos de papa o una ruma de naranjas
+      if (this.load === 'papa') { for (const [sx, sy] of [[2, 8], [11, 8], [20, 8], [6, 3], [15, 3]]) { R(ctx, '#2a1f2d', x + sx - 1, b - 14 - sy - 1, 10, 7); R(ctx, '#c9a978', x + sx, b - 14 - sy, 8, 5); R(ctx, '#a88a5a', x + sx + 3, b - 14 - sy, 1, 5); } }
+      else { for (let k = 0; k < 9; k++) { const ox = 3 + (k % 4) * 6 + (k >= 4 ? 3 : 0) + (k >= 7 ? 3 : 0), oy = k < 4 ? 4 : k < 7 ? 9 : 14; R(ctx, '#2a1f2d', x + ox - 1, b - 14 - oy - 1, 6, 6); R(ctx, '#f0913c', x + ox, b - 14 - oy, 4, 4); R(ctx, '#ffd08a', x + ox, b - 14 - oy, 1, 1); } }
+      // la plataforma, la vara y la rueda
+      R(ctx, '#2a1f2d', x, b - 15, 30, 4); R(ctx, '#a8703c', x + 1, b - 14, 28, 2);
+      R(ctx, '#5a3418', x + 28, b - 15, 9, 2);
+      R(ctx, '#1d1622', x + 10, b - 11, 10, 10); R(ctx, '#8a8296', x + 13, b - 8, 4, 4); R(ctx, '#1d1622', x + 14, b - 7, 2, 2);
+      // el cargador empujando, inclinado
+      ctx.drawImage(flipS(bob ? LIMENO.cargador.step : LIMENO.cargador.idle), x + 30, b - 24 - bob);
+    }
+  }
+
+  // PALOMAS de la Plaza: picotean en el suelo y salen volando cuando pasas.
+  class Palomas extends Actor {
+    constructor(def) { super(def.x0 * TS, ST * TS - 6, (def.x1 - def.x0) * TS, 6); this.n = def.n || 7; this.onRespawn(); }
+    onRespawn() {
+      this.birds = [];
+      for (let i = 0; i < this.n; i++) this.birds.push({ x: this.x + 6 + h2(this.x + i * 7) * (this.w - 12), y: ST * TS, vx: 0, vy: 0, fly: false, f: h2(i * 3 + this.x) > 0.5 ? 1 : -1, t: i * 13, away: 0 });
+    }
+    update(g) {
+      const p = g.player; let flap = false;
+      for (const b of this.birds) {
+        b.t++;
+        if (!b.fly) {
+          const near = Math.abs(p.cx - b.x) < 30 + Math.abs(p.vx) * 8 && Math.abs(p.y + p.h - b.y) < 40;
+          if (near) { b.fly = true; b.vx = (b.x < p.cx ? -1 : 1) * (0.8 + Math.random() * 1.2); b.vy = -1.6 - Math.random() * 1.4; b.f = Math.sign(b.vx); flap = true; }
+          else if (b.t % 90 === 0) b.f = -b.f;
+          else if (b.t % 40 < 6) b.x += b.f * 0.25;
+        } else {
+          b.x += b.vx; b.y += b.vy; b.vy = Math.max(-2.4, b.vy - 0.03); b.vx *= 1.01; b.away++;
+          // vuelven cuando ya pasaste
+          if (b.away > 420 && Math.abs(p.cx - this.cx) > 260) { b.fly = false; b.away = 0; b.y = ST * TS; b.x = this.x + 6 + Math.random() * (this.w - 12); b.vx = 0; b.vy = 0; }
+        }
+      }
+      if (flap && g.near(this.cx, 300)) { g.audio('flap'); for (let i = 0; i < 5; i++) g.particles.push({ x: p.cx + (Math.random() - 0.5) * 30, y: ST * TS - 6, vx: (Math.random() - 0.5) * 1.2, vy: -0.4 - Math.random(), life: 40, max: 40, col: '#c9ccd4', size: 1, grav: 0.02 }); }
+    }
+    draw(ctx) {
+      for (const b of this.birds) {
+        const x = Math.round(b.x), y = Math.round(b.y);
+        if (b.fly && b.y < this.y - 400) continue;
+        if (!b.fly) {
+          const peck = b.t % 50 < 8;
+          R(ctx, '#7d8290', x - 3, y - 4, 6, 3); R(ctx, '#5d6270', x - 3 - b.f, y - 3, 2, 2);   // cuerpo y cola
+          const hx = x + b.f * 3 + (b.f < 0 ? -1 : 0);
+          R(ctx, '#4f8a7a', hx - (b.f < 0 ? 0 : 1), y - 5 + (peck ? 3 : 0), 2, 2); R(ctx, '#5d6270', hx, y - 6 + (peck ? 3 : 0), 2, 2);   // cuello tornasol y cabeza
+          R(ctx, '#d89a5a', hx + b.f, y - 5 + (peck ? 3 : 0), 1, 1);
+          R(ctx, '#c8524a', x - 1, y - 1, 1, 1); R(ctx, '#c8524a', x + 1, y - 1, 1, 1);
+        } else {
+          const up = Math.floor(b.t / 4) % 2;
+          R(ctx, '#7d8290', x - 2, y - 2, 5, 2); R(ctx, '#5d6270', x + b.f * 3, y - 3, 2, 2);
+          R(ctx, '#9ca0ac', x - 4, y - (up ? 5 : 1), 4, 2); R(ctx, '#9ca0ac', x + 1, y - (up ? 5 : 1), 4, 2);
+        }
+      }
+    }
+  }
+
+  // LIMEÑO que habla cuando pasas: cambista, emolientero, ambulante, húsar...
+  // TODO-GUIA: cuando exista el sistema `npc` de la rama guia, estos pasan a
+  // ser NPCs reales (hablan por cercanía); se conserva el dibujo y el oficio.
+  class Limeno extends Actor {
+    constructor(def) { super(def.x * TS, ST * TS - 24, 12, 24); this.role = def.role; this.line = def.line; this.face = def.face || -1; this.t = Math.floor(def.x * 7); this.said = false; this.sayT = 0; this.salute = 0; }
+    onRespawn() { this.said = false; }
+    update(g) {
+      this.t++; if (this.sayT > 0) this.sayT--; if (this.salute > 0) this.salute--;
+      const p = g.player, d = Math.abs(p.cx - this.cx);
+      if (this.role !== 'guard') this.face = p.cx < this.cx ? -1 : 1;
+      if (!this.said && d < 80) {
+        this.said = true; this.sayT = 150; g.toast(this.line);
+        g.audio(this.role === 'guard' ? 'clank' : 'shout');
+        if (this.role === 'guard') this.salute = 60;
+      }
+      if (this.role === 'emoliente' && this.t % 14 === 0) g.particles.push({ x: this.x - 20 + Math.random() * 16, y: ST * TS - 22, vx: (Math.random() - 0.5) * 0.2, vy: -0.35, life: 50, max: 50, col: 'rgba(255,255,255,0.7)', size: 2, grav: -0.002 });
+    }
+    draw(ctx) {
+      const x = Math.round(this.x), b = ST * TS, f = this.face, S = LIMENO[this.role];
+      const talking = this.sayT > 0 && Math.floor(this.t / 8) % 2;
+      // lo que cada uno tiene delante o detrás
+      if (this.role === 'emoliente') {
+        // carrito emolientero: mesa con jarras de emoliente, linaza y alfalfa
+        const cx = x - 24;   // el carrito siempre queda delante, del lado por donde llegas
+        R(ctx, '#2a1f2d', cx - 1, b - 14, 24, 2); R(ctx, '#3f6fb8', cx, b - 13, 22, 9); R(ctx, '#fffaf0', cx, b - 13, 22, 1);
+        R(ctx, '#5d5768', cx + 2, b - 4, 2, 4); R(ctx, '#5d5768', cx + 18, b - 4, 2, 4);
+        [['#8a4a1a', 0], ['#c9a24a', 6], ['#5a8a3a', 12], ['#8a4a1a', 17]].forEach(([c, ox]) => { R(ctx, '#dfe3e8', cx + 1 + ox, b - 22, 5, 8); R(ctx, c, cx + 2 + ox, b - 19, 3, 5); });
+      }
+      if (this.role === 'guard') {
+        // garita y lanza con su banderín
+        R(ctx, '#5d5768', x + (f < 0 ? -2 : 13), b - 38, 1, 38); R(ctx, '#c9a24a', x + (f < 0 ? -3 : 12), b - 40, 3, 3);
+        R(ctx, '#d8432f', x + (f < 0 ? -8 : 14), b - 36, 6, 2); R(ctx, '#ffffff', x + (f < 0 ? -8 : 14), b - 34, 6, 2); R(ctx, '#d8432f', x + (f < 0 ? -8 : 14), b - 32, 6, 2);
+      }
+      const img = this.role === 'guard' ? S.idle : talking ? S.talk : S.idle;
+      ctx.drawImage(f > 0 ? img : flipS(img), x, b - 24 - (talking ? 1 : 0));
+      if (this.role === 'guard') {
+        // casco alto con penacho rojo y, al pasar, el saludo
+        R(ctx, '#1d1622', x + 3, b - 28, 6, 4); R(ctx, '#c9a24a', x + 3, b - 25, 6, 1); R(ctx, '#d8432f', x + 5, b - 32, 2, 4);
+        if (this.salute > 0) { R(ctx, '#c98e62', x + (f < 0 ? 1 : 9), b - 26, 2, 6); }
+      } else if (this.role === 'cambista') {
+        // calculadora en la mano y fajo de billetes
+        const hx = f > 0 ? x + 9 : x - 1;
+        R(ctx, '#2a1f2d', hx, b - 14, 5, 6); R(ctx, '#9be7c4', hx + 1, b - 13, 3, 2);
+        R(ctx, '#7ab87a', f > 0 ? x - 1 : x + 9, b - 13 + (this.t >> 4) % 2, 4, 3);
+        R(ctx, '#f6c94a', x + 7, b - 15, 2, 2);   // fotocheck
+      } else if (this.role === 'ambulante') {
+        // la caja de golosinas colgada del cuello
+        R(ctx, '#2a1f2d', x - 1, b - 14, 14, 6); R(ctx, '#c8322a', x, b - 13, 12, 4);
+        R(ctx, '#f6c94a', x + 1, b - 13, 2, 2); R(ctx, '#3f6fb8', x + 4, b - 13, 2, 2); R(ctx, '#9be7c4', x + 7, b - 13, 2, 2); R(ctx, '#ffffff', x + 10, b - 13, 1, 2);
+      }
+      if (this.sayT > 0) bubble(ctx, this.line.replace(/[¡!¿?]/g, '').split(',')[0], x + 6, b - 30);
+    }
+  }
+
+  // EL GRASS de la Plaza: si lo pisas, el guardián te pita. No pasa nada más.
+  class Grass extends Actor {
+    constructor(def) { super(def.x0 * TS, ST * TS - 3, (def.x1 - def.x0) * TS, 3); this.t = 0; this.told = false; this.sayT = 0; }
+    onRespawn() { this.told = false; }
+    update(g) {
+      this.t++; if (this.sayT > 0) this.sayT--;
+      const p = g.player;
+      if (!this.told && p.onGround && p.cx > this.x && p.cx < this.x + this.w && p.y + p.h >= ST * TS - 1) {
+        this.told = true; this.sayT = 140; g.audio('whistle'); g.toast('¡PIIIT! ¡NO PISES EL GRASS!');
+      }
+    }
+    draw(ctx) {
+      const x = Math.round(this.x), b = ST * TS;
+      for (let k = 0; k < this.w; k += 2) { const hgt = 2 + Math.round(h2(x + k) * 2); R(ctx, '#3f8a3a', x + k, b - hgt, 2, hgt); if (h2(k + x * 3) > 0.8) R(ctx, '#f6c94a', x + k, b - hgt - 1, 1, 1); }
+      R(ctx, '#2f6a2a', x, b - 1, this.w, 1);
+      // cartelito clavado
+      const sw = textWidth('NO PISAR') + 6, sx = x + 10;
+      R(ctx, '#6b4524', sx + sw / 2 - 1, b - 14, 2, 12); R(ctx, '#1d1622', sx - 1, b - 23, sw + 2, 11); R(ctx, '#fffaf0', sx, b - 22, sw, 9);
+      drawText(ctx, 'NO PISAR', sx + sw / 2, b - 21, { color: '#2f6a2a', align: 'center' });
+      // el guardián, al final del jardín
+      const gx = x + this.w + 4, talking = this.sayT > 0;
+      ctx.drawImage(flipS(talking && Math.floor(this.t / 8) % 2 ? LIMENO.sereno.talk : LIMENO.sereno.idle), gx, b - 24);
+      if (talking) { R(ctx, '#c9c9d4', gx + 1, b - 18, 3, 2); bubble(ctx, '¡PIIIT!', gx + 6, b - 30, '#d8432f'); }
+    }
+  }
+
+  // PILETA de bronce de la Plaza de Armas: dos tazas que se pisan
+  // (los bloques invisibles van en el nivel) y el agua que salta.
+  class Pileta extends Actor {
+    constructor(def) { super(def.x * TS, (ST - 4) * TS, 9 * TS, 4 * TS); this.t = 0; this.wet = 0; }
+    update(g) {
+      this.t++; if (this.wet > 0) this.wet--;
+      const cx = this.cx, top = this.y - 18;
+      if (this.t % 3 === 0 && g.near(cx, 260)) for (const s of [-1, 1]) g.particles.push({ x: cx + s * 2, y: top, vx: s * (0.5 + Math.random() * 0.6), vy: -1.2 - Math.random() * 0.8, life: 34, max: 34, col: Math.random() < 0.5 ? '#d2f6f2' : '#8cdde6', size: 1, grav: 0.1 });
+      // si te paras en la taza de arriba te salpica
+      const p = g.player;
+      if (p.onGround && Math.abs(p.cx - cx) < 22 && p.y + p.h <= this.y + 2 && this.wet === 0) { this.wet = 120; g.audio('splash'); g.burst(p.cx, p.y + 4, 'splash', 12); g.toast('¡FRESQUITO!'); }
+    }
+    drawBack(ctx) {
+      const x = Math.round(this.x), y = Math.round(this.y), b = ST * TS, w = this.w, t = this.t;
+      const BR = '#6a5a32', BL = '#a8984a', BD = '#3e3420', VG = '#5a8a6a';   // bronce, brillo, sombra y pátina
+      // la poza de piedra (2 filas): borde claro, bloques y el agua adentro
+      R(ctx, '#8a8072', x, b - 32, w, 32); R(ctx, '#cfc6b8', x, b - 32, w, 3); R(ctx, '#6e655a', x, b - 4, w, 4);
+      for (let k = 0; k < w; k += 16) R(ctx, '#6e655a', x + k, b - 28, 1, 24);
+      R(ctx, '#6e655a', x, b - 18, w, 1);
+      R(ctx, '#5fb0c0', x + 3, b - 29, w - 6, 2); R(ctx, '#bdeef2', x + 6 + (t >> 2) % 30, b - 29, 8, 1); R(ctx, '#bdeef2', x + 80 + (t >> 2) % 30, b - 29, 6, 1);
+      // fuste de bronce
+      R(ctx, BD, x + 66, y + 28, 12, b - 32 - y - 28 + 2); R(ctx, BR, x + 68, y + 28, 6, b - 32 - y - 28); R(ctx, VG, x + 69, y + 30, 2, 8);
+      // la taza de bronce: ancha arriba y angosta abajo
+      for (let r = 0; r < 28; r++) { const hw = Math.round(26 - r * 0.6); R(ctx, r < 3 ? BL : r % 7 === 3 ? VG : BR, x + 72 - hw, y + r, hw * 2, 1); R(ctx, BD, x + 72 + hw - 2, y + r, 2, 1); }
+      R(ctx, '#5fb0c0', x + 49, y + 1, 46, 1);
+      // chorritos que caen de la taza a la poza
+      for (const cx of [x + 46, x + 97]) for (let k = 0; k < 4; k++) R(ctx, '#bdeef2', cx + (k % 2), y + 2 + ((t + k * 7) % 28), 1, 3);
+      // la Fama con su trompeta, en lo alto
+      const fx = x + 72;
+      R(ctx, BD, fx - 3, y - 6, 6, 6); R(ctx, BR, fx - 2, y - 14, 4, 8); R(ctx, BR, fx - 2, y - 18, 4, 4);
+      R(ctx, BL, fx + 2, y - 17, 7, 1); R(ctx, BL, fx + 8, y - 18, 2, 3);
+      R(ctx, BR, fx - 8, y - 14, 6, 2); R(ctx, BR, fx - 10, y - 16, 3, 2);   // alas
+    }
+    draw() {}
+  }
+
+  // TELÓN DE LA PLAZA: Catedral (izquierda) y Palacio de Gobierno con su reja.
+  class PlazaFondo extends Actor {
+    constructor(def) { super(def.x0 * TS, 0, (def.x1 - def.x0) * TS, 8); this.cat = def.cat; this.pal = def.pal; this.t = 0; }
+    update() { this.t++; }
+    drawBack(ctx) {
+      const b = ST * TS;
+      // CATEDRAL: dos torres con campanario y el portón labrado al centro
+      const c0 = this.cat[0] * TS, c1 = this.cat[1] * TS, cw = c1 - c0, stone = '#d9c08a', shade = '#b89c6a';
+      R(ctx, stone, c0 + 40, b - 120, cw - 80, 120);
+      R(ctx, shade, c0 + 40, b - 120, cw - 80, 3);
+      for (const tx of [c0, c1 - 44]) {
+        R(ctx, stone, tx, b - 170, 44, 170); R(ctx, shade, tx + 40, b - 170, 4, 170);
+        R(ctx, '#fffaf0', tx - 2, b - 172, 48, 3); R(ctx, '#fffaf0', tx - 2, b - 118, 48, 3);
+        R(ctx, '#3a3442', tx + 14, b - 160, 16, 26); R(ctx, '#c9a24a', tx + 19, b - 148, 6, 6);   // campana
+        R(ctx, '#6a6a7a', tx + 6, b - 186, 32, 14); R(ctx, '#7a7a8a', tx + 12, b - 196, 20, 10); R(ctx, '#5a5a6a', tx + 20, b - 206, 4, 10);
+        R(ctx, '#3a3442', tx + 21, b - 214, 2, 8); R(ctx, '#3a3442', tx + 18, b - 211, 8, 2);   // cruz
+      }
+      const px = c0 + cw / 2;
+      R(ctx, '#c4a874', px - 30, b - 100, 60, 100); R(ctx, '#3a2412', px - 12, b - 50, 24, 50); R(ctx, '#3a2412', px - 9, b - 54, 18, 4);
+      for (const k of [-24, 18]) R(ctx, '#e8d8a8', px + k, b - 96, 6, 96);
+      R(ctx, '#3a3442', px - 6, b - 84, 12, 16);
+      // PALACIO DE GOBIERNO: fachada larga, ventanales, bandera y la reja negra
+      const p0 = this.pal[0] * TS, p1 = this.pal[1] * TS, pw = p1 - p0;
+      R(ctx, '#d6ccb4', p0, b - 96, pw, 96); R(ctx, '#bfb59c', p0, b - 96, pw, 4); R(ctx, '#fffaf0', p0 - 2, b - 99, pw + 4, 3);
+      for (let k = p0 + 10; k < p1 - 16; k += 26) { for (const wy of [b - 84, b - 50]) { R(ctx, '#fffaf0', k - 2, wy - 3, 18, 3); R(ctx, '#3a4a5c', k, wy, 14, 22); R(ctx, '#5a7086', k + 2, wy + 2, 4, 6); } }
+      const mx = p0 + pw / 2;
+      R(ctx, '#d6ccb4', mx - 30, b - 116, 60, 20); R(ctx, '#fffaf0', mx - 32, b - 118, 64, 3);
+      R(ctx, '#5d5768', mx, b - 150, 2, 34);
+      const wave = (this.t >> 4) % 2;
+      R(ctx, '#d8232f', mx + 2, b - 150 + wave, 8, 12); R(ctx, '#ffffff', mx + 10, b - 150, 8, 12); R(ctx, '#d8232f', mx + 18, b - 150 + wave, 8, 12);
+      // la reja con puntas doradas
+      R(ctx, '#1d1622', p0 - 4, b - 30, pw + 8, 2); R(ctx, '#1d1622', p0 - 4, b - 6, pw + 8, 2);
+      for (let k = p0 - 4; k < p1 + 4; k += 4) { R(ctx, '#1d1622', k, b - 32, 1, 32); R(ctx, '#c9a24a', k, b - 34, 1, 2); }
+      for (let k = p0; k < p1; k += 64) { R(ctx, '#2a2530', k, b - 40, 6, 40); R(ctx, '#c9a24a', k + 1, b - 43, 4, 3); }
+    }
+    draw() {}
+  }
+
+  // PORTADA DEL BARRIO CHINO: columnas rojas y tejado verde (se pisa)
+  class PortadaChina extends Actor {
+    constructor(def) { super(def.x0 * TS, def.y * TS, (def.x1 - def.x0) * TS, 8); }
+    update() {}
+    drawBack(ctx) {
+      const x = Math.round(this.x), y = Math.round(this.y), w = this.w, b = ST * TS;
+      for (const cx of [x + 10, x + w - 20]) { R(ctx, '#1d1622', cx - 1, y + 4, 12, b - y - 4); R(ctx, '#c8322a', cx, y + 4, 10, b - y - 4); R(ctx, '#e8564a', cx + 2, y + 4, 2, b - y - 4); R(ctx, '#3a3442', cx - 3, b - 6, 16, 6); }
+      R(ctx, '#c8322a', x + 4, y + 10, w - 8, 6); R(ctx, '#8f1f1a', x + 4, y + 16, w - 8, 2);
+      // el cartel dorado
+      const tw = textWidth('BARRIO CHINO') + 10;
+      R(ctx, '#1d1622', x + w / 2 - tw / 2 - 1, y + 19, tw + 2, 13); R(ctx, '#8f1f1a', x + w / 2 - tw / 2, y + 20, tw, 11);
+      drawText(ctx, 'BARRIO CHINO', x + w / 2, y + 22, { color: '#f6c94a', align: 'center' });
+      // las puntas del alero, levantadas
+      R(ctx, '#1f5a32', x - 4, y - 3, 6, 3); R(ctx, '#1f5a32', x + w - 2, y - 3, 6, 3); R(ctx, '#1f5a32', x - 6, y - 6, 3, 3); R(ctx, '#1f5a32', x + w + 3, y - 6, 3, 3);
+      R(ctx, '#f6c94a', x + w / 2 - 3, y - 6, 6, 6);
+    }
+    draw() {}
+  }
+
+  // TOLDO de un puesto: si caes encima, rebotas (como la ropa tendida)
+  class Toldo extends Actor {
+    constructor(def) { super(def.x0 * TS, def.y * TS, (def.x1 - def.x0) * TS, 10); this.col = def.col || ['#2b6fb8', '#fffaf0']; this.sag = 0; this.prevFeet = 1e9; this.goods = def.goods || 'fruta'; }
+    update(g) {
+      this.sag *= 0.85;
+      const p = g.player, feet = p.y + p.h, top = this.y + 2;
+      if (!p.riding && p.vy > 0 && this.prevFeet <= top + 1 && feet >= top && p.cx > this.x + 1 && p.cx < this.x + this.w - 1) {
+        p.y = top - p.h; p.vy = -10.5; p.noCut = 26; p.onGround = false; p.coyote = 0; this.sag = 6;
+        g.audio('boing'); g.burst(p.cx, top + 2, 'dust', 5);
+      }
+      this.prevFeet = p.y + p.h;
+    }
+    drawBack(ctx) {
+      // el puesto: mostrador con la mercadería
+      const x = Math.round(this.x), w = this.w, b = ST * TS;
+      R(ctx, '#5d5768', x + 2, this.y, 2, b - this.y); R(ctx, '#5d5768', x + w - 4, this.y, 2, b - this.y);
+      R(ctx, '#2a1f2d', x + 4, b - 16, w - 8, 16); R(ctx, '#a8703c', x + 5, b - 15, w - 10, 14); R(ctx, '#7a4a26', x + 5, b - 8, w - 10, 1);
+      const G = this.goods === 'fruta' ? ['#f0913c', '#f6c94a', '#d8432f', '#7ab84a'] : ['#c9a978', '#8a5a3a', '#e8d8a8', '#a88a5a'];
+      for (let k = x + 6; k < x + w - 8; k += 4) { R(ctx, G[(k >> 2) % 4], k, b - 19 - ((k >> 2) % 2), 4, 4); }
+    }
+    draw(ctx) {
+      const x = Math.round(this.x), y = Math.round(this.y) + Math.round(this.sag), w = this.w, [c1, c2] = this.col;
+      R(ctx, '#2a1f2d', x - 1, y - 1, w + 2, 9);
+      for (let k = 0; k < w; k += 8) R(ctx, (k / 8) % 2 ? c2 : c1, x + k, y, Math.min(8, w - k), 7);
+      for (let k = 0; k < w; k += 8) R(ctx, (k / 8) % 2 ? c2 : c1, x + k + 1, y + 7, 6, 2);   // flecos
+    }
+  }
+
+  // FAROLITOS del chifa: cuelgan de una cuerda; si los tocas, se mecen y suenan
+  class Farolitos extends Actor {
+    constructor(def) {
+      super(def.x0 * TS, def.y * TS, (def.x1 - def.x0) * TS, 8);
+      this.lamps = []; for (let x = this.x + 10; x < this.x + this.w - 6; x += 22) this.lamps.push({ x, a: 0, v: 0, cd: 0 });
+      this.t = 0;
+    }
+    update(g) {
+      this.t++;
+      const p = g.player;
+      for (const L of this.lamps) {
+        if (L.cd > 0) L.cd--;
+        const ly = this.y + 6 + Math.sin(Math.PI * (L.x - this.x) / this.w) * 6;
+        if (L.cd === 0 && Math.abs(p.cx - L.x) < 7 && p.y < ly + 12 && p.y + p.h > ly) {
+          L.v += (p.vx >= 0 ? 1 : -1) * 0.12 + p.vy * -0.01; L.cd = 30; g.audio('bell');
+          for (let i = 0; i < 6; i++) g.particles.push({ x: L.x, y: ly + 8, vx: (Math.random() - 0.5) * 1.6, vy: -Math.random() * 1.4, life: 26, max: 26, col: Math.random() < 0.5 ? '#f6c94a' : '#ffe9a8', size: 1, grav: 0.05 });
+        }
+        L.v += -L.a * 0.04; L.v *= 0.97; L.a += L.v;
+        L.a += Math.sin(this.t * 0.03 + L.x) * 0.0006;
+      }
+    }
+    draw(ctx) {
+      const x0 = this.x, w = this.w;
+      for (let x = 0; x < w; x++) R(ctx, '#2a1f2d', x0 + x, this.y + Math.sin(Math.PI * x / w) * 6, 1, 1);
+      for (const L of this.lamps) {
+        const ly = this.y + Math.sin(Math.PI * (L.x - x0) / w) * 6;
+        ctx.save(); ctx.translate(Math.round(L.x), Math.round(ly)); ctx.rotate(L.a);
+        R(ctx, '#2a1f2d', 0, 0, 1, 4);
+        R(ctx, 'rgba(255,140,90,0.25)', -6, 3, 13, 13);
+        R(ctx, '#2a1f2d', -4, 4, 9, 2); R(ctx, '#c8322a', -4, 6, 9, 7); R(ctx, '#e8564a', -3, 7, 2, 5); R(ctx, '#8f1f1a', -4, 9, 9, 1); R(ctx, '#2a1f2d', -4, 13, 9, 2);
+        R(ctx, '#f6c94a', 0, 15, 1, 3);
+        ctx.restore();
+      }
+    }
+  }
+
+  // ── LA CASONA ───────────────────────────────────────────────────────────────
+  // El concurso en el patio de una casona del Centro: el jurado en su mesa, los otros concursantes con
   // sus proyectos y tu sitio vacío. La meta es pararte en tu sitio.
   class Contest extends Actor {
     constructor(def) {
@@ -741,11 +1205,20 @@
       if (p.onGround && !p.riding && Math.abs(p.cx - this.spot) < 12) { this.done = true; p.won = true; p.vx = 0; g.audio('sit'); g.audio('applause'); }
     }
     drawBack(ctx) {
-      // el colegio: pabellón de dos pisos, pintado de crema con zócalo granate
+      // la casona del concurso: dos pisos coloniales, amarillo con zócalo granate,
+      // balcones de cajón, portón abierto y la banderola colgada de la cornisa
       const x = Math.round(this.x) - 20, b = this.base;
-      R(ctx, '#e8dcc0', x, b - 120, 340, 120); R(ctx, '#8f2a2a', x, b - 22, 340, 22); R(ctx, '#d0c2a2', x, b - 62, 340, 3);
-      for (let k = 0; k < 7; k++) for (const fy of [b - 108, b - 52]) { R(ctx, '#3a4a5c', x + 14 + k * 46, fy, 26, 22); R(ctx, '#8fb3cf', x + 16 + k * 46, fy + 2, 6, 6); R(ctx, '#e8dcc0', x + 26 + k * 46, fy, 2, 22); }
-      R(ctx, '#d0c2a2', x - 4, b - 126, 348, 7);
+      R(ctx, '#e3c06a', x, b - 120, 340, 120); R(ctx, '#8f2a2a', x, b - 14, 340, 14); R(ctx, 'rgba(0,0,0,0.08)', x, b - 62, 340, 2);
+      R(ctx, '#fffaf0', x - 4, b - 126, 348, 6); R(ctx, 'rgba(0,0,0,0.15)', x - 4, b - 120, 348, 1);
+      for (let k = 0; k < 7; k++) R(ctx, 'rgba(255,255,255,0.22)', x + 4 + k * 52, b - 120, 5, 106);   // pilastras
+      // ventanas bajas con reja
+      for (let k = 0; k < 6; k++) { const wx = x + 20 + k * 52; R(ctx, '#3a4a5c', wx, b - 52, 22, 26); for (let r = 3; r < 22; r += 4) R(ctx, '#1d1622', wx + r, b - 52, 1, 26); R(ctx, '#fffaf0', wx - 2, b - 55, 26, 3); }
+      // balcones de cajón en el segundo piso
+      for (const bx of [x + 30, x + 140, x + 250]) {
+        R(ctx, '#4a2c16', bx - 2, b - 112, 64, 4); R(ctx, '#5a3418', bx, b - 108, 60, 28);
+        for (let yy = b - 105; yy < b - 90; yy += 3) for (let xx = bx + 3 + ((yy >> 1) % 2) * 2; xx < bx + 57; xx += 4) R(ctx, 'rgba(255,230,180,0.28)', xx, yy, 2, 1);
+        R(ctx, '#2a1a0e', bx, b - 80, 60, 2); for (const k of [bx + 4, bx + 52]) R(ctx, '#5a3418', k, b - 78, 4, 6);
+      }
       // banderola del concurso
       R(ctx, '#1d1622', x + 59, b - 151, 222, 22); R(ctx, '#d8432f', x + 60, b - 150, 220, 20); R(ctx, '#ffffff', x + 60, b - 140, 220, 1);
       drawText(ctx, 'CONCURSO ESCOLAR DE CIENCIAS', x + 170, b - 147, { color: '#ffffff', align: 'center' });
@@ -814,10 +1287,44 @@
     }
   };
 
+  // el cerro San Cristóbal con su cruz en la cima, sobre el Rímac
+  const sanCristobal = (seed, col, col2) => (g, W, H) => {
+    cerroLayer(seed, col, col2)(g, W, H);
+    const ridge = (x) => 76 + Math.sin((x / W) * Math.PI * 2 + seed) * 18 + Math.sin((x / W) * Math.PI * 6 + seed * 2) * 7;
+    let bx = 0; for (let x = 0; x < W; x += 2) if (ridge(x) < ridge(bx)) bx = x;
+    const by = Math.round(ridge(bx));
+    g.fillStyle = '#f4efe4'; g.fillRect(bx - 1, by - 22, 3, 22); g.fillRect(bx - 6, by - 17, 13, 3);
+    g.fillStyle = '#6f6a72'; g.fillRect(bx + 14, by - 12, 1, 12); g.fillRect(bx + 12, by - 9, 5, 1);   // antena
+  };
+  // el Centro a lo lejos: casonas de dos pisos con balcones, torres de iglesia y cúpulas
+  const COLONIAL = ['#d9c08a', '#c9b48a', '#b8c4c4', '#d0aea4', '#c8c0aa', '#b9a088'];
+  const colonialLayer = (seed, haze, maxH, churches) => (g, W, H) => {
+    let x = 0, i = 0;
+    while (x < W) {
+      const w = Math.min(W - x, 22 + Math.floor(h2(seed + i * 7) * 30));
+      if (churches && h2(seed + i * 29) > 0.72 && w > 30) {
+        // iglesia: dos torres con campanario y cúpula al medio
+        const top = 128 - maxH - 26, col = COLONIAL[i % 2];
+        g.fillStyle = col; g.fillRect(x, 128 - maxH, w, H);
+        for (const tx of [x + 1, x + w - 9]) { g.fillStyle = col; g.fillRect(tx, top, 8, H); g.fillStyle = haze; g.fillRect(tx + 2, top + 4, 4, 5); g.fillRect(tx + 1, top - 5, 6, 5); g.fillRect(tx + 3, top - 9, 2, 4); }
+        g.fillStyle = haze; for (let r = 0; r < 8; r++) g.fillRect(x + w / 2 - 8 + r, 128 - maxH - 8 + r, 16 - r * 2, 1);
+      } else {
+        const hh = 14 + Math.floor(h2(seed + i * 13) * maxH), top = 128 - hh;
+        g.fillStyle = COLONIAL[Math.floor(h2(seed + i * 3) * COLONIAL.length)]; g.fillRect(x, top, w, H - top);
+        g.fillStyle = 'rgba(255,255,255,0.35)'; g.fillRect(x, top, w, 1);
+        g.fillStyle = haze;
+        for (let yy = top + 4; yy < 122; yy += 9) for (let xx = x + 3; xx < x + w - 4; xx += 7) g.fillRect(xx, yy, 3, 5);
+        // balcón corrido, de madera oscura
+        if (h2(seed + i * 17) > 0.4 && hh > 22) { g.fillStyle = '#6a4a32'; g.fillRect(x + 3, top + 7, Math.min(w - 6, 18), 6); }
+      }
+      x += w + (h2(seed + i * 5) > 0.7 ? 2 : 0); i++;
+    }
+  };
+
   // ───────────────────────────────────────────────────────────────────────────
   //  RENDER PROPIO DEL CAPÍTULO
   // ───────────────────────────────────────────────────────────────────────────
-  const LIMA_X = 338;
+  const LIMA_X = 308;
   function renderBack(ctx, g) {
     const cam = g.cam, x0 = Math.max(0, Math.floor(cam.x / 2) * 2 - 2), x1 = Math.min(DUNE_END * TS, cam.x + VIEW.w + 2);
     // la laguna del oasis, detrás de las palmeras
@@ -838,11 +1345,12 @@
       R(ctx, s > 0.35 ? '#e2b273' : '#f8dca6', x, sy, 2, 1);
       for (let k = 1; k < 5; k++) { const yy = sy + k * 9 + ((x >> 4) % 3); if (h2(x * 3 + k * 101) > 0.45) R(ctx, 'rgba(160,110,60,0.18)', x, yy, 2, 1); }
     }
-    // en Lima: el fondo de los callejones, oscuro, entre edificio y edificio
-    if (cam.x + VIEW.w > 346 * TS && cam.x < SCHOOL * TS) {
+    // en las azoteas: el fondo de los callejones, oscuro, entre edificio y edificio
+    const A0 = BLD[0][0] * TS, A1 = CASONA * TS;
+    if (cam.x + VIEW.w > A0 && cam.x < A1) {
       const top = 46 * TS, gr = ctx.createLinearGradient(0, top - 40, 0, top + 120);
       gr.addColorStop(0, 'rgba(60,58,70,0)'); gr.addColorStop(0.3, '#4a4652'); gr.addColorStop(1, '#25222c');
-      ctx.fillStyle = gr; ctx.fillRect(Math.max(346 * TS, cam.x), top - 40, Math.min(VIEW.w, SCHOOL * TS - cam.x), cam.y + VIEW.h - top + 40);
+      const xa = Math.max(A0, cam.x); ctx.fillStyle = gr; ctx.fillRect(xa, top - 40, Math.min(cam.x + VIEW.w, A1) - xa, cam.y + VIEW.h - top + 40);
     }
   }
   // garúa limeña: llovizna finita que casi no moja (pero se ve)
@@ -920,16 +1428,33 @@
   //  EL NIVEL
   // ───────────────────────────────────────────────────────────────────────────
   const H = 70;
-  // azoteas: [desde, hasta, fila del techo, tile]
-  const BLD = [[363, 376, 42, 'roofS'], [379, 392, 40, 'roof'], [394, 410, 43, 'roof'], [411, 424, 35, 'roofS'], [427, 442, 38, 'roof'],
-               [444, 456, 40, 'roofS'], [463, 478, 38, 'roof'], [481, 494, 41, 'roofS'], [497, 510, 39, 'roof'],
-               [513, 526, 41, 'roofS'], [529, 541, 44, 'roof'], [544, 556, 36, 'roofS'], [559, 571, 39, 'roof'], [574, 586, 42, 'roofS']];
-  const SCHOOL = 586;   // donde empieza el patio del colegio
+  // azoteas del Centro: [desde, hasta, fila del techo, tile]
+  const BLD = [[566, 582, 43, 'roof'], [583, 596, 35, 'roofS'], [599, 614, 38, 'roof'], [616, 628, 40, 'roofS'],
+               [635, 650, 38, 'roof'], [653, 666, 41, 'roofS'], [669, 682, 39, 'roof']];
+  const CASONA = 682;   // donde empieza el patio de la casona del concurso
   // escalones del puente peatonal: macizos (te frenan), de 3 casillas y 2 filas de alto
-  const FB_STEPS = [[313, GR - 2], [316, GR - 4], [319, GR - 6], [322, GR - 8], [325, GR - 10], [328, GR - 12]];
-  const STOPS = [{ x: 213.5 }, { x: 240.5 }, { x: 266.5, peaje: true, wait: 120 }, { x: 304.5 }];
+  const FB_STEPS = [[283, GR - 2], [286, GR - 4], [289, GR - 6], [292, GR - 8], [295, GR - 10], [298, GR - 12]];
+  const STOPS = [{ x: 213.5 }, { x: 240.5 }, { x: 266.5, peaje: true, wait: 120 }];
+  // la calle del Centro (fila ST) con sus buzones sin tapa: [x, ancho]
+  const BUZONES = [[337, 2], [352, 3], [366, 2], [384, 3], [508, 2], [538, 3]];
+  const STREET = [330, 566];
+  function streetRects() {
+    const out = []; let x = STREET[0];
+    for (const [bx, bw] of BUZONES) { out.push([x, ST, bx - x, H - ST, 'paving'], [bx, ST + 1, bw, H - ST - 1, 'paving']); x = bx + bw; }
+    out.push([x, ST, STREET[1] - x, H - ST, 'paving']);
+    return out;
+  }
+  // casonas de fondo: [desde, hasta, fila de la cornisa, color, letrero]
+  const CASONAS = [
+    [330, 340, 36, '#e3c06a', 'BOTICA'], [340, 350, 34, '#9cc3d0', 'BAZAR'], [350, 364, 33, '#d99a8a', null], [364, 376, 35, '#e3c06a', 'JOYERÍA'],
+    [376, 390, 34, '#c4704a', 'CALZADO'], [390, 402, 35, '#e8e0cc', null], [402, 410, 36, '#9cc3d0', null],
+    [470, 488, 35, '#d9c08a', null], [488, 500, 34, '#d0aea4', 'BAZAR'], [500, 518, 35, '#e3c06a', 'IMPORTACIONES'], [518, 532, 34, '#b8322a', 'CHIFA'],
+    [532, 548, 35, '#9cc3d0', 'CASA DE CAMBIO'], [548, 566, 31, '#c9b48a', 'MERCADO CENTRAL'],
+  ];
+  // balcones de cajón que se pisan (Jr. de la Unión): [x, ancho, fila]
+  const BALCONES = [[344, 5, 43], [351, 5, 41], [358, 5, 43], [370, 5, 43], [377, 5, 41], [383, 6, 43]];
   const L2 = {
-    name: 'EL CONCURSO EN LIMA', w: 640, h: H, anchorRow: 46,
+    name: 'EL CONCURSO EN LIMA', w: CASONA + 54, h: H, anchorRow: 46,
     dunes: DUNES,
     // amanecer despejado en el desierto
     sky: { dawn: ['#3a3466', '#d9826a', '#ffc68a'], morning: ['#5a9ad6', '#a9d4ee', '#f8e6bf'] },
@@ -946,45 +1471,58 @@
         { kind: 'mountains', color: '#a8866a', color2: '#94735a', y: GR - 2.6, parallax: 0.18, vpar: 0.24, amp: 4, seed: 9 },
         { kind: 'hills', color: '#d2ad7e', color2: '#bf9a6c', y: GR - 0.6, parallax: 0.32, vpar: 0.40, amp: 1.8, seed: 6 },
       ] },
-      // Lima: cielo "panza de burro", cerros con casitas y la ciudad gris
+      // el Centro de Lima: cielo "panza de burro", el San Cristóbal con su cruz,
+      // torres de iglesia y casonas con balcones
       { x0: LIMA_X - 8, x1: LIMA_X + 4, anchorRow: 44, sky: { dawn: ['#6f7080', '#9a9aa6', '#bdbcbf'], morning: ['#8f929e', '#b4b6be', '#d2d1d2'], sun: false }, layers: [
-        { kind: 'hills', color: '#a59a92', color2: '#958a83', y: 40, parallax: 0.06, vpar: 0.08, amp: 1, build: cerroLayer(3, '#a59a92', '#857a73') },
-        { kind: 'hills', color: '#8e909c', color2: '#7f818d', y: 43, parallax: 0.14, vpar: 0.18, amp: 1, build: cityLayer(11, '#9a9ca8', '#8e909c', '#b6b8c2', 60) },
-        { kind: 'hills', color: '#6f717e', color2: '#626470', y: 45.5, parallax: 0.3, vpar: 0.36, amp: 1, build: cityLayer(29, '#7a7c88', '#6f717e', '#8f93a0', 44) },
+        { kind: 'hills', color: '#a59a92', color2: '#958a83', y: 40, parallax: 0.06, vpar: 0.08, amp: 1, build: sanCristobal(3, '#a59a92', '#857a73') },
+        { kind: 'hills', color: '#a8a39a', color2: '#9a958c', y: 43, parallax: 0.14, vpar: 0.18, amp: 1, build: colonialLayer(11, '#8e8a86', 40, true) },
+        { kind: 'hills', color: '#8a8580', color2: '#7a756f', y: 45.5, parallax: 0.3, vpar: 0.36, amp: 1, build: colonialLayer(29, '#6f6a66', 26, false) },
       ] },
     ],
     spawn: { x: 7, y: 36 },
     zones: [
       { x: 0,   name: 'EL DESIERTO',     music: 'desierto' },
       { x: 196, name: 'LA PANAMERICANA', music: 'panamericana' },
-      { x: 346, name: 'LAS AZOTEAS',     music: 'plebeyo' },
-      { x: SCHOOL + 2, name: 'EL COLEGIO', music: 'plebeyo' },
+      { x: 330, name: 'JR. DE LA UNIÓN', music: 'plebeyo' },
+      { x: 410, name: 'PLAZA DE ARMAS',  music: 'plebeyo' },
+      { x: 470, name: 'BARRIO CHINO',    music: 'plebeyo' },
+      { x: 566, name: 'LAS AZOTEAS',     music: 'plebeyo' },
+      { x: CASONA + 2, name: 'LA CASONA', music: 'plebeyo' },
     ],
     rects: [
       ...duneFill(H),
       // ── LA PANAMERICANA: la pista sigue por debajo del puente hasta el túnel ──
-      [196, GR, 156, H - GR, 'asphalt'],
-      [346, GR - 2, 1, 2, 'blockInvis'],                        // boca del túnel: solo entran las combis
+      [196, GR, 126, H - GR, 'asphalt'],
+      [316, GR - 2, 1, 2, 'blockInvis'],                        // boca del túnel: solo entran las combis
       ...FB_STEPS.map(s => [s[0], s[1], 3, GR - s[1], 'conc']),   // escalera del puente peatonal
+      // ── EL CENTRO: sobre el túnel de la Vía Expresa y la calle de lajas ──
+      [316, 44, 14, 10, 'conc'], [322, 54, 8, H - 54, 'conc'],
+      ...streetRects(),
+      // la pileta de la Plaza: taza grande y taza chica
+      [436, ST - 2, 9, 2, 'blockInvis'], [439, ST - 4, 3, 2, 'blockInvis'],
+      // cajones de fruta para subir del Mercado a las azoteas
+      [557, ST - 1, 4, 1, 'crate'], [561, ST - 2, 5, 2, 'crate'],
       // ── LAS AZOTEAS ──
-      [346, 44, 14, 10, 'roof'], [352, 54, 8, H - 54, 'roof'],  // sobre el túnel y el primer edificio
       ...BLD.map(b => [b[0], b[2], b[1] - b[0], H - b[2], b[3]]),
       // tanques de agua (sólidos)
-      [371, 40, 2, 2, 'blockInvis'], [418, 33, 2, 2, 'blockInvis'], [467, 36, 2, 2, 'blockInvis'], [503, 37, 2, 2, 'blockInvis'], [550, 34, 2, 2, 'blockInvis'],
-      // ── EL COLEGIO: el patio ──
-      [SCHOOL, 46, 640 - SCHOOL, H - 46, 'conc'],
+      [590, 33, 2, 2, 'blockInvis'], [639, 36, 2, 2, 'blockInvis'], [675, 37, 2, 2, 'blockInvis'],
+      // ── LA CASONA: el patio ──
+      [CASONA, 46, 54, H - 46, 'paving'],
     ],
     platforms: [
       // techos de los paraderos
-      [212, GR - 4, 4, 'steel'], [239, GR - 4, 4, 'steel'], [303, GR - 4, 4, 'steel'],
+      [212, GR - 4, 4, 'steel'], [239, GR - 4, 4, 'steel'],
       // techo del peaje
       [262, GR - 6, 10, 'canopy'],
       // escaleras y tablero del puente peatonal
-      [331, 44, 15, 'steel'],
+      [301, 44, 15, 'steel'],
+      // balcones del Jr. de la Unión y el tejado de la portada china
+      ...BALCONES.map(b => [b[0], b[2], b[1], 'balc']),
+      [476, 42, 11, 'tejado'],
     ],
     liquids: [
-      // aniegos: la tubería reventó y la pista está inundada
-      [222, GR, 10, 2, 'water', 1], [282, GR, 14, 2, 'water', 1],
+      // aniego: la tubería reventó y la pista está inundada
+      [222, GR, 10, 2, 'water', 1],
     ],
     entities: [
       // ── EL DESIERTO ──
@@ -998,63 +1536,87 @@
       // el oasis de Huacachina
       { type: 'palm', x: 177, y: GR, tall: 54, lean: -0.2 }, { type: 'palm', x: 183, y: GR, tall: 44, lean: 0.25 }, { type: 'palm', x: 188, y: GR, tall: 58, lean: 0.1 }, { type: 'palm', x: 193, y: GR, tall: 40, lean: -0.3 },
       { type: 'sign', x: 181, y: GR, lines: ['HUACACHINA'], style: 'post' },
-      // ── LA PANAMERICANA ──
+      // ── LA PANAMERICANA (corta: un aniego, el peaje y el puente) ──
       // apenas dejas la tabla (así nunca reapareces a pie en las dunas)
       { type: 'checkpoint', x: 180, y: GR },
       { type: 'roadHint', x0: 214.5, x1: 222, text: '¡SÚBETE AL TECHO DE LA COMBI!' },
       { type: 'sign', x: 202, y: GR, lines: ['PANAMERICANA SUR', 'LIMA 299 KM'], style: 'post' },
-      { type: 'combiSpawner', x0: 196, x1: 330, stops: STOPS, end: 346.5 },
+      { type: 'combiSpawner', x0: 196, x1: 296, stops: STOPS, end: 316.5 },
       { type: 'vendor', x: 207, y: GR, shout: '¡CHICHA MORADA, CHICHA!', kind: 'chicha' },
-      { type: 'paradero', x: 212, y: GR - 4 }, { type: 'paradero', x: 239, y: GR - 4 }, { type: 'paradero', x: 303, y: GR - 4 },
+      { type: 'paradero', x: 212, y: GR - 4 }, { type: 'paradero', x: 239, y: GR - 4 },
       { type: 'sign', x: 219.5, y: GR, lines: ['¡CUIDADO!', 'ANIEGO'], style: 'board', col: '#f6c94a' },
-      { type: 'geyser', x: 226.5 }, { type: 'geyser', x: 288.5, power: 1.3 },
+      { type: 'geyser', x: 226.5 },
       { type: 'sign', x: 248, y: GR, lines: ['LIMA 12 KM'], style: 'post' },
       { type: 'vendor', x: 252, y: GR, shout: '¡GASEOSA, GALLETA, CHIFLES!', kind: 'cooler' },
       { type: 'peaje', x0: 262, x1: 272, y: GR - 6, price: 'S/ 6.10' },
       { type: 'page', x: 266.5, y: GR - 7 },
-      { type: 'sign', x: 278, y: GR, lines: ['SE ROMPIÓ', 'LA TUBERÍA'], style: 'board', col: '#f6c94a' },
-      { type: 'sign', x: 313, y: GR, lines: ['SE VENDE TERRENO', 'TRATO DIRECTO'], style: 'board' },
-      { type: 'footbridge', x0: 313, x1: 346, deck: 44, steps: FB_STEPS },
-      { type: 'roadHint', x0: 296, x1: 330, text: '¡SUBE POR EL PUENTE PEATONAL!' },
-      { type: 'tunnel', x: 346 },
+      { type: 'sign', x: 283, y: GR, lines: ['SE VENDE TERRENO', 'TRATO DIRECTO'], style: 'board' },
+      { type: 'footbridge', x0: 283, x1: 316, deck: 44, steps: FB_STEPS },
+      { type: 'roadHint', x0: 273, x1: 300, text: '¡SUBE POR EL PUENTE PEATONAL!' },
+      { type: 'tunnel', x: 316 },
+      // ── JR. DE LA UNIÓN ──
+      // casonas y balcones primero: se dibujan detrás de todo lo demás
+      ...CASONAS.map(c => ({ type: 'casona', x0: c[0], x1: c[1], top: c[2], col: c[3], sign: c[4] })),
+      ...BALCONES.map((b, i) => ({ type: 'balcon', x: b[0], w: b[1], y: b[2], col: ['#5a3418', '#2f5a3a', '#6a3a1a'][i % 3] })),
+      { type: 'checkpoint', x: 322, y: 44 },
+      { type: 'sign', x: 323, y: 46.4, lines: ['BIENVENIDOS', 'A LIMA'], style: 'paint', col: '#f6c94a' },
+      { type: 'sign', x: 327, y: 44, lines: ['CENTRO DE LIMA'], style: 'post' },
+      { type: 'limeno', x: 333, role: 'ambulante', line: '¡CHICLE, CARAMELO, CHUPETÍN!' },
+      // TODO-GUIA: hint '¡SALTA EL HUECO!' antes del primer buzón (x 335)
+      ...BUZONES.map(([x, w]) => ({ type: 'buzon', x, w })),
+      // TODO-GUIA: hint '¡SÚBETE AL BALCÓN!' bajo el primer balcón (x 342), con flecha hacia arriba
+      { type: 'carretilla', x0: 340, x1: 408, speed: 1.5, load: 'papa' },
+      { type: 'palomas', x0: 392, x1: 402, n: 6 },
+      { type: 'vendor', x: 404, y: ST, shout: '¡HELADO, HELADITO!', kind: 'cooler' },
+      // ── PLAZA DE ARMAS (respiro: nada te mata aquí) ──
+      { type: 'plazaFondo', x0: 410, x1: 470, cat: [411, 435], pal: [446, 470] },
+      { type: 'checkpoint', x: 412, y: ST },
+      // TODO-GUIA: prop — el grass (pita el guardián), las palomas y la pileta reaccionan al tocarlos
+      { type: 'grass', x0: 415, x1: 424 },
+      { type: 'palomas', x0: 427, x1: 435, n: 8 },
+      { type: 'pileta', x: 436 },
+      { type: 'palomas', x0: 446, x1: 455, n: 7 },
+      // TODO-GUIA: npc — los húsares de Palacio (saludo y frase al pasar)
+      { type: 'limeno', x: 456, role: 'guard', line: '¡SIGA, JOVEN, SIGA!' },
+      { type: 'limeno', x: 466, role: 'guard', line: '¡CORRE, QUE LLEGAS TARDE!' },
+      // ── BARRIO CHINO Y MERCADO CENTRAL ──
+      { type: 'portadaChina', x0: 476, x1: 487, y: 42 },
+      { type: 'checkpoint', x: 472, y: ST },
+      // TODO-GUIA: hint '¡CAE EN EL TOLDO!' junto al primer toldo (x 488)
+      { type: 'toldo', x0: 490, x1: 495, y: 43, col: ['#2b6fb8', '#fffaf0'], goods: 'fruta' },
+      { type: 'limeno', x: 499, role: 'emoliente', line: '¡EMOLIENTE, CALIENTITO!' },
+      { type: 'limeno', x: 504, role: 'cambista', line: '¿DÓLARES? ¿CAMBIO?' },
+      { type: 'carretilla', x0: 488, x1: 556, speed: 1.8, load: 'naranja' },
+      { type: 'toldo', x0: 512, x1: 517, y: 43, col: ['#c8322a', '#fffaf0'], goods: 'papa' },
+      // TODO-GUIA: prop — los farolitos del chifa se mecen y suenan al tocarlos
+      { type: 'farolitos', x0: 518, x1: 532, y: 41 },
+      { type: 'limeno', x: 526, role: 'ambulante', line: '¡A SOL, A SOL, A SOL!' },
+      { type: 'limeno', x: 535, role: 'cambista', line: '¡CAMBIO, DÓLAR, EURO!' },
+      { type: 'toldo', x0: 544, x1: 549, y: 43, col: ['#2f7a46', '#f6c94a'], goods: 'fruta' },
+      { type: 'checkpoint', x: 554, y: ST },
+      { type: 'sign', x: 559, y: ST - 1, lines: ['¡ARRIBA!'], style: 'paper' },
       // ── LAS AZOTEAS ──
-      { type: 'checkpoint', x: 350, y: 44 },
       ...BLD.map(b => ({ type: 'facade', x0: b[0], x1: b[1], y: b[2] })),
-      { type: 'facade', x0: 352, x1: 360, y: 44 },
-      { type: 'sign', x: 349, y: 45.2, lines: ['BIENVENIDOS', 'A LIMA'], style: 'paint', col: '#f6c94a' },
-      { type: 'tank', x: 371, y: 42 }, { type: 'tank', x: 418, y: 35 }, { type: 'tank', x: 467, y: 38 }, { type: 'tank', x: 503, y: 39 },
-      { type: 'sign', x: 369, y: 43.6, lines: ['SE ALQUILA', 'CUARTO'], style: 'paper' },
-      { type: 'sign', x: 386, y: 41.8, lines: ['NO ORINAR'], style: 'paint', col: '#fffaf0' },
-      { type: 'rebar', x: 384, y: 40 },
-      { type: 'sign', x: 398, y: 44.6, lines: ['CUIDADO', 'CON EL PERRO'], style: 'paper', col: '#1d1622' },
-      { type: 'dog', x0: 394, x1: 400.5, y: 43 },
+      { type: 'tank', x: 590, y: 35 }, { type: 'tank', x: 639, y: 38 }, { type: 'tank', x: 675, y: 39 },
+      { type: 'sign', x: 570, y: 44.6, lines: ['CUIDADO', 'CON EL PERRO'], style: 'paper', col: '#1d1622' },
+      { type: 'dog', x0: 566, x1: 572.5, y: 43 },
       // la ropa tendida llega hasta la pared del edificio alto: si caes encima, rebotas
-      { type: 'clothesline', x0: 401, x1: 411, y: 41, base0: 43, base1: 43, hint: '¡SALTA SOBRE LA ROPA TENDIDA!' },
-      { type: 'page', x: 406, y: 32 },
-      { type: 'cable', x0: 422, y0: 33.5, x1: 432, y1: 36.5, shoes: true },
-      { type: 'cable', x0: 374, y0: 40, x1: 382, y1: 38 },
-      { type: 'checkpoint', x: 428.5, y: 38 },
-      { type: 'dog', x0: 433, x1: 442, y: 38 },
-      { type: 'rebar', x: 449, y: 40 },
-      { type: 'sign', x: 450, y: 41.6, lines: ['PROHIBIDO', 'ARROJAR BASURA'], style: 'paint', col: '#b8322a' },
-      { type: 'clothesline', x0: 455.5, x1: 463, y: 37, base0: 40, base1: 38, hint: '¡OTRA VEZ LA ROPA!' },
-      { type: 'dog', x0: 469, x1: 478, y: 38 },
-      { type: 'rebar', x: 486, y: 41 },
-      { type: 'sign', x: 488, y: 42.6, lines: ['HAY MAZAMORRA', 'MORADA'], style: 'paper' },
-      { type: 'cable', x0: 492, y0: 40, x1: 500, y1: 38 },
-      { type: 'checkpoint', x: 514.5, y: 41 },
-      { type: 'rebar', x: 518, y: 41 },
-      { type: 'sign', x: 520, y: 42.6, lines: ['SE ALQUILA', 'MINI DEPA'], style: 'paper' },
-      { type: 'dog', x0: 529, x1: 536.5, y: 44 },
-      { type: 'clothesline', x0: 537, x1: 544, y: 42, base0: 44, base1: 44, hint: '¡ARRIBA, POR LA ROPA!' },
-      { type: 'tank', x: 550, y: 36 },
-      { type: 'cable', x0: 555, y0: 34.5, x1: 562, y1: 37.5, shoes: true },
-      { type: 'sign', x: 565, y: 40.6, lines: ['NO HAY', 'AGUA'], style: 'paint', col: '#b8322a' },
-      { type: 'rebar', x: 563, y: 39 }, { type: 'dog', x0: 566, x1: 571, y: 39 },
-      { type: 'sign', x: 580, y: 43.6, lines: ['SE HACEN', 'TAREAS'], style: 'paper', col: '#2b4f86' },
-      // ── EL COLEGIO ──
-      { type: 'checkpoint', x: SCHOOL + 3, y: 46 },
-      { type: 'contest', x: SCHOOL + 10, y: 46 },
+      { type: 'clothesline', x0: 573, x1: 583, y: 41, base0: 43, base1: 43, hint: '¡SALTA SOBRE LA ROPA TENDIDA!' },
+      { type: 'page', x: 578, y: 32 },
+      { type: 'cable', x0: 594, y0: 33.5, x1: 604, y1: 36.5, shoes: true },
+      { type: 'checkpoint', x: 600.5, y: 38 },
+      { type: 'dog', x0: 605, x1: 614, y: 38 },
+      { type: 'rebar', x: 621, y: 40 },
+      { type: 'sign', x: 622, y: 41.6, lines: ['PROHIBIDO', 'ARROJAR BASURA'], style: 'paint', col: '#b8322a' },
+      { type: 'clothesline', x0: 627.5, x1: 635, y: 37, base0: 40, base1: 38, hint: '¡OTRA VEZ LA ROPA!' },
+      { type: 'dog', x0: 641, x1: 650, y: 38 },
+      { type: 'rebar', x: 658, y: 41 },
+      { type: 'sign', x: 660, y: 42.6, lines: ['HAY MAZAMORRA', 'MORADA'], style: 'paper' },
+      { type: 'cable', x0: 664, y0: 40, x1: 672, y1: 38 },
+      { type: 'sign', x: 678, y: 40.6, lines: ['SE HACEN', 'TAREAS'], style: 'paper', col: '#2b4f86' },
+      // ── LA CASONA ──
+      { type: 'checkpoint', x: CASONA + 3, y: 46 },
+      { type: 'contest', x: CASONA + 10, y: 46 },
     ],
     decor: [],
     renderBack, renderScreen,
@@ -1082,6 +1644,18 @@
     cable: (d) => new Cable(d),
     facade: (d) => new Facade(d),
     contest: (d) => new Contest(d),
+    casona: (d) => new Casona(d),
+    balcon: (d) => new Balcon(d),
+    buzon: (d) => new Buzon(d),
+    carretilla: (d) => new Carretilla(d),
+    palomas: (d) => new Palomas(d),
+    limeno: (d) => new Limeno(d),
+    grass: (d) => new Grass(d),
+    pileta: (d) => new Pileta(d),
+    plazaFondo: (d) => new PlazaFondo(d),
+    portadaChina: (d) => new PortadaChina(d),
+    toldo: (d) => new Toldo(d),
+    farolitos: (d) => new Farolitos(d),
   });
 
   // ───────────────────────────────────────────────────────────────────────────
@@ -1096,9 +1670,10 @@
     deathMsgs: {
       combi: '¡TE CHAPÓ LA COMBI!', buggy: '¡TE ATROPELLÓ EL TUBULAR!', cactus: '¡TE ESPINASTE CON EL CACTUS!',
       water: '¡TE CAÍSTE AL ANIEGO!', dog: '¡EL PERRO CHUSCO TE BOTÓ!', rebar: '¡TE CHUZASTE CON LOS FIERROS!',
+      buzon: '¡TE CAÍSTE AL BUZÓN!', carretilla: '¡TE ATROPELLÓ LA CARRETILLA!',
       fall: '¡TE FUISTE DE LA AZOTEA!', default: '¡QUÉ PASÓ, CAUSA!',
     },
-    tips: ['TABLA: TÓCALA, BAJA LAS DUNAS Y SALTA EN LAS CRESTAS.', 'COMBI: SÚBETE AL TECHO PARA CRUZAR EL ANIEGO.', 'ROPA TENDIDA: CAE ENCIMA Y REBOTAS BIEN ALTO.', 'PERRO CHUSCO: SÁLTALO, NO TE DEJES ALCANZAR.'],
+    tips: ['TABLA: TÓCALA, BAJA LAS DUNAS Y SALTA EN LAS CRESTAS.', 'COMBI: SÚBETE AL TECHO PARA CRUZAR EL ANIEGO.', 'BALCONES, TOLDOS Y ROPA: SÚBETE ENCIMA.', 'BUZÓN, CARRETILLA Y PERRO: SÁLTALOS.'],
     onStart: (g) => { g.combiRides = 0; },
     win: {
       title: '¡LLEGASTE AL CONCURSO!',
