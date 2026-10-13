@@ -8,6 +8,8 @@
 //       (táctil o teclado). arrow: 'up' | 'down' | 'left' | 'right' → flecha que
 //       salta junto al cartel. vr: alto de la zona (casillas, por defecto 6).
 //       dy: sube el cartel (px). when(g): solo se muestra si devuelve true.
+//       item: 'coca' | 'herb' | ... → el cartel solo está mientras ese objeto siga
+//       ahí (cerca del cartel); al tomarlo, desaparece.
 //   { type: 'npc', x: 30, y: 144, model: 'pastor', lines: ['¡APÚRATE, HIJITO!'] }
 //       Personaje que habla con un globo al acercarte (r casillas, por defecto 6);
 //       las frases rotan solas. model: un nombre de GUIDE.models (los capítulos
@@ -106,7 +108,9 @@ const GUIDE = (() => {
     update(g) {
       const p = g.player, dx = p.cx - this.x;
       // nada encima del título del capítulo
-      const on = g.banner > 140 && dx > -this.r && dx < this.pass && Math.abs(p.cy - this.y) < this.vr && (!this.d.when || this.d.when(g));
+      // item: el cartel acompaña a un objeto y se va cuando ya lo tomaste
+      const item = !this.d.item || g.entities.some(e => !e.dead && e.type === this.d.item && Math.abs(e.cx - this.x) < 3 * TS && Math.abs(e.cy - this.y) < 4 * TS);
+      const on = item && g.banner > 140 && dx > -this.r && dx < this.pass && Math.abs(p.cy - this.y) < this.vr && (!this.d.when || this.d.when(g));
       this.a = Math.max(0, Math.min(1, this.a + (on ? 0.12 : -0.08)));
       if (this.a > 0) {
         this.t++;

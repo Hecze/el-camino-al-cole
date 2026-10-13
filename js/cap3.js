@@ -2137,6 +2137,95 @@ const ART3 = (() => {
     g.globalCompositeOperation = 'source-atop'; R(g, 'rgba(240,248,255,0.12)', 0, 0, W, H); g.globalCompositeOperation = 'source-over';   // un velo de neblina
   }
 
+  // LA POSTAL DE MACHU PICCHU, con contraste fuerte: roca café al sol con
+  // sombras azul oscuro y musgo; cerros lejanos verde azulado; la ciudadela de
+  // piedra rojiza con andenes verdes bajando y la plaza de pasto.
+  function paintPostal(g, W, H) {
+    const px = (c, x, y) => { g.fillStyle = c; g.fillRect(x, y, 1, 1); };
+    const nz = (x, y, s) => hash(x * 131 + y * 7919 + (s || 0));
+    const ROCK_LIT = ['#7a5a40', '#94704e', '#ad865e', '#c49a70'], ROCK_SH = ['#1a2028', '#232c34', '#2e3a40'];
+    const MOSS = ['#4e6a34', '#668a40', '#86a64e'];
+    // 1) cerros lejanos, dos capas verde azuladas
+    for (const [base, amp, cols, seed] of [[48, 22, ['#86a89a', '#7a9e90'], 3], [70, 20, ['#5e8a7a', '#527c6e'], 9]]) {
+      for (let x = 0; x < W; x++) {
+        const t = Math.round(base - Math.abs(Math.sin(x * 0.021 + seed)) * amp - Math.sin(x * 0.07 + seed) * 4);
+        for (let y = t; y < H; y++) px(y - t < 2 ? cols[1] : cols[0], x, y);
+      }
+    }
+    // pintor de roca: cara en sombra / cara al sol separadas por una arista vertical irregular
+    const rock = (x, y, t, ridge, mossy) => {
+      const lit = x > ridge + Math.sin(y * 0.3) * 2;
+      const n = nz(x, y);
+      if (mossy && (y - t) > 2 && hash((x >> 2) * 59 + (y >> 2) * 23) < 0.16 && n < 0.7) { px(MOSS[Math.floor(nz(y, x) * 3)], x, y); return; }   // parches de musgo
+      if (lit) {
+        let k = Math.floor(1 + n * 2.8 - (x - ridge) / 60);
+        if (hash((x >> 2) * 41 + (y >> 3)) < 0.18) k = 0;                       // vetas
+        if (nz(x >> 1, y >> 2, 5) > 0.965) { px('#e6d6b8', x, y); return; }      // destellos
+        px(ROCK_LIT[Math.max(0, Math.min(3, k))], x, y);
+      } else px(ROCK_SH[Math.min(2, Math.floor(n * 3.2))], x, y);
+    };
+    // 2) acantilados de la derecha
+    const cTop = (x) => 52 + Math.abs(Math.sin(x * 0.05)) * 10 + (x < 330 ? (330 - x) * 0.6 : 0) + hash(x >> 2) * 4;
+    for (let x = 290; x < W; x++) {
+      const t = Math.round(cTop(x));
+      for (let y = t; y < H; y++) {
+        const seg = Math.floor((x + Math.sin(y * 0.08 + x * 0.01) * 4) / 9 + Math.sin(x * 0.03) * 1.5);   // contrafuertes de ancho variable
+        const lit = hash(seg * 13) > 0.4;
+        rock(x, y, t, lit ? x - 99 : x + 99, true);
+      }
+    }
+    // 3) Huayna Picchu: el pico grande, rocoso
+    const HX = 238;
+    const hTop = (x) => (x < HX ? 4 + Math.pow((HX - x) / 19, 1.35) * 46 : 4 + Math.pow((x - HX) / 36, 1.5) * 46 - 12 * Math.exp(-Math.pow((x - HX - 48) / 16, 2))) + hash(x >> 1) * 3;   // izquierda a pique, hombro a la derecha
+    for (let x = 150; x < 330; x++) {
+      const t = Math.round(hTop(x)); if (t >= H) continue;
+      for (let y = t; y < H; y++) rock(x, y, t, HX + 2 + (y - 4) * 0.22 + Math.sin(y * 0.11) * 6 + Math.sin(y * 0.37) * 2, true);
+      px(x < HX ? '#141a20' : '#3a4a2a', x, t);
+      if (t < 18 && (t % 3 === 0)) px('#c9a878', x, t + 2);                    // andenes de la cumbre
+    }
+    // 4) Huchuy Picchu: el picacho chico delante, a la izquierda
+    const UX = 112;
+    for (let x = 70; x < 160; x++) {
+      const t = Math.round(46 + Math.pow(Math.abs(x - UX) / 14, 1.5) * 22 + hash(x) * 3); if (t >= H) continue;
+      for (let y = t; y < H; y++) rock(x, y, t, UX - 2 + Math.sin(y * 0.2) * 3, true);
+      px('#141a20', x, t);
+    }
+    // 5) la ladera delantera con andenes verdes que bajan (izquierda) y la ciudadela (derecha)
+    const SAD = 96;
+    const fTop = (x) => x < 40 ? 70 + x * 0.4 : x < 330 ? SAD + Math.sin(x * 0.04) * 2 : SAD + (x - 330) * 0.5;
+    for (let x = 0; x < W; x++) {
+      const t = Math.round(fTop(x));
+      for (let y = t; y < H; y++) {
+        if (x < 40) { px(ROCK_SH[Math.floor(nz(x, y) * 3)], x, y); continue; }   // borde oscuro que enmarca
+        // andenes: franjas de pasto con su muro oscuro, en diagonal hacia abajo
+        const band = (y - t + Math.floor(x * 0.35)) % 6;
+        px(band === 0 ? '#3a3020' : band === 1 ? '#86a64e' : nz(x, y) < 0.3 ? '#5e8436' : '#6f9440', x, y);
+      }
+    }
+    // la ciudadela: recintos de piedra rojiza escalonados, con hornacinas
+    const STONE = ['#4a2e22', '#7a4e38', '#9a6448', '#b47c58', '#c8926a'];
+    const wall = (x0, y0, w, h, seed) => {
+      for (let y = y0; y < y0 + h; y++) for (let x = x0; x < x0 + w; x++) {
+        const j = (y - y0) % 3 === 2 || (x + ((y - y0) / 3 | 0) * 3 + seed) % 6 === 0;
+        px(j ? STONE[1] : STONE[2 + Math.floor(nz(x, y, seed) * 2.6)], x, y);
+      }
+      for (let k = x0 + 3; k < x0 + w - 3; k += 6) { px(STONE[0], k, y0 + 2); px(STONE[0], k + 1, y0 + 2); px(STONE[0], k, y0 + 3); px(STONE[0], k + 1, y0 + 3); }
+      for (let x = x0; x < x0 + w; x++) px('#d8a87a', x, y0);
+    };
+    // recintos sueltos de alturas distintas sobre el lomo (no en pirámide)
+    // tres franjas de recintos: atrás los altos (el templo), al medio y adelante los bajos
+    for (const [x, dy, w, h] of [
+      [214, -2, 20, 11], [238, -6, 30, 14], [272, -1, 22, 10], [298, 2, 18, 9],                       // atrás
+      [192, 8, 18, 9], [212, 7, 26, 10], [242, 6, 14, 9], [258, 8, 30, 10], [292, 9, 26, 9], [320, 11, 12, 8],   // al medio
+      [204, 18, 34, 8], [242, 19, 22, 8], [268, 18, 40, 8], [312, 20, 16, 7],                        // adelante
+      [150, 24, 16, 7], [70, 34, 14, 6]])                                                           // casitas sueltas en los andenes
+      wall(x, SAD + dy - h, w, h, x);
+    // la plaza principal
+    for (let y = SAD + 2; y < SAD + 16; y++) for (let x = 104 + (y - SAD); x < 188; x++) px(nz(x, y) < 0.15 ? '#6f9a32' : '#88b442', x, y);
+    // un poco de neblina abajo
+    for (let i = 0; i < 3; i++) { g.fillStyle = 'rgba(235,240,245,' + (0.18 + i * 0.1) + ')'; g.fillRect(0, H - 10 + i * 3, W, 3); }
+  }
+
   // piezas del decorado: [x en casillas, fila del suelo, ancho y alto (px), pintor, ajuste x, ajuste y]
   const BACK = [
     [0, GC, 8 * TILE + 8, 7 * TILE + 8, paintHostal, -4, 4],
@@ -2155,12 +2244,12 @@ const ART3 = (() => {
     const cam = g.cam, vw = VIEW.w;
     const vis = (x, w) => x + w > cam.x - 8 && x < cam.x + vw + 8;
     // Machu Picchu: el pico y la ciudadela tienen algo de parallax (están lejos)
-    if (cam.x > (AC + 105) * TILE) {
-      const ref = (AC + 159) * TILE - vw / 2;
-      const hp = cached('huayna', 340, 320, paintHuayna);
-      ctx.drawImage(hp, Math.round((AC + 155) * TILE + (cam.x - ref) * 0.45), 31 * TILE + 4);
-      const ci = cached('citadel', 520, 120, paintCitadel);
-      ctx.drawImage(ci, Math.round((AC + 143) * TILE + (cam.x - ref) * 0.2), 41 * TILE + 8);
+    // la postal completa: Huayna Picchu, la falda de los cerros y la ciudadela sobre
+    // el lomo, encima del camino del final; se mueve lento (está lejos)
+    if (cam.x > (AC + 100) * TILE) {
+      const PW = 440, PH = 150, refCam = (AC + 184) * TILE - vw / 2;   // la cámara al final del camino
+      const post = cached('postal', PW, PH, paintPostal);
+      ctx.drawImage(post, Math.round(refCam + vw / 2 - PW / 2 + (cam.x - refCam) * 0.75), 40 * TILE - PH + 12);
     }
     // mar de nubes a los pies del Camino Inca
     if (cam.x > (AC + 30) * TILE - vw) for (let i = 0; i < 26; i++) {

@@ -521,7 +521,8 @@
     if (Input.pressed('pause')) { Game.state = 'pause'; Game.pauseSel = 0; AUDIO.play('select'); return; }
     if (Input.pressed('mute')) AUDIO.toggleMute();
     Game.time++; Game.banner++;
-    if (Game.toastMsg && ++Game.toastMsg.t > 100) Game.toastMsg = null;
+    // los avisos duran lo que toma leerlos: ~2,5 s más un poco por cada letra
+    if (Game.toastMsg && ++Game.toastMsg.t > 150 + Game.toastMsg.text.length * 4) Game.toastMsg = null;
 
     for (const m of Game.movers) m.update(Game);
     p.update(Game);
@@ -1184,12 +1185,15 @@
 
   function panel(x, y, w, h) { ctx.fillStyle = 'rgba(28,18,30,0.55)'; ctx.fillRect(x + 1, y, w - 2, h); ctx.fillRect(x, y + 1, w, h - 2); }
   let hintBottom = 0;   // el aviso breve se acomoda debajo del cartel de ayuda para no encimarse
+  // instrucciones de las entidades: con el mismo estilo que las ayudas del suelo
+  // (recuadro oscuro con borde dorado) y flotando sobre el niño, no arriba al centro
   function hintBox(lines) {
-    const w = Math.max(...lines.map(l => textWidth(l))) + 16, h = lines.length * 11 + 6;
-    hintBottom = 30 + h + 3;
-    const hi = Math.floor(tick / 20) % 2 ? '#ffe68c' : '#ffffff';
-    panel(BASE_W / 2 - w / 2, 30, w, h);
-    lines.forEach((l, i) => drawText(ctx, l, BASE_W / 2, 34 + i * 11, { color: i === 0 ? hi : '#fff3d6', align: 'center' }));
+    const p = Game.player, w = Math.max(...lines.map(l => textWidth(l))) + 8, h = lines.length * 9 + 4;
+    const x = Math.round(Math.max(4, Math.min(BASE_W - w - 4, p.cx - Game.cam.x - w / 2)));
+    const y = Math.round(Math.max(26, p.y - Game.cam.y - 40 - h));
+    ctx.fillStyle = 'rgba(28,18,30,0.86)'; ctx.fillRect(x, y, w, h);
+    ctx.fillStyle = '#ffd166'; ctx.fillRect(x, y - 1, w, 1); ctx.fillRect(x, y + h, w, 1); ctx.fillRect(x - 1, y, 1, h); ctx.fillRect(x + w, y, 1, h);
+    lines.forEach((l, i) => drawText(ctx, l, x + 4, y + 3 + i * 9, { color: i ? '#fff3d6' : '#ffffff' }));
   }
   function renderHUD() {
     panel(6, 6, 46, 16);
@@ -1211,7 +1215,7 @@
     const lf = Game.entities.find(e => e instanceof Leaf), pl = Game.player;
     if (lf && !lf.taken && Math.abs(pl.cx - lf.cx) < 90 && Math.abs(pl.cy - lf.cy) < 60 && !pl.riding) hintBox(['TOMA LA HOJA DE PLÁTANO']);
     else if (pl.gliding && pl.onGround && pl.y < 100 * TILE) hintBox(['¡SALTA AL VACÍO PARA PLANEAR!']);
-    else if (!Game.toastMsg) for (const e of Game.entities) { const h = e.hint && e.hint(Game); if (h) { hintBox(h); break; } }   // ayudas de otros capítulos
+    else for (const e of Game.entities) { const h = e.hint && e.hint(Game); if (h) { hintBox(h); break; } }   // ayudas de otros capítulos
     // aviso breve (p. ej. al tocar un punto de control)
     if (Game.toastMsg) {
       const tm = Game.toastMsg, w = textWidth(tm.text) + 14;

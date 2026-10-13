@@ -355,7 +355,7 @@
       if (this.rider && this.onGround && this.animT % 22 === 0 && Math.abs(this.vx) > 2) g.audio('swish');
       // al llegar al llano del oasis te bajas de la tabla
       if (this.rider && this.onGround && this.cx > D.end * TS) {
-        this.retired = true; this.vx = 0; this.rider.dismount(g, -4); g.toast('¡BACÁN! ¡QUÉ TAL BAJADA!');
+        this.retired = true; this.vx = 0; this.rider.dismount(g, -4);
       }
       if (this.rider) this.rider.syncRide();
     }
@@ -420,6 +420,7 @@
         const ex = g.cam.x + VIEW.w - 12, ey = Math.max(g.cam.y + 20, Math.min(g.cam.y + VIEW.h - 30, DUNES.surface(ex) - 34));
         drawText(ctx, '!', ex, ey, { scale: 2, color: '#ffffff', align: 'center', shadow: true, shadowColor: '#2a1f2d' });
       }
+      if (this.state === 'warn') bubble(ctx, this.load === 'bici' ? '¡RIN RIN!' : '¡CUIDADO!', g.cam.x + VIEW.w - 34, this.row * TS - 44);
       if (this.state !== 'drive') return;
       const x = Math.round(this.x), y = Math.round(this.y), s = DUNES.slope(this.cx);
       ctx.save(); ctx.translate(x + 15, y + 17); ctx.rotate(Math.atan(s) * 0.8); ctx.translate(-15, -17);
@@ -519,7 +520,7 @@
     onRespawn() { this.said = false; }
     update(g) {
       this.t++; if (this.sayT > 0) this.sayT--;
-      if (!this.said && Math.abs(g.player.cx - this.cx) < 90) { this.said = true; this.sayT = 140; g.toast(this.shout); g.audio('shout'); }
+      if (!this.said && Math.abs(g.player.cx - this.cx) < 90) { this.said = true; this.sayT = 140; g.audio('shout'); }
     }
     draw(ctx, g) {
       const x = Math.round(this.x), b = this.base;
@@ -557,7 +558,7 @@
       this.end = def.end * TS; this.n = def.n || 0; this.paint = COMBI_PAINT[this.n % COMBI_PAINT.length]; this.sayT = 0; this.say = '';
     }
     onRespawn() { this.dead = true; }
-    shout(g, text) { this.say = text; this.sayT = 100; if (g.near(this.cx, 280)) { g.toast(text); g.audio('shout'); } }
+    shout(g, text) { this.say = text; this.sayT = 130; if (g.near(this.cx, 280)) g.audio('shout'); }
     get stoppedAtPeaje() { return this.state === 'stop' && this.stops[0] && this.stops[0].peaje; }
     update(g) {
       const px = this.x; this.t++; if (this.sayT > 0) this.sayT--;
@@ -632,7 +633,7 @@
         R(ctx, '#1d1622', wx + x - 4, y + 22, 8, 8); R(ctx, '#1d1622', wx + x - 5, y + 23, 10, 6);
         R(ctx, '#9aa0a8', wx + x - 2, y + 24, 4, 4); R(ctx, '#d6dbe0', wx + x - 1, y + 25, 2, 2);
       }
-      if (this.sayT > 0 && !this.wasAboard) bubble(ctx, this.say, x + 46, y - 4);
+      if (this.sayT > 0) bubble(ctx, this.say, x + 46, y - 4);
     }
   }
   // Las combis salen cada tanto desde atrás (tocan claxon antes de entrar en pantalla)
@@ -908,40 +909,87 @@
     }
   }
 
-  // Tienda de barrio de la avenida (un Tambo): letrero amarillo con letras moradas,
-  // frente morado con vitrinas, segundo piso a medio terminar de ladrillo con
-  // fierros saliendo del techo, poste de luz y un grifo rojo en la vereda.
-  // Es decorado de fondo: no choca.
+  // Tienda de barrio de la avenida (un Tambo), calcada del pixel art de referencia:
+  // poste, casa de ladrillo, la tienda con su letrero amarillo y logo morado,
+  // segundo piso con ventanas de colores, el letrero rojo del hostal y un grifo.
+  // La fachada está en celdas (60x44) que se agrandan x3; el logo va encima a
+  // resolución completa. Es decorado de fondo: no choca. Su vereda apoya en la pista.
+  const TAMBO_CELLS = [
+    '..addddd..........................................adddrrrrdd',
+    '..addddd..........................................aammrrrrdd',
+    '..addddd..........................................aammrrrrdd',
+    '..addddd..........................................almffDrrdd',
+    '..addddd..........................................lamfEfrrdd',
+    '..addddd.....e....................................aamfffmrdd',
+    '..addddd....ee....................................aammmmmmaa',
+    '..addddd....eee...e..................eee...eeee...aammmmmmaa',
+    '..addddd...eeeee.ee.e................eeee.eeeeeee.aamfffmmaa',
+    '..addddd..eeeeeeeeeeee...........e.eeeeeeeeeeeeee.aamfEfmmaa',
+    '..addddd.eeeeeeeeeeeee....ee....eeeeeeeeeeeeeeeqq.aamfffmmaa',
+    '.eadddddeeeeqqeeeeeeqqee.eeee.eeeeeeeeqqeeeeqqeqq.aammmmmmaa',
+    'eeadddddeeehqqeeeeeeqqeeqqeeeeqqeeeeeeqqeeeeqqeeeeaammmmmmaa',
+    'eeadddddehhheeeeeeeeeeeeqqeeeeqqeeeeeheeeeeeeeeeeeaamfffmmaa',
+    'eeadddddheheheeeeuuueehheeeeAAAeeeehhhhhhhhttthhhealmfffmmaa',
+    'edadddddededhhhehuuuhhehhheeAAAewwwhhBBBhhhttthehelammmmaaaa',
+    'edadddddhdedeeeheuFueeheeehhAFAhwwwhhBBBeeetFteehhaaEEaaaaaa',
+    'jjadddddjjjjhhhhhhhhhhhhhhhhhhhhwFwhhBFBhhhhhhhhhhaaaaaaaaaa',
+    'ojadddddoooohhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhaaaaaaaaaa',
+    'ojadddddoooohhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhaaaaaaaaaa',
+    'jjadddddjjjjkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkaaaaaaaaaa',
+    'ooadddddjookffffffffffffffffffffffffffffffffffffffkaaaaaaaaa',
+    'ooadddddjooffffffffffffxxxxxxffxxxxfGGGffffffffffffaaaaaaaaa',
+    'jjadddddjjjffffffffffffffGffffffGffGfffffffffffffffaaaaaaaaa',
+    'ojadddddoooffffffffffffffffffffffffffGfffffffffffffaaaaaaaaa',
+    'ojadddddooofffffffffffGfffffffffffffxffffffffffffffaaaaaaaaa',
+    'jjadddddjjjfffffffffffffffGffffffffffffffffffffffffaaaaaaaaa',
+    'ooadddddjoooffffffffffffffffffffffffffffffffffffffaaaaaaaaaa',
+    'ooadddddjooobbbbbbbbbbbbbbbbbbbbbbbbbbbbccccccccccaavvvvaaaa',
+    'jjadddddjjjjbbbbbbbbbbbbbbbbbbbbbbbbbbbbcgggggggggaavvHvalll',
+    'ojadddddoooobiiiiiijiibbiiiiiiijiibbbbbbcgggggggggaavvvvalll',
+    'ojadddddoooobiiiiiijjiIbiiiiiiijjibbbbbbcgggggggggaavvvvalll',
+    'jjadddddjjjjbiiiiiiijjbbiiiiiiiijjbbbbbbcgggggggggaaaaaaalll',
+    'ooadddddjooobiiiiiiiijbbiiiiiiiiijbbbbbbcgggggggggaaaaaaalll',
+    'ooaynnnnjooobiiiiiiiiibbiiiiiiiiiibbbbbbcgggggggggaaaaaaalll',
+    'jjaynnnnjjjjbbbbbbbbbbbbbbbbbbbbbbbbbbbbcgggggggggpaaaaaalll',
+    'ojayssssoooobbbbbbbbbbbbbbbbbbbbbbbbbbbbcggggggggpppaaaaalll',
+    'ojayssssoooobbbbbbbbbbbbbbbbbbbbbbbbbbbbcgggggggpppppaaaalll',
+    'jjaynnnnjjjjbbbbbbbbbbbbbbbbbbbbbbbbbbbbcggggggggpppaaaaalll',
+    'ooaynnnnoooobbbbbbbbbbbbbbbbbbbbbbbbbbbbcggggggggpppaaaaalll',
+    'ccaynnnncccccccccccccccccccccccccccccccccccccccccCCCcccccccc',
+    'ccadzzzzccccccccccccccccnnnnccccccccccccccccccccpppppccccccc',
+    'ccadddddcccccccccccccccnnnnccccccccccccccccccccccccccccccccc',
+    'ccadddddccccccccccccccnnnncccccccccccccccccccccccccccccccccc',
+  ];
+  const TAMBO_PAL = { '.': null, A: '#17effe', B: '#7be701', C: '#8a0320', D: '#d1c92a', E: '#1f02cf', F: '#030003', G: '#ffe85a', H: '#1e0a73', I: '#9d70da', a: '#c6c6c4', b: '#bc61dd', c: '#e0e0e0', d: '#aaaaa8', e: '#c6b056', f: '#ffef3e', g: '#3a3a3a', h: '#eccf65', i: '#62e0f5', j: '#ffffff', k: '#c3b417', l: '#232323', m: '#d01700', n: '#f4f4bb', o: '#db6b1d', p: '#c90022', q: '#504e4a', r: '#a41208', s: '#696862', t: '#44ffb7', u: '#488c01', v: '#13018b', w: '#019be7', x: '#ffe676', y: '#faf7d1', z: '#8e8e8e' };
+  const TAMBO_LOGO = [
+    '.....................................................####',
+    '..##########.#########..#...##.##########.#########..##.#',
+    '..#########.####.#####.###.###.##########.####.####..##.#',
+    '..#########.####..###..###.###..####.####.####.####..####',
+    '.##########.###..####..#######..###..####.####.#####.....',
+    '.#########..###..####.#########.####..###..####.####.....',
+    '##########.##########.#########..########..####.####.....',
+    '.########..#########.##########..########..####.####.....',
+    '..####....####..####.###########.####.####..###..###.....',
+    '..####.#######.####..###########.####..###..####.####....',
+    '..####.#######.####.#############.####.####.####.####....',
+    '.####..######..###..####.###.####.####.####..########....',
+    '..###..######.####..###..###..###..########...#######....',
+  ];
+  let tamboImg = null;
+  function tamboSprite() {
+    if (tamboImg) return tamboImg;
+    const base = PIX.scaled(PIX.fromRows(TAMBO_CELLS, TAMBO_PAL), 3);
+    const c = PIX.createCanvas(base.width, base.height), x = c.getContext('2d');
+    x.drawImage(base, 0, 0);
+    x.drawImage(PIX.fromRows(TAMBO_LOGO, { '.': null, '#': '#b24fd8' }), 65, 68);
+    return (tamboImg = c);
+  }
   class TamboStore extends Actor {
-    constructor(def) { super(def.x * TS, ST * TS - 84, 104, 84); }
+    constructor(def) { super(def.x * TS, ST * TS - 132, 180, 132); }
     update() {}
     draw() {}
-    drawBack(ctx) {
-      const x = Math.round(this.x), b = ST * TS;
-      // casa vecina de ladrillo sin tarrajear (a la izquierda)
-      R(ctx, '#c86a32', x - 30, b - 64, 30, 64);
-      for (let r = 0; r < 16; r++) for (let c = 0; c < 4; c++) R(ctx, '#f0e2c8', x - 30 + c * 8 + (r % 2) * 4, b - 64 + r * 4, 1, 3);
-      for (let r = 0; r < 16; r++) R(ctx, '#f0e2c8', x - 30, b - 61 + r * 4, 30, 1);
-      R(ctx, '#9a9086', x - 30, b - 66, 30, 2); for (const fx of [-27, -15, -4]) R(ctx, '#5d5768', x + fx, b - 72, 1, 6);   // fierros
-      // segundo piso: pared amarilla a medio pintar, ventanas y fierros en la azotea
-      R(ctx, '#e2c870', x, b - 78, 104, 34); R(ctx, '#cdb35c', x, b - 78, 104, 2);
-      for (const [wx, col] of [[14, '#4a8a2a'], [36, '#2fd0e8'], [52, '#1f8ad8'], [70, '#7ad61f'], [88, '#3fe0b0']]) {
-        R(ctx, '#5a5048', wx - 1, b - 70, 10, 10); R(ctx, col, wx, b - 69, 8, 8); R(ctx, '#1d1a22', wx + 3, b - 64, 3, 3);   // cortinas de colores
-      }
-      R(ctx, '#d8cf9a', x, b - 46, 104, 2);
-      for (const fx of [4, 30, 62, 98]) R(ctx, '#5d5768', x + fx, b - 86, 1, 8);
-      // letrero amarillo con el nombre
-      R(ctx, '#b8a420', x - 2, b - 46, 108, 3); R(ctx, '#f6e33a', x - 2, b - 43, 108, 13);
-      drawText(ctx, 'TAMBO', x + 50, b - 40, { color: '#a24ad8', align: 'center' });
-      R(ctx, '#a24ad8', x + 69, b - 42, 3, 3); R(ctx, '#f6e33a', x + 70, b - 41, 1, 1);   // el "+"
-      // frente morado con dos vitrinas y la puerta
-      R(ctx, '#b65ad8', x, b - 30, 70, 30);
-      for (const vx of [4, 36]) { R(ctx, '#5ad8f0', vx + x, b - 26, 28, 13); R(ctx, '#ffffff', vx + x + 18, b - 26, 2, 5); R(ctx, '#ffffff', vx + x + 20, b - 21, 2, 4); }
-      R(ctx, '#3a3a40', x + 70, b - 30, 34, 30); R(ctx, '#2a2a30', x + 74, b - 27, 26, 27);   // portón de la cochera
-      // poste de luz y grifo en la vereda
-      R(ctx, '#9a9a9a', x - 6, b - 92, 4, 92); R(ctx, '#7a7a7a', x - 4, b - 92, 2, 92);
-      R(ctx, '#d8162a', x + 82, b - 9, 5, 8); R(ctx, '#d8162a', x + 80, b - 7, 9, 2); R(ctx, '#a00e1e', x + 81, b - 1, 7, 1);
-    }
+    drawBack(ctx) { ctx.drawImage(tamboSprite(), Math.round(this.x), ST * TS - 132); }
   }
 
   // ── EL CENTRO DE LIMA ───────────────────────────────────────────────────────
@@ -1048,7 +1096,7 @@
       const p = g.player, inZone = p.cx > this.x0 && p.cx < this.x1;
       if (this.state === 'wait') {
         if (this.easy && this.delay) return;
-        if (inZone && --this.cd <= 0 && g.cam.x + VIEW.w < this.x1 + 60) { this.state = 'warn'; this.t = 0; g.audio('shout'); g.toast(this.load === 'bici' ? '¡RIN RIN! ¡BICI!' : '¡CUIDADO, CARRETILLA!'); if (this.load === 'bici') g.audio('bell'); }
+        if (inZone && --this.cd <= 0 && g.cam.x + VIEW.w < this.x1 + 60) { this.state = 'warn'; this.t = 0; g.audio('shout'); if (this.load === 'bici') g.audio('bell'); }
         return;
       }
       if (this.state === 'warn') { if (this.t > 60) { this.state = 'drive'; this.t = 0; this.x = g.cam.x + VIEW.w + 6; } return; }
@@ -1149,7 +1197,7 @@
       this.t++; if (this.sayT > 0) this.sayT--;
       const p = g.player;
       if (!this.told && p.onGround && p.cx > this.x && p.cx < this.x + this.w && p.y + p.h >= ST * TS - 1) {
-        this.told = true; this.sayT = 140; g.audio('whistle'); g.toast('¡PIIIT! ¡NO PISES EL GRASS!');
+        this.told = true; this.sayT = 160; g.audio('whistle');
       }
     }
     draw(ctx) {
@@ -1177,7 +1225,7 @@
       if (this.t % 3 === 0 && g.near(cx, 260)) for (const s of [-1, 1]) g.particles.push({ x: cx + s * 2, y: top, vx: s * (0.5 + Math.random() * 0.6), vy: -1.2 - Math.random() * 0.8, life: 34, max: 34, col: Math.random() < 0.5 ? '#d2f6f2' : '#8cdde6', size: 1, grav: 0.1 });
       // si te paras en la taza de arriba te salpica
       const p = g.player;
-      if (p.onGround && Math.abs(p.cx - cx) < 22 && p.y + p.h <= this.y + 2 && this.wet === 0) { this.wet = 120; g.audio('splash'); g.burst(p.cx, p.y + 4, 'splash', 12); g.toast('¡FRESQUITO!'); }
+      if (p.onGround && Math.abs(p.cx - cx) < 22 && p.y + p.h <= this.y + 2 && this.wet === 0) { this.wet = 120; g.audio('splash'); g.burst(p.cx, p.y + 4, 'splash', 12); }
     }
     drawBack(ctx) {
       const x = Math.round(this.x), y = Math.round(this.y), b = ST * TS, w = this.w, t = this.t;
@@ -1345,7 +1393,7 @@
       const p = g.player;
       if (!this.taken && !p.riding && p.overlaps(this)) {
         this.taken = true; p.gliding = true; p.glideAir = 0; p.glideImg = WING;
-        g.audio('swoosh'); g.toast('¡A VOLAR, CAUSA!'); g.burst(this.cx, this.y + 8, 'spark', 12);
+        g.audio('swoosh'); g.burst(this.cx, this.y + 8, 'spark', 12);
       }
     }
     draw(ctx) {
@@ -1531,7 +1579,7 @@
     update(g) {
       const p = g.player;
       if (!this.hit && p.overlaps(this)) {
-        this.hit = true; g.audio('splash'); g.toast('¡TE PINTASTE, CAUSA!');
+        this.hit = true; g.audio('splash');
         const C = ['#d8432f', '#f6c94a', '#3f6fb8', '#5c9f4a', '#f08a7a', '#8a4cc0'];
         for (let i = 0; i < 26; i++) g.particles.push({ x: this.cx, y: this.y, vx: (Math.random() - 0.5) * 3, vy: -1 - Math.random() * 2.5, life: 40, max: 40, col: C[i % C.length], size: 2, grav: 0.15 });
       }
@@ -1557,7 +1605,7 @@
     update(g) {
       this.animT++;
       if (this.rider) {
-        if (!this.taken) { this.taken = true; g.audio('honk'); g.toast('¡ARRANCA, CAUSA!'); }
+        if (!this.taken) { this.taken = true; g.audio('honk'); }
         const left = Input.held('left'), right = Input.held('right');
         // sin tocar nada avanza solo, despacito; a la derecha acelera; a la izquierda frena
         let want = right ? 3.6 : left ? -1.2 : 1.7;
@@ -1581,7 +1629,6 @@
       // llegó al Centro: se estaciona y te bajas
       if (this.rider && this.onGround && this.cx > this.end) {
         this.retired = true; this.vx = 0; this.rider.dismount(g, -4); g.audio('honk');
-        g.toast('¡HASTA AQUÍ NOMÁS, CAUSA!');
       }
       if (this.rider) this.rider.syncRide();
       this.hazards(g);
@@ -1615,7 +1662,7 @@
       if (front > this.x + 4 && m.x < this.x + this.w && m.y + m.h > this.y + 2) {
         m.vy = -this.power; m.vx = Math.max(m.vx, this.big ? 3.4 : 2.8); m.onGround = false; m.launched = true;
         g.audio('boing'); g.audio('honk'); g.burst(this.x + this.w, this.y, 'dust', 10);
-        if (this.big && !this.told) { this.told = true; g.toast('¡VUELA, CAUSA!'); g.shake(2, 10); }
+        if (this.big && !this.told) { this.told = true; g.shake(2, 10); }
       }
     }
     draw(ctx) {
@@ -1659,16 +1706,34 @@
     onRespawn() { this.go = 0; this.dy = 0; }
     update(g) {
       const p = g.player;
-      if (!this.go && p.cx > this.x - 110 && p.cx < this.x + 20) { this.go = 1; g.audio('shout'); g.toast(this.line); }
+      if (!this.go && p.cx > this.x - 110 && p.cx < this.x + 20) { this.go = 1; g.audio('shout'); }
       if (this.go && this.go < 40) { this.go++; this.dy = Math.min(14, this.dy + 0.5); }
     }
     drawBack(ctx) {
-      // se va a la vereda de atrás: sube un poco y queda detrás de la pista
-      const x = Math.round(this.x + this.dy), b = ST * TS - Math.round(this.dy), run = this.go && this.go < 40 && Math.floor(this.go / 4) % 2;
-      const cw = textWidth('CANCHA') + 6;
-      R(ctx, '#2a1f2d', x, b - 15, cw + 2, 3); R(ctx, '#dfe3e8', x + 1, b - 26, cw, 11); R(ctx, '#f6c94a', x + 2, b - 25, cw - 2, 2);
-      drawText(ctx, 'CANCHA', x + 1 + cw / 2, b - 22, { color: '#d8432f', align: 'center' });
-      R(ctx, '#1d1622', x + 4, b - 12, 6, 6); R(ctx, '#1d1622', x + cw - 6, b - 12, 6, 6);
+      // se aparta empujando el carrito hacia adelante, siempre apoyado en la pista
+      // (se dibuja detrás del mototaxi, así que no estorba)
+      const x = Math.round(this.x + this.dy * 2), b = ST * TS, run = this.go && this.go < 40 && Math.floor(this.go / 4) % 2;
+      // carrito de canchita: toldo a rayas, montaña de cancha, cajón rojo y ruedas de rayos
+      const cw = 30;
+      for (const px of [3, 26]) R(ctx, '#7a4a26', x + px, b - 34, 2, 16);                 // parantes
+      for (let i = 0; i < 8; i++) R(ctx, i % 2 ? '#f2e6c8' : '#c8262a', x + i * 4, b - 39, 4, 5);   // toldo
+      for (let i = 0; i < 8; i++) R(ctx, i % 2 ? '#f2e6c8' : '#c8262a', x + i * 4 + 1, b - 34, 2, 1);   // festón
+      R(ctx, '#8a1a1e', x, b - 40, 32, 1);
+      for (let i = 0; i < 26; i++) {                                                        // la cancha, amontonada
+        const cx = x + 4 + (i * 7) % 23, cy = b - 20 - Math.round(Math.sin(((i * 7) % 23) / 23 * Math.PI) * 4) - (i % 3 === 0 ? 1 : 0);
+        R(ctx, i % 4 ? '#f6e7b4' : '#e2c070', cx, cy, 2, 2);
+      }
+      R(ctx, '#7a4a26', x + 1, b - 19, 29, 2);                                             // bandeja de madera
+      R(ctx, '#c8262a', x + 3, b - 17, 25, 8); R(ctx, '#8a1a1e', x + 3, b - 10, 25, 1);    // cajón rojo
+      R(ctx, '#8a1a1e', x + 9, b - 16, 13, 6); R(ctx, '#f2e6c8', x + 10, b - 15, 11, 4);    // panelito crema
+      R(ctx, '#7a4a26', x + 12, b - 14, 2, 1); R(ctx, '#7a4a26', x + 15, b - 13, 3, 1); R(ctx, '#7a4a26', x + 18, b - 14, 1, 2);   // garabato
+      R(ctx, '#7a4a26', x - 2, b - 15, 5, 1);                                              // agarradera
+      for (const wx of [7, 24]) {                                                           // ruedas de rayos
+        ctx.fillStyle = '#4a2c16'; ctx.beginPath(); ctx.arc(x + wx, b - 5, 5, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#c9a273'; ctx.beginPath(); ctx.arc(x + wx, b - 5, 4, 0, Math.PI * 2); ctx.fill();
+        R(ctx, '#7a4a26', x + wx - 3, b - 5, 7, 1); R(ctx, '#7a4a26', x + wx, b - 8, 1, 7); R(ctx, '#7a4a26', x + wx - 2, b - 7, 1, 1); R(ctx, '#7a4a26', x + wx + 2, b - 3, 1, 1);
+        R(ctx, '#3a2414', x + wx - 1, b - 6, 2, 2);
+      }
       ctx.drawImage(run ? LIMENO.ambulante.step : LIMENO.ambulante.idle, x + cw + 2, b - 24);
       if (this.go && this.go < 90) { this.go++; bubble(ctx, '¡OE, CUIDADO!', x + cw + 8, b - 28, '#d8432f'); }
     }
@@ -2124,7 +2189,7 @@
       { type: 'npc', x: 340.5, y: 44, model: 'ambulante', lines: ['¡CHOCOTEJAS DE ICA!', '¡LLÉVATE PARA LA PROFE!'] },
       { type: 'carretilla', x0: 320, x1: 340, y: 44, speed: 1.6, gap: 260, load: 'bici' },
       { type: 'larcomar', x0: 336, x1: 350, y: 48 },
-      { type: 'npc', x: 345.5, y: 44, model: 'parapentista', lines: ['¡VUELA CONMIGO, CAUSA!', '¡AGARRA EL PARAPENTE!', '¡SALTA, NO PASA NADA!'] },
+      { type: 'npc', x: 345.5, y: 44, model: 'parapentista', lines: ['¡VUELA CONMIGO, CAUSA!', '¡QUÉ TAL VISTA DESDE ARRIBA!'] },
       { type: 'parapente', x: 348.5, y: 44 },
       { type: 'hint', x: 349.2, y: 44, text: '¡AGARRA EL PARAPENTE!', arrow: 'down', r: 6, pass: 1, dy: 14, when: (g) => !g.player.gliding },
       { type: 'hint', x: 351, y: 44, text: '¡SALTA AL VACÍO!', key: 'jump', arrow: 'right', r: 4, pass: 2, when: (g) => g.player.gliding && g.player.onGround },
@@ -2141,9 +2206,9 @@
       { type: 'bajada', x0: 408, x1: 437, top: 30, bottom: 64 },
       { type: 'sign', x: 413, y: 62, lines: ['BAJADA', 'DE BAÑOS'], style: 'board', col: '#fff3d6' },
       { type: 'checkpoint', x: 438, y: ST, help: 'CRUZA SIN SALTAR: ¡+1 MIN!' },
-      { type: 'npc', x: 440.5, y: ST, model: 'abuelo', lines: ['CRÚZALO SIN RESPIRAR', '¡Y PIDE UN DESEO!'] },
+      { type: 'npc', x: 440.5, y: ST, model: 'abuelo', lines: ['EL PUENTE DE LOS SUSPIROS...', 'SI LO CRUZAS SIN RESPIRAR...', '¡SE CUMPLE TU DESEO!'] },
       { type: 'suspiros', x0: 444, x1: 454, y: ST },
-      { type: 'hint', x: 445, y: ST, text: ['¡SIN SALTAR!', 'PIDE UN DESEO'], arrow: 'right', r: 4, pass: 3 },
+      { type: 'hint', x: 445, y: ST, text: '¡CRUZA SIN SALTAR!', arrow: 'right', r: 4, pass: 3 },
       { type: 'murales', x0: 455, x1: 478, top: 39 },
       { type: 'sign', x: 456, y: ST, lines: ['BARRANCO'], style: 'post' },
       { type: 'npc', x: 462.5, y: ST, model: 'pintor', lines: ['¡CUIDADO, PINTURA FRESCA!', '¿TE GUSTA MI MURAL?'] },
@@ -2158,7 +2223,7 @@
       { type: 'checkpoint', x: 494, y: 44, help: 'SÚBETE AL MOTOTAXI Y ACELERA' },
       // ── EN MOTOTAXI ──
       { type: 'contramano', x0: 504, x1: 594 },
-      { type: 'npc', x: 497.5, y: 44, model: 'mototaxista', lines: ['¡SUBE, CAUSA, TE LLEVO!', '¡MANÉJALO TÚ NOMÁS!', '¡AL CENTRO, VOLANDO!'] },
+      { type: 'npc', x: 497.5, y: 44, model: 'mototaxista', lines: ['¡TE PRESTO MI MOTO, CAUSA!', '¡AL CENTRO, VOLANDO!'] },
       { type: 'motoRide', x: 499, y: 44, model: 'rojo', end: 586 },
       { type: 'hint', x: 500, y: 44, text: '¡SÚBETE AL MOTOTAXI!', arrow: 'down', r: 6, pass: 2, dy: 16, when: (g) => !g.player.riding },
       { type: 'hint', x: 508, y: ST, text: '¡ACELERA!', key: 'right', r: 4, pass: 4, when: (g) => g.player.riding instanceof MotoRide },
