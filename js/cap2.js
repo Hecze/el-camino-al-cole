@@ -2,7 +2,7 @@
 // hackatón, pero el bus se malogra en pleno desierto de Ica. El viaje
 // es la entrada; el capítulo pasa sobre todo en el Centro de Lima:
 //   x 0–195    EL DESIERTO      · baja las dunas en tabla de sandboard; cactus y tubulares
-//   x 196–315  LA PANAMERICANA  · combis que pasan: súbete a su techo para cruzar el aniego
+//   x 196–315  LA PANAMERICANA  · el bus Ica–Lima por la costa: pueblos, playas del sur y el peaje
 //   x 316–351  MIRAFLORES       · el malecón, el Parque del Amor y Larcomar; agarra el parapente
 //   x 352–409  LA COSTA VERDE   · bajas planeando sobre el mar hasta la playa de piedritas
 //   x 410–489  BARRANCO         · la Bajada de Baños, el Puente de los Suspiros y los murales
@@ -684,7 +684,8 @@
   class Peaje extends Actor {
     constructor(def) { super(def.x0 * TS, def.y * TS, (def.x1 - def.x0) * TS, 8); this.base = GR * TS; this.arm = 0; this.price = def.price; }
     update(g) {
-      const open = g.entities.some(e => e instanceof Combi && e.stoppedAtPeaje && e.stopT < 70);
+      const bus = g.player.riding, near = bus && Math.abs(bus.x + bus.w / 2 - (this.x + this.w / 2)) < 160;   // al bus Ica–Lima también le abren
+      const open = near || g.entities.some(e => e instanceof Combi && e.stoppedAtPeaje && e.stopT < 70);
       this.arm += ((open ? 1 : 0) - this.arm) * 0.12;
     }
     drawBack(ctx) {
@@ -2032,7 +2033,6 @@
   const CASONA = 946;   // donde empieza el patio de la casona del concurso
   // escalones del puente peatonal: macizos (te frenan), de 3 casillas y 2 filas de alto
   const FB_STEPS = [[283, GR - 2], [286, GR - 4], [289, GR - 6], [292, GR - 8], [295, GR - 10], [298, GR - 12]];
-  const STOPS = [{ x: 213.5 }, { x: 240.5 }, { x: 266.5, peaje: true, wait: 120 }];
   // la calle del Centro (fila ST) con sus buzones sin tapa: [x, ancho]
   const BUZONES = [[601, 2], [616, 3], [630, 3], [648, 3], [662, 3], [772, 3], [802, 3]];
   const STREET = [594, 830];
@@ -2069,6 +2069,12 @@
         { kind: 'mountains', color: '#c4a486', color2: '#b0906f', y: GR - 5, parallax: 0.08, vpar: 0.10, amp: 6, seed: 4 },
         { kind: 'mountains', color: '#a8866a', color2: '#94735a', y: GR - 2.6, parallax: 0.18, vpar: 0.24, amp: 4, seed: 9 },
         { kind: 'hills', color: '#d2ad7e', color2: '#bf9a6c', y: GR - 0.6, parallax: 0.32, vpar: 0.40, amp: 1.8, seed: 6 },
+      ] },
+      // las playas del sur: el mar aparece junto a la carretera (Asia, Punta Hermosa)
+      { x0: 230, x1: 244, anchorRow: GR, sky: { dawn: ['#3a3466', '#d9826a', '#ffc68a'], morning: ['#6aa6dc', '#b4dcf0', '#f6ead0'] }, layers: [
+        { kind: 'mountains', color: '#b89a7c', color2: '#a68a6c', y: GR - 6, parallax: 0.06, vpar: 0.08, amp: 5, seed: 12 },
+        { kind: 'hills', color: '#4f86a8', color2: '#4f86a8', y: GR - 2, parallax: 0.12, vpar: 0.16, amp: 1, build: seaLayer(5, '#4f86a8', '#e8f4f6', false) },
+        { kind: 'hills', color: '#e2c08e', color2: '#cfac7a', y: GR - 0.4, parallax: 0.3, vpar: 0.38, amp: 1.2, seed: 21 },
       ] },
       // el Centro de Lima: cielo "panza de burro", el San Cristóbal con su cruz,
       // torres de iglesia y casonas con balcones
@@ -2136,8 +2142,6 @@
       [CASONA, 46, 54, H - 46, 'paving'],
     ],
     platforms: [
-      // techos de los paraderos
-      [212, GR - 4, 4, 'steel'], [239, GR - 4, 4, 'steel'],
       // techo del peaje
       [262, GR - 6, 10, 'canopy'],
       // escaleras y tablero del puente peatonal
@@ -2165,11 +2169,14 @@
       // ── LA PANAMERICANA (corta: un aniego, el peaje y el puente) ──
       // apenas dejas la tabla (así nunca reapareces a pie en las dunas)
       { type: 'checkpoint', x: 180, y: GR },
-      { type: 'roadHint', x0: 214.5, x1: 222, text: '¡SÚBETE AL TECHO DE LA COMBI!' },
+      // el bus Ica–Lima (el mismo del capítulo 3): te lleva por la costa hasta el puente peatonal
+      { type: 'bus', x: 197, y: GR, stop: 273, label: 'ICA - LIMA', shout: '¡LIMA, LIMA, LIMA!', arrive: '¡LLEGASTE A LIMA!' },
+      { type: 'roadHint', x0: 186, x1: 198, text: '¡SÚBETE AL BUS!' },
       { type: 'sign', x: 202, y: GR, lines: ['PANAMERICANA SUR', 'LIMA 299 KM'], style: 'post' },
-      { type: 'combiSpawner', x0: 196, x1: 296, stops: STOPS, end: 316.5 },
+      { type: 'sign', x: 213.5, y: GR, lines: ['CHINCHA', 'CAÑETE'], style: 'post' },
+      { type: 'sign', x: 230, y: GR, lines: ['ASIA', 'PLAYAS DEL SUR'], style: 'board', col: '#9cd3f0' },
+      { type: 'sign', x: 240, y: GR, lines: ['PUNTA HERMOSA'], style: 'post' },
       { type: 'vendor', x: 207, y: GR, shout: '¡CHICHA MORADA, CHICHA!', kind: 'chicha' },
-      { type: 'paradero', x: 212, y: GR - 4 }, { type: 'paradero', x: 239, y: GR - 4 },
       { type: 'sign', x: 219.5, y: GR, lines: ['¡CUIDADO!', 'ANIEGO'], style: 'board', col: '#f6c94a' },
       { type: 'geyser', x: 226.5 },
       { type: 'sign', x: 248, y: GR, lines: ['LIMA 12 KM'], style: 'post' },
