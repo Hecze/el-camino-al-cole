@@ -152,6 +152,11 @@ const AUDIO = (() => {
     applause: () => { const t = now(); for (let i = 0; i < 26; i++) noise(0.04, 0.12 + Math.random() * 0.1, 2000 + Math.random() * 2000, t + i * 0.045 + Math.random() * 0.03, { type: 'bandpass', q: 1.2 }); },
     // soroche: un "uuuuu" que se tambalea
     dizzy:   () => { const t = now(); [0, 0.22, 0.44].forEach((d, i) => tone(520 - i * 60, 0.25, 'triangle', 0.14, t + d, 420 - i * 60)); },
+    // capítulo 3: escupitajo de alpaca, pitazo del tren, clic de cámara y enganche que se suelta
+    spit:    () => { noise(0.14, 0.4, 1800, 0, { type: 'bandpass', q: 1.2, sweep: 500 }); tone(320, 0.12, 'sine', 0.2, 0, 120); },
+    whistle: () => { const t = now(); [0, 0.42].forEach((d, i) => { const L = i ? 0.75 : 0.32; tone(740, L, 'triangle', 0.13, t + d); tone(932, L, 'triangle', 0.09, t + d); tone(1109, L, 'sine', 0.05, t + d); noise(L, 0.05, 2200, t + d, { type: 'bandpass', q: 2 }); }); },
+    click:   () => { noise(0.03, 0.45, 4200, 0, { type: 'highpass' }); noise(0.04, 0.3, 3000, now() + 0.08, { type: 'highpass' }); },
+    clank:   () => { tone(190, 0.18, 'square', 0.14, 0, 90); noise(0.25, 0.35, 1400, 0, { type: 'bandpass', q: 3 }); },
     nope:    () => { tone(220, 0.12, 'square', 0.12); tone(165, 0.18, 'square', 0.12, now() + 0.1); },
     win:     () => { [523, 659, 784, 1046, 784, 1046, 1318].forEach((f, i) => tone(f, 0.3, 'triangle', 0.24, now() + 0.15 + i * 0.13)); },
   };
