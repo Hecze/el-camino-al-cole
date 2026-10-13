@@ -736,20 +736,19 @@ class Condor extends Actor {
 class Puma extends Actor {
   // Cuando la cabra aterriza cerca, el puma PRONOSTICA a qué saliente vas a llegar
   // (la que está dos más arriba: la de después de la que ya estás saltando) y fija
-  // ahí su blanco. Avisa con "!" y los puntitos de su ruta (que ya no cambian),
-  // salta, se queda rugiendo un rato y luego se lanza al vacío. Quien sigue
-  // subiendo sin mirar, cae en sus garras; hay que frenar un escalón antes (lejos
-  // de la saliente marcada) y seguir cuando se vaya.
+  // ahí su blanco. Avisa con "!" y los puntitos de su ruta (que ya no cambian) y
+  // salta: pasa por encima de esa saliente justo cuando llegarías y sigue de largo
+  // al vacío (nunca se queda en el camino). Quien sigue subiendo sin mirar, cae en
+  // sus garras; hay que frenar un escalón antes y seguir cuando haya pasado.
   constructor(def) {
     super(def.x * TS, def.y * TS - 16, 30, 16);
     this.homeX = this.x; this.homeY = this.y; this.homeFace = def.face || 1; this.snowy = !!def.snowy;
     this.onRespawn();
   }
   onRespawn() { this.state = 'wait'; this.t = 0; this.x = this.homeX; this.y = this.homeY; this.vx = 0; this.vy = 0; this.rot = 0; this.face = this.homeFace; this.cool = 0; this.landX = this.landY = 0; }
-  // solo muerde donde marcó (al caer ahí y mientras se queda): si ya te fuiste,
-  // el salto puede pasar cerca sin tocarte
-  get lethal() { return this.state === 'hold' || (this.state === 'leap' && Math.abs(this.cx - (this.landX + this.w / 2)) < 16); }
-  get body() { return this.state === 'hold' ? { x: this.x + 5, y: this.y + 2, w: this.w - 10, h: this.h - 2 } : { x: this.x + 6, y: this.y + 3, w: this.w - 12, h: this.h - 4 }; }
+  // solo muerde al pasar por donde marcó: si no estás ahí, el salto pasa de largo
+  get lethal() { return this.state === 'leap' && Math.abs(this.cx - (this.landX + this.w / 2)) < 18 && Math.abs(this.y - this.landY) < 26; }
+  get body() { return { x: this.x + 5, y: this.y + 2, w: this.w - 10, h: this.h - 2 }; }
   // la saliente adonde llegará la cabra si sigue subiendo: dos más arriba de la
   // que acaba de pisar (a esas alturas ya va camino de la siguiente)
   forecast(g, goat) {
@@ -777,7 +776,7 @@ class Puma extends Actor {
       if (this.cool > 0) { this.cool--; return; }
       if (!goat || g.state !== 'play' || !(goat.onGround || goat.landT === 5)) return;
       const f = this.forecast(g, goat); if (!f) return;
-      this.landX = f.x - this.w / 2; this.landY = f.y - this.h;
+      this.landX = f.x - this.w / 2; this.landY = f.y - this.h - 6;   // pasa a la altura de la cabra que aterriza
       this.state = 'windup'; this.t = 0; g.audio('growl');
     } else if (this.state === 'windup') {
       if (this.t >= Puma.WIND_T) {
@@ -785,25 +784,18 @@ class Puma extends Actor {
         this.state = 'leap'; this.t = 0; g.audio('puma'); g.burst(this.cx, this.y + this.h, 'dust', 8);
       }
     } else if (this.state === 'leap') {
-      this.vy += Puma.GR; this.x += this.vx; this.y += this.vy;
-      if (this.t >= Puma.LEAP_T) { this.x = this.landX; this.y = this.landY; this.state = 'hold'; this.t = 0; g.burst(this.cx, this.y + this.h, 'dust', 10); g.shake(2, 8); }
-    } else if (this.state === 'hold') {
-      // se queda en la saliente, gruñendo; después se lanza al vacío (lejos del camino)
-      if (this.t % 40 === 20) g.audio('growl');
-      if (this.t >= Puma.HOLD_T) { this.state = 'exit'; this.t = 0; this.vx = this.face * 3.6; this.vy = -5; g.audio('puma'); }
-    } else if (this.state === 'exit') {
-      this.vy += Puma.GR; this.x += this.vx; this.y += this.vy;
-      if (this.t > 90) { this.state = 'gone'; this.t = 0; }
+      // pasa por la saliente marcada y sigue cayendo al vacío
+      this.vy = Math.min(this.vy + Puma.GR, 8); this.x += this.vx; this.y += this.vy;
+      if (this.t > Puma.LEAP_T + 70) { this.state = 'gone'; this.t = 0; }
     } else if (this.state === 'gone') {
       if (this.t > 200) { this.onRespawn(); this.cool = 90; }
     } else if (this.state === 'carry') {
       // cae con la cabra bien agarrada: sin dar vueltas, solo se inclina hacia
       // abajo (de cabeza al vacío) y forcejea un poco
       this.vy = Math.min(this.vy + 0.28, 7); this.x += this.vx; this.y += this.vy;
-      this.rot = this.face * (Math.min(0.45, this.t * 0.03) + (this.t % 8 < 4 ? 0.04 : -0.04));
       if (goat) {
-        // la cabra va entre sus patas delanteras (en el pecho del puma); el niño, montado
-        goat.x = this.cx + this.face * 9 - goat.w / 2; goat.y = this.cy - goat.h / 2 - 3; goat.vx = 0; goat.vy = 0; goat.facing = this.face;
+        // la cabra va abrazada encima del puma (ver E.puma.grab*); el niño, montado
+        goat.x = this.cx - goat.w / 2; goat.y = this.cy - goat.h / 2; goat.vx = 0; goat.vy = 0; goat.facing = this.face;
         p.x = goat.cx - p.w / 2; p.y = goat.y - p.h + 4; p.vx = 0; p.vy = 0;
       }
       if (this.t % 5 === 0) g.burst(this.cx, this.cy, 'dust', 2);
@@ -826,15 +818,15 @@ class Puma extends Actor {
     const r = this.route(), lit = (Math.floor(this.t / 4) % 2) ? '#ffffff' : '#ffe9a8';
     ctx.globalAlpha = alpha;
     let x = this.homeX + this.w / 2, y = this.homeY + this.h / 2, vx = r.vx, vy = r.vy;
-    for (let k = 1; k <= Puma.LEAP_T; k++) {
-      vy += Puma.GR; x += vx; y += vy;
+    for (let k = 1; k <= Puma.LEAP_T + 9; k++) {
+      vy = Math.min(vy + Puma.GR, 8); x += vx; y += vy;
       if (k % 3) continue;
       const X = Math.round(x) - 1, Y = Math.round(y) - 1;
       ctx.fillStyle = '#2a1f2d'; ctx.fillRect(X - 1, Y, 4, 2); ctx.fillRect(X, Y - 1, 2, 4);
       ctx.fillStyle = lit; ctx.fillRect(X, Y, 2, 2);
     }
     // garras marcadas sobre la saliente
-    const mx = Math.round(this.landX + this.w / 2), my = Math.round(this.landY + this.h - 3);
+    const mx = Math.round(this.landX + this.w / 2), my = Math.round(this.landY + this.h + 3);
     ctx.fillStyle = '#2a1f2d'; for (let i = -1; i <= 1; i++) ctx.fillRect(mx + i * 4 - 1, my - 1, 3, 4);
     ctx.fillStyle = lit; for (let i = -1; i <= 1; i++) ctx.fillRect(mx + i * 4, my, 1, 2);
     ctx.globalAlpha = 1;
@@ -846,12 +838,12 @@ class Puma extends Actor {
     ctx.fillStyle = '#8a8296'; ctx.fillRect(rx + 1, ry, rw - 2, 2);
     if (this.snowy) { ctx.fillStyle = '#f4f8ff'; ctx.fillRect(rx, ry - 1, rw, 2); }
     if (this.state === 'gone') return;
-    if (this.state === 'carry') { this.drawLeap(ctx); return; }   // detrás de la cabra: se ve que la lleva
+    if (this.state === 'carry') { this.drawGrab(ctx, g, E.puma.grabBack); return; }   // detrás de la cabra
     if (this.state === 'windup') this.drawRoute(ctx, 1);
-    if (this.state === 'wait' || this.state === 'windup' || this.state === 'hold') {
-      const wind = this.state === 'windup', hold = this.state === 'hold';
+    if (this.state === 'wait' || this.state === 'windup') {
+      const wind = this.state === 'windup';
       const img = wind ? E.puma.pounce : E.puma.crouch;
-      const sh = wind || (hold && this.t % 40 < 12) ? (this.t % 4 < 2 ? 1 : -1) : 0;
+      const sh = wind ? (this.t % 4 < 2 ? 1 : -1) : 0;
       ctx.drawImage(this.face < 0 ? flipS(img) : img, Math.round(this.cx - img.width / 2 + sh), Math.round(this.y + this.h - img.height + 1));
       if (wind) drawText(ctx, '!', Math.round(this.cx), Math.round(this.y - 18 - (this.t % 10 < 5 ? 1 : 0)), { scale: 2, color: '#ffffff', align: 'center', shadow: true, shadowColor: '#2a1f2d' });
       return;
@@ -864,20 +856,17 @@ class Puma extends Actor {
     ctx.drawImage(this.face < 0 ? flipS(img) : img, -Math.round(img.width / 2), -Math.round(img.height / 2));
     ctx.restore();
   }
-  // al arrastrarlos, sus patas delanteras (con las garras) van por delante de la
-  // cabra: se ve que la tiene agarrada
-  drawFront(ctx) {
-    if (this.state !== 'carry') return;
-    ctx.save(); ctx.translate(Math.round(this.cx), Math.round(this.cy)); ctx.rotate(this.rot); ctx.scale(this.face, 1);
-    for (const [x, y] of [[5, -6], [12, -3]]) {
-      ctx.fillStyle = '#1e120c'; ctx.fillRect(x - 1, y - 1, 5, 9);
-      ctx.fillStyle = '#b97f42'; ctx.fillRect(x, y, 3, 7);
-      ctx.fillStyle = '#ffffff'; ctx.fillRect(x + 3, y + 5, 1, 1); ctx.fillRect(x + 3, y + 3, 1, 1);
-    }
-    ctx.restore();
+  // el abrazo va pegado al dibujo de la cabra (mismo origen y mismo lado)
+  drawGrab(ctx, g, img) {
+    const goat = g.player.riding; if (!(goat instanceof Cabra)) return;
+    const f = goat.facing < 0 ? -1 : 1, sx = Math.round(goat.cx - 2 * f), top = Math.round(goat.y + goat.h - 20);
+    const jit = this.t % 8 < 4 ? 0 : 1;   // forcejea
+    ctx.save(); ctx.translate(sx, top + jit); ctx.scale(f, 1); ctx.drawImage(img, -26, -6); ctx.restore();
   }
+  // al arrastrarlos, las patas con garras van por delante de la cabra
+  drawFront(ctx, g) { if (this.state === 'carry') this.drawGrab(ctx, g, E.puma.grabFront); }
 }
-Puma.WIND_T = 36; Puma.LEAP_T = 24; Puma.HOLD_T = 80; Puma.GR = 0.3;
+Puma.WIND_T = 44; Puma.LEAP_T = 25; Puma.GR = 0.3;
 
 // ═════════════════════════════════════════════════════════════════════════════
 class Pickup extends Actor {
