@@ -96,6 +96,31 @@ const SONGS = {
           mel: 'A5:1 G5:1 E5:1 G5:1 A5:2 A5:2 | G5:1 E5:1 D5:1 E5:1 G5:2 G5:2 | A5:1 G5:1 E5:1 G5:1 A5:2 C6:2 | A5:2 G5:2 E5:4 | E5:1 D5:1 C5:1 D5:1 E5:2 E5:2 | G5:1 E5:1 D5:1 E5:1 C5:2 C5:2 | D5:1 C5:1 B4:1 C5:1 D5:2 B4:2 | A4:2 A4:2 A4:4' },
   }, ['A', 'B*', 'A2', 'C~', 'B', 'F'], huaynoBass),
 
+  // ADIÓS PUEBLO DE AYACUCHO (huayno ayacuchano anónimo, siglo XIX; dominio
+  // público): transcripción propia en La menor para quena, zampoña y charango.
+  // Cotejada con la melodía que recoge la tablatura de charango del CEMDUC-PUCP
+  // (solo la línea melódica; acordes y arreglo son nuestros). Original en 2/8:
+  // aquí cada compás de 2/4 junta dos de 2/8.
+  //  I  intro "mi re | do. mi | mi re | do. mi | mi re | do si do | re si | la"   confianza alta
+  //  A  "A-diós pue-blo de A-ya-cu-cho, per-las-cha-llay":
+  //     mi la | la sol# la~ | la do | la | la sol mi | sol | la la | sol sol sol~ |
+  //     mi re | do. mi~ | re do | la. do | la sol mi                              confianza alta
+  //  B  igual a A desde el 4.º compás; empieza "do re mi (tresillo) | mi re mi~ | mi la"
+  //     (el tresillo va como 1-1-2 semicorcheas)                                  confianza media-alta
+  //  acordes (Am, C, G, E): propios, en el estilo del huayno                     confianza media
+  ayacucho: makeSong({ bpm: 100, vol: 0.28, strum: 'D.DUD.DU', drums: 'B..bB...', shaker: true, orn: 0.25, lead2Vol: 0.12 }, {
+    I:  { ch: ['C', 'C', 'Am', 'Am', 'Am'],
+          mel: 'E5:2 D5:2 C5:3 E5:1 | E5:2 D5:2 C5:3 E5:1 | E5:2 D5:2 C5:2 B4:1 C5:1 | D5:2 B4:2 A4:4 | r:4 E5:2 A5:2' },
+    // A con la 1.ª casilla: el "A-diós" de la vuelta cae al final del compás anterior
+    A:  { ch: ['Am', 'Am', 'C', 'G', 'C', 'Am'],
+          mel: 'A5:1 G#5:1 A5:3 A5:1 C6:2 | A5:4 A5:1 G5:2 E5:1 | G5:4 A5:2 A5:2 | G5:2 G5:1 G5:2 E5:2 D5:1 | C5:3 E5:2 D5:2 C5:1 | A4:3 C5:1 A4:1 G4:1 E4:2' },
+    // la vuelta de A, con la 2.ª casilla (termina en la)
+    A2: { ch: ['Am', 'Am', 'C', 'G', 'C', 'Am'],
+          mel: 'E5:2 A5:2 A5:1 G#5:1 A5:2 | -:1 A5:1 C6:2 A5:4 | A5:1 G5:2 E5:1 G5:4 | A5:2 A5:2 G5:2 G5:1 G5:1 | -:1 E5:2 D5:1 C5:3 E5:1 | -:1 D5:2 C5:1 A4:4' },
+    B:  { ch: ['C', 'C', 'C', 'G', 'C', 'Am'],
+          mel: 'C5:1 D5:1 E5:2 E5:2 D5:1 E5:1 | -:1 E5:1 A5:2 G5:4 | A5:1 G5:2 E5:1 G5:4 | A5:2 A5:2 G5:2 G5:1 G5:1 | -:1 E5:2 D5:1 C5:3 E5:1 | -:1 D5:2 C5:1 A4:4' },
+  }, ['I', 'A', 'A2', 'B', 'B*'], huaynoBass),
+
   // el Apu: solemne
   apu: makeSong({ bpm: 104, vol: 0.28, strum: 'D...D.U.', drums: 'B...B...', orn: 0.25, lead2Vol: 0.13 }, {
     A: { ch: ['Dm', 'Dm', 'Bb', 'C', 'Dm', 'F', 'C', 'Dm'],
@@ -267,7 +292,7 @@ const LEVEL = {
   altitude: { baseRow: G, baseM: 3650, perRow: 13 },
   soroche: { minM: 4600 },   // desde aquí arriba te da soroche
   zones: [
-    { x: 0,   name: 'EL VALLE',  music: 'valle' },
+    { x: 0,   name: 'EL VALLE',  music: 'ayacucho' },
     { x: 86,  name: 'EL APU',    music: 'apu', alt: true },
     { x: 145, name: 'CEJA DE SELVA', music: 'huayco' },
     { x: 252, name: 'LA SELVA',  music: 'selva' },
