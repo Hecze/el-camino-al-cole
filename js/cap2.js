@@ -884,6 +884,42 @@
       B: { ch: ['Am', 'Am', 'Em', 'Em', 'C', 'D', 'Em', 'Em'],
            mel: 'A5:2 C6:1 A5:1 E5:2 A5:2 | G5:1 A5:1 G5:1 E5:1 C5:4 | B4:1 E5:1 G5:1 B5:1 A5:2 G5:2 | E5:2 G5:1 E5:1 B4:4 | C5:1 E5:1 G5:1 C6:1 B5:2 G5:2 | A5:1 F#5:1 D5:1 F#5:1 A5:4 | G5:1 F#5:1 E5:1 D5:1 B4:2 D5:2 | E5:8' },
     }, ['A', 'B', 'A*', 'B'], cumbiaBass),
+    // EL PLEBEYO (Felipe Pinglo Alva † 1936; dominio público en el Perú): vals
+    // criollo en 3/4 (bar: 12) con guitarra: bordón en el 1, rasgueo en el 2 y el 3
+    // y cajón. Transcripción propia de la melodía conocida (la de Jesús Vásquez,
+    // 1938), cotejada con la transcripción publicada por R. Sarmiento ("Los tres
+    // plebeyos", Antec 2018). Estrofa en La menor; el coro, en La mayor y una
+    // octava arriba para que la guitarra no se pierda en el bajo.
+    //  E  "La noche cubre ya…": mi | la sol# si la | DO—— si | la sol# do fa | mi——
+    //     y "Luis Enrique, el plebeyo": do# do# do# do# do# | do# si do#… | re la fa——   confianza alta
+    //  T  puente "Trémulo de emoción": sol fa# sol la la# | si—— re si | la—— si la | sol#——  confianza alta
+    //  C  coro "Mi sangre, aunque plebeya" y "¡Señor! ¿por qué los seres…"               confianza alta (melodía)
+    //  acordes: los de la transcripción en los compases marcados; el resto, nuestros   confianza media
+    plebeyo: makeSong(Object.assign({ bar: 12, bpm: 160, vol: 0.27, strum: '....D...D...', drums: 'B...b...b...', kit: 'cajon', leadInst: 'guitar' }, COSTA), {
+      E: { ch: ['Am', 'E7', 'Am', 'Am', 'Am', 'Am', 'E7', 'E7', 'E7', 'E7', 'E7', 'E7', 'E7', 'E7', 'Am', 'Am',
+                'Am', 'E7', 'Am', 'Am', 'A7', 'A7', 'A7', 'Dm', 'G7', 'G7', 'C', 'C', 'E7', 'E7', 'Am', 'Am'],
+           mel: 'r:2 E5:2 A5:2 G#5:2 B5:2 A5:2 | C6:8 r:2 B5:2 | A5:4 G#5:2 C6:4 F5:2 | E5:12 |' +
+                'r:2 A4:2 A4:2 A4:2 A4:2 C5:2 | E5:2 E5:2 E5:2 E5:2 A5:2 G#5:2 | B5:2 A5:2 A5:2 A5:2 E5:2 E5:2 | D5:12 |' +
+                'r:2 D5:2 D5:2 D5:2 G#5:2 B5:2 | D6:8 r:2 C6:2 | B5:4 A5:2 B5:4 A5:2 | G#5:12 |' +
+                'r:2 E5:2 E5:2 E5:2 E5:2 E5:2 | F5:2 E5:2 E5:2 E5:2 E5:2 E5:2 | F5:2 E5:2 E5:2 E5:2 E5:2 F5:2 | E5:12 |' +
+                'r:2 E5:2 A5:2 G#5:2 B5:2 A5:2 | C6:8 r:2 B5:2 | A5:4 G#5:2 C6:4 F5:2 | E5:12 |' +
+                'r:2 C#6:2 C#6:2 C#6:2 C#6:2 C#6:2 | C#6:2 B5:2 C#6:2 C#6:2 C#6:2 C#6:2 | C#6:2 B5:2 A5:2 C#6:2 B5:2 A5:2 | D6:2 A5:2 F5:8 |' +
+                'r:2 F5:2 F5:2 F5:2 D5:2 F5:2 | D6:8 r:2 C6:2 | B5:4 D6:2 C6:4 B5:2 | C6:12 |' +
+                'r:2 E5:2 A5:2 B5:2 B5:2 B5:2 | C6:2 A5:2 E5:8 | r:2 C6:2 B5:2 A5:2 G#5:2 B5:2 | A5:12' },
+      T: { ch: ['Am', 'G', 'F', 'E7'],
+           mel: 'r:2 G5:2 F#5:2 G5:2 A5:2 A#5:2 | B5:8 D6:2 B5:2 | A5:8 B5:2 A5:2 | G#5:12' },
+      C: { ch: ['A', 'A', 'E7', 'A', 'A', 'E7', 'E7', 'Bm', 'Bm', 'E7', 'E7', 'E7', 'A', 'E7', 'Dm', 'A',
+                'A', 'C#7', 'C#7', 'F#m', 'F#m', 'F#7', 'F#7', 'Bm', 'Bm', 'E7', 'E7', 'A', 'A', 'B7', 'B7', 'E7', 'A', 'E7', 'E7', 'A'],
+           mel: 'r:2 E5:2 D#5:2 E5:2 G#5:2 F#5:2 | F#5:2 E5:10 | r:2 A5:2 A5:2 G#5:2 F#5:2 G#5:2 | B5:2 A5:10 |' +
+                'r:2 C#6:2 C#6:2 B5:2 B5:2 C#6:2 | B5:2 A5:2 G#5:2 A5:2 G#5:2 A5:2 | B5:10 G#5:2 | F#5:12 |' +
+                'r:2 D5:2 D5:2 C#5:2 D5:2 D#5:2 | E5:2 D5:10 | r:2 A5:2 A5:2 F#5:2 G#5:2 A5:2 | G#5:2 F#5:10 |' +
+                'r:2 C#6:2 D6:2 B5:2 C#6:2 A5:2 | B5:2 G#5:8 G#5:2 | B5:6 F#5:2 F#5:2 F5:2 | E5:12 |' +
+                'r:2 C#6:2 C#6:2 C#6:2 C#6:2 D6:2 | C#6:2 C#6:8 C#6:2 | B5:6 B5:2 B5:2 A#5:2 | A5:2 A5:10 |' +
+                'r:2 A5:2 G#5:2 F#5:2 G#5:2 A5:2 | F#5:2 F#5:8 G#5:2 | E5:6 D#5:2 E5:2 F#5:2 | D5:12 |' +
+                'r:2 F#5:2 E#5:2 F#5:2 G#5:2 A5:2 | C#6:2 B5:10 | r:2 F#5:2 E#5:2 F#5:2 G#5:2 A5:2 | B5:2 A5:10 |' +
+                'r:2 G#5:2 F#5:2 G#5:2 A5:2 C#6:2 | B5:4 D#5:8 | -:2 A5:2 D#5:2 F#5:2 A5:2 C#6:2 | B5:12 |' +
+                'r:2 C#6:2 D6:2 B5:2 C#6:2 A5:2 | B5:4 G#5:8 | -:2 E5:2 D#5:2 E5:2 F#5:2 G#5:2 | A5:8 r:4' },
+    }, ['E', 'T', 'C'], valsBass),
   });
 
   // ───────────────────────────────────────────────────────────────────────────
@@ -927,8 +963,8 @@
     zones: [
       { x: 0,   name: 'EL DESIERTO',     music: 'desierto' },
       { x: 196, name: 'LA PANAMERICANA', music: 'panamericana' },
-      { x: 346, name: 'LAS AZOTEAS',     music: 'lima' },
-      { x: SCHOOL + 2, name: 'EL COLEGIO', music: 'lima' },
+      { x: 346, name: 'LAS AZOTEAS',     music: 'plebeyo' },
+      { x: SCHOOL + 2, name: 'EL COLEGIO', music: 'plebeyo' },
     ],
     rects: [
       ...duneFill(H),
