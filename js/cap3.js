@@ -901,7 +901,7 @@ const ART3 = (() => {
       { x: 0,      name: 'EL CUSCO',      music: 'c3cusco' },
       { x: V,      name: 'VALLE SAGRADO', music: 'c3valle' },
       { x: OL + 1, name: 'EL TREN',       music: 'c3tren' },
-      { x: AC,     name: 'MACHU PICCHU',  music: 'c3condor' },
+      { x: AC,     name: 'MACHU PICCHU',  music: 'c3virgenes' },
     ],
     rects: [
       // ── EL CUSCO ──
@@ -1296,6 +1296,25 @@ const ART3 = (() => {
       B: { ch: ['F', 'C', 'Dm', 'Am', 'Bb', 'F', 'C', 'Dm'],
            mel: 'A5:2 A5:1 C6:1 A5:2 F5:2 | G5:2 G5:1 E5:1 C5:4 | F5:2 F5:1 A5:1 D5:4 | E5:2 C5:2 A4:4 | D5:1 F5:1 Bb5:2 A5:1 G5:1 F5:2 | A5:2 F5:2 C5:4 | E5:1 G5:1 C6:2 G5:1 E5:1 C5:2 | D5:2 A4:2 D5:4' },
     }, ['A', 'B', 'A*', 'B'], huaynoBass),
+
+    // VÍRGENES DEL SOL (Jorge Bravo de Rueda † 1940; dominio público en el Perú):
+    // transcripción propia del fox incaico en Re menor, para quena y zampoña sobre
+    // charango y bombo. Original en compás partido: aquí cada compás de 4/4 son
+    // dos de 2/4 y las notas largas se ligan con '-'. Melodía cotejada con una
+    // partitura de piano de referencia (solo la línea superior; armonía nuestra).
+    //  A  la——— | la sol la sol la sol fa | re re fa re fa re do | la la do la do la sol | la———    confianza alta
+    //  B  re——— | do re do la (×2) | sol sol sol sol | re re re re | la———                      confianza media
+    //     (los dos primeros compases, alta; el remate sol/re, media: puede ser voz interna)
+    //  C  do re mi sol | DO—— RE—— | la—— la do re do | la———                                     confianza alta
+    //     (y su respuesta una octava abajo: la—— la do re do | la———)                             confianza media
+    c3virgenes: makeSong({ bpm: 112, vol: 0.28, strum: '..D...DU', drums: 'B...b...', orn: 0.25, lead2Vol: 0.13 }, {
+      A: { ch: ['Dm', 'Dm', 'Dm', 'Dm', 'Bb', 'Bb', 'F', 'F', 'Dm', 'Dm', 'Dm', 'A7'],
+           mel: 'A5:8 | -:8 | -:4 G5:2 A5:2 | G5:2 A5:2 G5:2 F5:2 | D5:4 D5:2 F5:2 | D5:2 F5:2 D5:2 C5:2 | A4:4 A4:2 C5:2 | A4:2 C5:2 A4:2 G4:2 | A4:8 | -:8 | -:8 | -:8' },
+      B: { ch: ['Gm', 'Gm', 'Am', 'Am', 'Gm', 'Gm', 'Am', 'Am', 'Gm', 'Gm', 'Gm', 'Gm', 'A7', 'A7', 'A7', 'A7'],
+           mel: 'D5:8 | -:8 | -:4 C5:2 D5:2 | C5:4 A4:4 | D5:8 | -:8 | -:4 C5:2 D5:2 | C5:4 A4:4 | G4:4 G4:4 | G4:4 G4:4 | D5:4 D5:4 | D5:4 D5:4 | A4:8 | -:8 | -:8 | -:8' },
+      C: { ch: ['C', 'C', 'C', 'E', 'F', 'F', 'F', 'F', 'C', 'C', 'C', 'E', 'F', 'F', 'Dm', 'A7'],
+           mel: 'C5:4 D5:4 | E5:4 G5:4 | C6:8 | D6:8 | A5:8 | -:2 C6:2 D6:2 C6:2 | A5:8 | -:8 | C5:4 D5:4 | E5:4 G5:4 | C6:8 | D6:8 | A4:8 | -:2 C5:2 D5:2 C5:2 | A4:8 | -:8' },
+    }, ['A', 'A', 'B', 'C', 'A*', 'C'], slowBass),
 
     // EL CÓNDOR PASA (Daniel Alomía Robles, dominio público en el Perú):
     // transcripción propia del tema lento, en La menor, para quena y zampoña
