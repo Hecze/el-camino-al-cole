@@ -93,6 +93,7 @@ class Player extends Actor {
   update(g) {
     const level = g.level;
     if (this.won) { this.animT++; return; }
+    if (this.grabbed) { this.animT++; return; }   // un puma te lleva: no hay control
     if (this.mountCd > 0) this.mountCd--;
     if (this.dragged) { this.updateDragged(g); return; }
     if (this.swimCd > 0) this.swimCd--;
@@ -380,7 +381,7 @@ class Mount extends Actor {
     super(x, y, w, h); this.facing = 1; this.rider = null; this.animT = 0; this.seat = seat;
     this.homeX = x; this.homeY = y; this.coyote = 0; this.retired = false; this.canDismount = true;
   }
-  reset() { this.x = this.homeX; this.y = this.homeY; this.vx = 0; this.vy = 0; this.rider = null; this.facing = 1; }
+  reset() { this.x = this.homeX; this.y = this.homeY; this.vx = 0; this.vy = 0; this.rider = null; this.facing = 1; this.grabbed = false; }
   hazards(g) {
     const lv = g.level;
     for (const px of [this.x + 3, this.x + this.w - 3]) {
@@ -427,6 +428,7 @@ class Cabra extends Mount {
   constructor(x, y) { super(x, y - 15, 20, 15, { dx: 5, dy: -10 }); this.canDismount = false; this.landT = 0; this.idleT = 0; }
   update(g) {
     this.animT++;
+    if (this.grabbed) return;   // el puma la lleva
     if (this.landT > 0) this.landT--;
     if (this.rider) {
       const left = Input.held('left'), right = Input.held('right');
@@ -724,6 +726,106 @@ class Condor extends Actor {
     const img = E.condorBig[Math.floor(this.animT / 9) % 2];
     ctx.drawImage(this.dir < 0 ? flipS(img) : img, Math.round(this.cx - 14), Math.round(this.y - 2));
   }
+}
+
+// PUMA (león andino): espera agazapado en su repisa de roca, a un lado del camino
+// de la cabra. Cuando pasas cerca, mueve la cola, se agacha y salta rugiendo hacia
+// donde vas a estar; si falla, sigue de largo y cae al vacío (vuelve al rato).
+// Si te alcanza, agarra a la cabra y los tres caen juntos al vacío: la cámara se
+// queda quieta y recién cuando el niño sale de la pantalla cuenta como caída.
+class Puma extends Actor {
+  constructor(def) {
+    super(def.x * TS, def.y * TS - 12, 26, 12);
+    this.homeX = this.x; this.homeY = this.y; this.homeFace = def.face || 1; this.snowy = !!def.snowy;
+    this.onRespawn();
+  }
+  onRespawn() { this.state = 'wait'; this.t = 0; this.x = this.homeX; this.y = this.homeY; this.vx = 0; this.vy = 0; this.rot = 0; this.cool = 0; this.face = this.homeFace; this.floor = 0; }
+  get body() { return { x: this.x + 6, y: this.y + 3, w: this.w - 12, h: this.h - 4 }; }
+  update(g) {
+    this.t++;
+    const p = g.player, goat = p.riding instanceof Cabra ? p.riding : null;
+    if (this.state === 'wait') {
+      if (this.cool > 0) { this.cool--; return; }
+      if (!goat || g.state !== 'play') return;
+      const dx = goat.cx - this.cx, dy = goat.cy - this.cy;
+      // te ve si estás cerca, del lado al que mira y no muy por encima
+      if (Math.abs(dx) < 136 && Math.sign(dx) === this.face && dy > -80 && dy < 56) { this.state = 'windup'; this.t = 0; }
+    } else if (this.state === 'windup') {
+      if (goat && goat.onGround) this.floor = goat.cy;   // dónde rebota la cabra
+      if (this.t >= 34 && goat) {
+        // salta hacia donde VA a estar la cabra en ~22 cuadros: simula su rebote
+        // (gravedad, salto y la saliente donde cae) y su avance a los lados
+        const T = 22, GR = 0.3;
+        // la saliente donde rebota la cabra: la primera bajo sus patas
+        let floor = this.floor;
+        if (!floor) {
+          const lv = g.level, col = Math.floor(goat.cx / TS);
+          for (let r = Math.floor((goat.y + goat.h) / TS); r < lv.rows && r < (goat.y + goat.h) / TS + 12; r++) {
+            const c = lv.tile(col, r); if (isSolidCode(c) || isOnewayCode(c)) { floor = r * TS - goat.h / 2; break; }
+          }
+          if (!floor) floor = goat.cy;
+        }
+        let y = goat.cy, vy = goat.vy;
+        for (let k = 0; k < T; k++) { vy = Math.min(vy + PHYS.GOAT_GRAV, PHYS.GOAT_FALL); y += vy; if (y >= floor && vy > 0) { y = floor; vy = PHYS.GOAT_JUMP; } }
+        const tx = goat.cx + goat.vx * T * 0.5, ty = y;   // se adelanta solo a medias: si te mueves, falla
+        this.vx = Math.max(-4.6, Math.min(4.6, (tx - this.cx) / T));
+        this.vy = Math.max(-10, Math.min(2, (ty - this.cy) / T - 0.5 * GR * T));
+        this.face = this.vx >= 0 ? 1 : -1; this.state = 'leap'; this.t = 0;
+        g.audio('puma'); g.burst(this.cx, this.y + this.h, 'dust', 8);
+      } else if (this.t >= 34) { this.state = 'wait'; this.cool = 60; }
+    } else if (this.state === 'leap') {
+      this.vy += 0.3; this.x += this.vx; this.y += this.vy;
+      if (goat && !p.grabbed && p.invuln <= 0) {
+        const b = this.body, hit = (o) => b.x < o.x + o.w && b.x + b.w > o.x && b.y < o.y + o.h && b.y + b.h > o.y;
+        if (hit(goat) || hit(p)) {
+          // ¡te agarró! los tres caen al vacío; la cámara se queda donde estaba
+          this.state = 'carry'; this.t = 0; p.grabbed = true; goat.grabbed = true;
+          g.camLock = { x: g.cam.x, y: g.cam.y };
+          this.vx = this.face * 1.2; this.vy = Math.min(this.vy, -1.5);
+          g.audio('crush'); g.audio('bleat'); g.shake(3, 12); g.burst(goat.cx, goat.cy, 'dust', 14);
+        }
+      }
+      if (this.y > this.homeY + 420) { this.state = 'gone'; this.t = 0; }
+    } else if (this.state === 'gone') {
+      if (this.t > 300) { this.onRespawn(); this.cool = 120; }
+    } else if (this.state === 'carry') {
+      this.vy = Math.min(this.vy + 0.28, 7); this.x += this.vx; this.y += this.vy; this.rot += 0.11 * this.face;
+      if (goat) {
+        // el puma va prendido de la cabra (encima de ella); el niño, montado
+        goat.x = this.cx - goat.w / 2 - this.face * 4; goat.y = this.cy - goat.h / 2 + 2; goat.vx = 0; goat.vy = 0;
+        p.x = goat.cx - p.w / 2; p.y = goat.y - p.h + 4; p.vx = 0; p.vy = 0;
+      }
+      if (this.t % 5 === 0) g.burst(this.cx, this.cy, 'dust', 2);
+      if (p.y > g.cam.y + VIEW.h + 12) g.playerEnvDeath('puma');   // recién al salir de la pantalla
+    }
+  }
+  draw(ctx) {
+    // su repisa de roca (con nieve arriba si está alto)
+    const rx = Math.round(this.homeX - 3), ry = Math.round(this.homeY + this.h);
+    ctx.fillStyle = '#5d5768'; ctx.fillRect(rx, ry, this.w + 6, 6); ctx.fillRect(rx + 3, ry + 6, this.w, 3); ctx.fillRect(rx + 8, ry + 9, this.w - 10, 2);
+    ctx.fillStyle = '#8a8296'; ctx.fillRect(rx + 1, ry, this.w + 4, 2);
+    if (this.snowy) { ctx.fillStyle = '#f4f8ff'; ctx.fillRect(rx, ry - 1, this.w + 6, 2); }
+    if (this.state === 'gone') return;
+    if (this.state === 'wait' || this.state === 'windup') {
+      const img = E.puma.crouch, wind = this.state === 'windup';
+      const sh = wind ? (this.t % 4 < 2 ? 1 : -1) : 0;
+      ctx.drawImage(this.face < 0 ? flipS(img) : img, Math.round(this.cx - img.width / 2 + sh), Math.round(this.y + this.h - img.height + (wind ? 1 : 0)));
+      // la cola se mueve: más rápido cuando está por saltar
+      const tk = Math.floor(this.t / (wind ? 3 : 14)) % 2, tx = this.face > 0 ? Math.round(this.cx - img.width / 2) - 1 : Math.round(this.cx + img.width / 2);
+      ctx.fillStyle = '#5a3a22'; ctx.fillRect(tx, Math.round(this.y + this.h - 6 - tk * 2), 2, 3);
+      if (wind) drawText(ctx, '!', Math.round(this.cx), Math.round(this.y - 14 - (this.t % 10 < 5 ? 1 : 0)), { scale: 2, color: '#ffffff', align: 'center', shadow: true, shadowColor: '#2a1f2d' });
+      return;
+    }
+    if (this.state !== 'carry') this.drawLeap(ctx);
+  }
+  drawLeap(ctx) {
+    const img = E.puma.leap;
+    ctx.save(); ctx.translate(Math.round(this.cx), Math.round(this.cy)); ctx.rotate(this.rot);
+    ctx.drawImage(this.face < 0 ? flipS(img) : img, -Math.round(img.width / 2), -Math.round(img.height / 2));
+    ctx.restore();
+  }
+  // al arrastrarlos se dibuja delante de la cabra y del niño: se ve prendido de ellos
+  drawFront(ctx) { if (this.state === 'carry') this.drawLeap(ctx); }
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -1387,6 +1489,7 @@ function makeEntity(def, level) {
     case 'page': return new Pickup('page', def.x, def.y);
     case 'coca': return new Pickup('coca', def.x, def.y);
     case 'condor': return new Condor(def);
+    case 'puma': return new Puma(def);
     default: return EXTRA_ENTITIES[def.type] ? EXTRA_ENTITIES[def.type](def, level) : null;
   }
 }

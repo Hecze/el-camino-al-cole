@@ -970,6 +970,41 @@ OBJ.torito = {
   // amarillo: el de la foto está en sombra (#a07010); este es el mismo tono a pleno sol
   amarillo: PIX.fromRows(TORITO_ROWS, Object.assign({ '.': null, B: '#f0b419', b: '#a07010', n: '#5e4208' }, TORITO_PAL_BASE)),
 };
+// PUMA (león andino): agazapado esperando y estirado en pleno salto. Mira a la derecha.
+const PUMA_PAL = { '.': null, K: '#2a1a14', b: '#c88e4e', s: '#a2672e', l: '#ecd2a8', d: '#5a3a22', n: '#4a2a1a', e: '#1d1622' };
+E.puma = {
+  crouch: PIX.fromRows([
+    '...................K........',
+    '..................KbKK......',
+    '..................KbbbKK....',
+    '........KKKKKKKK.KbbbbbbK...',
+    '......KKbbbbbbbbKKbbbebbKK..',
+    '.....KbbbbbbbbbbbbbbbbbllnK.',
+    'K...KbbbbbbbbbbbbbbbbbllllnK',
+    'dK.KbbbbbbbbbbbbbbbssssllKK.',
+    'ddKbbbbbbbbllllbbbbKKKKKK...',
+    'ddbbbsssslllllllsbbbbKK.....',
+    'ddsssKssssslllllKsssbbbKK...',
+    'KKKKK.KKsssKKKKK.KKKsslllK..',
+  ], PUMA_PAL),
+  leap: PIX.fromRows([
+    'dddbK....................K.........',
+    'KddbbK..................KbKKK......',
+    '.KsbbbKK................KbbbbK.....',
+    '..KssbbbK..KKKKKKKKKK..KbbbbbbK....',
+    '...KKsbbbKKbbbbbbbbbbKKKbbbebbKK...',
+    '.....KsbbbbbbbbbbbbbbbbbbbbblllnK..',
+    '......KsbbbbbbbbbbbbbbbbsbbbllllnK.',
+    '......KKbbbbsslllllllbbbKbsssllKK..',
+    '.....KbbbbssssllllllsssbbbKKKKK....',
+    '...KKbbbbsssslllllllsssssbbbKKK....',
+    '.KKbbbbbssssKKKKKKKKKsssssbbbbbKKK.',
+    'KlllbsbssssK.........KKsssssbbllllK',
+    'llllsKssssK............KssssssllllK',
+    'lllKKKssKK..............KKsssKKKKK.',
+    'KKK...KK..................KKK......',
+  ], PUMA_PAL),
+};
 // victoria regia: hoja gigante flotante con el borde levantado. 30x5
 OBJ.lily = spr([
   '....RRRRRRRRRRRRRRRRRRRRRR....',

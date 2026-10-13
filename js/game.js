@@ -174,6 +174,7 @@
     else if (kind === 'mud') AUDIO.play('drown');
     else if (kind === 'caiman') { AUDIO.play('snap'); AUDIO.play('splash'); Game.shake(3, 10); Game.burst(a.cx, a.cy, 'swampSplash', 20); }
     else if (kind === 'bird' || kind === 'eagle') { AUDIO.play('crush'); Game.shake(3, 10); Game.burst(a.cx, a.cy, 'feather', 16); }
+    else if (kind === 'puma') AUDIO.play('fall');
     else if (kind === 'rock') { AUDIO.play('crush'); Game.shake(4, 12); Game.burst(a.cx, a.cy, 'rock', 14); }
     else if (kind === 'combi' || kind === 'buggy' || kind === 'carretilla' || kind === 'bici') { AUDIO.play('crush'); AUDIO.play('honk'); Game.shake(4, 12); Game.burst(a.cx, a.cy, 'dust', 18); }
     else if (kind === 'cactus' || kind === 'rebar') { AUDIO.play('ouch'); Game.shake(2, 8); Game.burst(a.cx, a.cy, 'spark', 12); }
@@ -193,6 +194,7 @@
 
   Game.respawn = function () {
     const p = Game.player;
+    Game.camLock = null; p.grabbed = false;
     for (const e of Game.entities) { if (e instanceof Mount && !e.retired) e.reset(); if (e.onRespawn) e.onRespawn(Game); }
     Game.entities = Game.entities.filter(e => !(e instanceof Boulder));
     p.riding = null; p.x = Game.spawn.x; p.y = Game.spawn.y - p.h;
@@ -208,6 +210,7 @@
 
   // ── cargar ───────────────────────────────────────────────────────────────
   function startGame(ci) {
+    Game.camLock = null;
     if (ci == null) ci = Game.chapterIdx;
     const ch = CHAPTERS[ci], lv = ch.level;
     Game.chapterIdx = ci; Game.chapter = ch; Game.menuChapter = ci; Game.jingle = null;
@@ -236,6 +239,8 @@
   // pantalla y ves ~2/3 de lo que viene). En reposo no recentra, así no marea.
   const LOOK_X = 84;
   function updateCamera(snap) {
+    // un puma se lleva al niño: la cámara se queda quieta donde estaba
+    if (Game.camLock && !snap) { Game.cam.x = Game.camLock.x; Game.cam.y = Game.camLock.y; return; }
     const lv = Game.level, p = Game.player, cam = Game.cam;
     const body = p.riding || p;
     const own = p.riding ? p.riding.vx : p.vx;

@@ -221,7 +221,12 @@ const BIRDS = [];
 [124, 104, 84, 64, 46, 32].forEach((row, i) => {
   BIRDS.push({ type: 'condor', x0: 90, x1: 123, y: row - 1.5, speed: 1.4 + i * 0.12, phase: i * 0.7, dir: i % 2 ? -1 : 1 });
 });
-// pasto para la cabra: algo apartado del camino (cuesta ir a por él)
+// pumas en sus repisas, a un lado del camino de la cabra: más abajo que arriba
+// (las cabras trepan justamente para escapar de ellos)
+const PUMAS = [2, 5, 8, 11, 15, 19, 26].map((i, k) => {
+  const l = MTN.up[i], left = k % 2 === 0;
+  return { type: 'puma', x: left ? l[0] - 6 : l[0] + l[2] + 3, y: l[1] - 1, face: left ? 1 : -1, snowy: l[1] < 80 };
+});
 // hojitas de coca para el soroche: en el centro de las salientes altas, donde rebota la cabra
 const COCA = [20, 24, 28].map(i => ({ type: 'coca', x: mid(MTN.up[i]) - 0.5, y: MTN.up[i][1] - 1 }));
 // puntos de control en la montaña (reapareces montado en la cabra)
@@ -424,6 +429,7 @@ const LEVEL = {
     { type: 'school', x: SCH + 14, y: 110 },
     { type: 'outdoorClass', x: SCH + 22, y: 110 },
     ...BIRDS,
+    ...PUMAS,
     ...COCA,
     ...GUIA,
     // las 3 hojas de tarea que se le volaron al niño, enganchadas en el camino
@@ -458,7 +464,7 @@ const CHAPTERS = [{
   deathMsgs: {
     huaico: '¡TE LLEVÓ EL HUAICO, CAUSA!', mud: '¡TE LLEVÓ EL HUAICO, CAUSA!', water: '¡EL RÍO TE JALÓ, COMPADRE!',
     bird: '¡EL CÓNDOR TE CHOTEÓ!', eagle: '¡EL ÁGUILA TE LLEVÓ DE PIQUEO!', caiman: '¡EL CAIMÁN TE HIZO CEBICHE!',
-    rock: '¡TE CAYÓ UN PEDRONÓN, HERMANITO!', fall: '¡TE FUISTE AL BARRANCO, PE!', default: '¡CUIDADO, PUES!',
+    puma: '¡UN PUMA SE LLEVÓ A TU CABRA!', rock: '¡TE CAYÓ UN PEDRONÓN, HERMANITO!', fall: '¡TE FUISTE AL BARRANCO, PE!', default: '¡CUIDADO, PUES!',
   },
   level: buildLevel(LEVEL),
 }];
