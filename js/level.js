@@ -277,8 +277,8 @@ const GUIA = [
   // EL APU: la cabra, el pasto, el soroche y los cóndores
   { type: 'npc', x: 87.5, y: G, model: 'nino', lines: ['¡LA CABRA SUBE SOLITA!', 'ARRIBA HAY UN PLATANAL', '¡POR AHÍ ES MÁS CORTO, CAUSA!'] },
   // si te quedas a pie al pie del cerro, la flecha de "¡POR AQUÍ!" señala a la cabra
-  // (solo hasta la cumbre: después la cabra queda atrás y la flecha no debe mandarte de vuelta)
-  { type: 'goal', x: 91, y: G, when: (g) => !onGoat(g) && g.player.cx > 70 * TILE && g.player.cx < 118 * TILE, at: (g) => { const c = g.entities.find(e => e instanceof Cabra); return { x: c.cx, y: c.cy }; } },
+  // (solo al pie del cerro: más arriba la cabra queda atrás y la flecha no debe mandarte de vuelta)
+  { type: 'goal', x: 91, y: G, when: (g) => !onGoat(g) && g.player.cx > 70 * TILE && g.player.cx < 96 * TILE, at: (g) => { const c = g.entities.find(e => e instanceof Cabra); return { x: c.cx, y: c.cy }; } },
   { type: 'hint', x: 91.5, y: G, text: '¡SÚBETE A LA CABRA!', arrow: 'down', r: 7, pass: 1, when: (g) => !onGoat(g) },
   { type: 'hint', x: 99, y: G, text: ['LA CABRA SALTA SOLA', 'TÚ SOLO GUÍALA'], key: 'right', r: 9, pass: 4, vr: 4, when: onGoat },
   { type: 'hint', x: HERBS[0].x + 0.5, y: HERBS[0].y + 2.2, text: 'PASTO: ¡SÚPER SALTO!', arrow: 'down', r: 6, pass: 3, vr: 4, when: onGoat },
@@ -432,11 +432,6 @@ const LEVEL = {
     { type: 'striker', x: SCH + 6.5, y: 110, v: 1, flip: true, sign: ['¡ARREGLEN', 'EL COLE!'] },
     { type: 'school', x: SCH + 14, y: 110 },
     { type: 'outdoorClass', x: SCH + 22, y: 110 },
-    // mototaxis estacionados: el transporte del pueblo
-    // paradero: los mototaxis hacen fila uno detrás de otro, pegaditos (2 px
-    // entre uno y otro); el primero ya tiene el motor prendido
-    ...['azul', 'rojo', 'azul', 'azul', 'amarillo', 'rojo'].map((model, i) => ({ type: 'mototaxi', x: SCH + 37.5 + i * 36 / 16, y: 110, model, run: i === 5 })),
-    { type: 'mototaxi', x: SCH - 4.8, y: 110, model: 'azul' },   // esperando pasajeros en el puerto
     ...BIRDS,
     ...HERBS,
     ...COCA,

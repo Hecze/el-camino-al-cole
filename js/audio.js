@@ -154,6 +154,7 @@ const AUDIO = (() => {
     flap:    () => { noise(0.12, 0.25, 1200, 0, { type: 'bandpass', q: 0.7 }); },
     applause: () => { const t = now(); for (let i = 0; i < 26; i++) noise(0.04, 0.12 + Math.random() * 0.1, 2000 + Math.random() * 2000, t + i * 0.045 + Math.random() * 0.03, { type: 'bandpass', q: 1.2 }); },
     // soroche: un "uuuuu" que se tambalea
+    heart:   () => { const t = now(); tone(120, 0.12, 'triangle', 0.3, t, 70); tone(110, 0.14, 'triangle', 0.24, t + 0.17, 65); },   // grave pero audible en el parlante del celular
     dizzy:   () => { const t = now(); [0, 0.22, 0.44].forEach((d, i) => tone(520 - i * 60, 0.25, 'triangle', 0.14, t + d, 420 - i * 60)); },
     // capítulo 3: escupitajo de alpaca, pitazo del tren, clic de cámara y enganche que se suelta
     spit:    () => { noise(0.14, 0.4, 1800, 0, { type: 'bandpass', q: 1.2, sweep: 500 }); tone(320, 0.12, 'sine', 0.2, 0, 120); },

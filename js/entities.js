@@ -118,7 +118,7 @@ class Player extends Actor {
     else if (right && !left) { ax = accel; this.facing = 1; }
     if (ax !== 0) this.vx += ax; else this.vx *= (this.onGround ? 1 - PHYS.FRICTION : 0.985);
     // planeando no hay límite de carrera: se aplica el del parapente más abajo
-    const runMax = PHYS.RUN_MAX * (g.soroche ? 0.85 : 1);   // con soroche caminas más lento
+    const runMax = PHYS.RUN_MAX * (g.soroche ? 0.72 : 1);   // con soroche caminas más lento
     if (!(this.gliding && !this.onGround)) this.vx = Math.max(-runMax, Math.min(runMax, this.vx));
     if (Math.abs(this.vx) < 0.05) this.vx = 0;
 

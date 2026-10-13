@@ -424,9 +424,10 @@ const GUIDE = (() => {
     if (t !== target) { target = t; best = Infinity; idle = 0; }
     if (!t) { arrowA = Math.max(0, arrowA - 0.1); return; }
     const T = t.at ? t.at(g) : t, d = Math.hypot(T.x - p.cx, T.y - p.cy);
-    // si algo te lleva (montura, tren, balsa) o hay una pista a la vista, no hace falta la flecha
+    // si algo te lleva (montura, tren, balsa), hay una pista a la vista o alguien te habla, no hace falta la flecha
     const carried = p.riding || (p.lastMover && Math.abs(p.lastMover.dx || 0) > 0.2);
-    if (d < best - 24 || carried || shown.size) { best = Math.min(best, d); idle = 0; } else idle++;
+    const talking = g.entities.some(e => e instanceof Npc && e.talking);
+    if (d < best - 24 || carried || shown.size || talking) { best = Math.min(best, d); idle = 0; } else idle++;
     arrowA = Math.max(0, Math.min(1, arrowA + (idle > G.IDLE_FRAMES ? 0.06 : -0.15)));
   };
 

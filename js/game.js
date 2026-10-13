@@ -289,6 +289,8 @@
     if (sick && !Game.soroche) { Game.toast(Game.sorocheTold ? '¡OTRA VEZ EL SOROCHE!' : '¡SOROCHE! BUSCA HOJITAS DE COCA'); Game.sorocheTold = true; AUDIO.play('dizzy'); }
     Game.soroche = sick;
     Game.sorocheK += ((sick ? 1 : 0) - Game.sorocheK) * 0.03;
+    // el corazón late fuerte mientras dura el soroche (y la vista se oscurece con cada latido)
+    if (sick && tick % 50 === 0) AUDIO.play('heart');
   }
   Game.cureSoroche = (frames) => {
     Game.cocaT = frames; Game.soroche = false;
@@ -300,11 +302,16 @@
     if (!sorocheBuf || sorocheBuf.width !== BASE_W || sorocheBuf.height !== BASE_H) sorocheBuf = PIX.createCanvas(BASE_W, BASE_H);
     const b = sorocheBuf.getContext('2d'); b.clearRect(0, 0, BASE_W, BASE_H); b.drawImage(canvas, 0, 0);
     for (let y = 0; y < BASE_H; y += 2) {
-      const off = Math.round(Math.sin(y * 0.045 + tick * 0.06) * 2.4 * k);
+      const off = Math.round(Math.sin(y * 0.045 + tick * 0.06) * 4.5 * k);
       if (off) ctx.drawImage(sorocheBuf, 0, y, BASE_W, 2, off, y, BASE_W, 2);
     }
-    ctx.globalAlpha = 0.16 * k; ctx.drawImage(sorocheBuf, Math.round(3 + Math.sin(tick * 0.03) * 2), 0); ctx.globalAlpha = 1;
-    ctx.fillStyle = 'rgba(110,150,80,' + (0.07 * k).toFixed(3) + ')'; ctx.fillRect(0, 0, BASE_W, BASE_H);
+    ctx.globalAlpha = 0.3 * k; ctx.drawImage(sorocheBuf, Math.round(5 + Math.sin(tick * 0.03) * 4), Math.round(Math.sin(tick * 0.021) * 2)); ctx.globalAlpha = 1;
+    ctx.fillStyle = 'rgba(110,150,80,' + (0.12 * k).toFixed(3) + ')'; ctx.fillRect(0, 0, BASE_W, BASE_H);
+    // bordes oscuros que laten con el corazón
+    const beat = Math.max(0, 1 - (tick % 50) / 14);
+    const vg = ctx.createRadialGradient(BASE_W / 2, BASE_H / 2, BASE_H * 0.15, BASE_W / 2, BASE_H / 2, BASE_W * 0.6);
+    vg.addColorStop(0, 'rgba(20,10,30,0)'); vg.addColorStop(1, 'rgba(20,10,30,' + ((0.6 + 0.3 * beat) * k).toFixed(3) + ')');
+    ctx.fillStyle = vg; ctx.fillRect(0, 0, BASE_W, BASE_H);
   }
 
   // ── zonas: la música cambia por tramo ─────────────────────────────────────
@@ -1158,8 +1165,10 @@
   }
 
   function panel(x, y, w, h) { ctx.fillStyle = 'rgba(28,18,30,0.55)'; ctx.fillRect(x + 1, y, w - 2, h); ctx.fillRect(x, y + 1, w, h - 2); }
+  let hintBottom = 0;   // el aviso breve se acomoda debajo del cartel de ayuda para no encimarse
   function hintBox(lines) {
     const w = Math.max(...lines.map(l => textWidth(l))) + 16, h = lines.length * 11 + 6;
+    hintBottom = 30 + h + 3;
     const hi = Math.floor(tick / 20) % 2 ? '#ffe68c' : '#ffffff';
     panel(BASE_W / 2 - w / 2, 30, w, h);
     lines.forEach((l, i) => drawText(ctx, l, BASE_W / 2, 34 + i * 11, { color: i === 0 ? hi : '#fff3d6', align: 'center' }));
@@ -1180,6 +1189,7 @@
     } else if (Game.zoneName) drawText(ctx, Game.zoneName, BASE_W - 58, 11, { color: '#fff3d6', align: 'right', shadow: true, shadowColor: '#00000088' });
 
     // en la cumbre: explicar el parapente
+    hintBottom = 0;
     const lf = Game.entities.find(e => e instanceof Leaf), pl = Game.player;
     if (lf && !lf.taken && Math.abs(pl.cx - lf.cx) < 90 && Math.abs(pl.cy - lf.cy) < 60 && !pl.riding) hintBox(['TOMA LA HOJA DE PLÁTANO']);
     else if (pl.gliding && pl.onGround && pl.y < 100 * TILE) hintBox(['¡SALTA AL VACÍO PARA PLANEAR!']);
@@ -1188,7 +1198,8 @@
     if (Game.toastMsg) {
       const tm = Game.toastMsg, w = textWidth(tm.text) + 14;
       ctx.globalAlpha = Math.min(1, tm.t / 8, (100 - tm.t) / 20);
-      panel(6, 26, w, 13); drawText(ctx, tm.text, 13, 29, { color: '#9be7c4' });
+      const ty = hintBottom || 26;
+      panel(6, ty, w, 13); drawText(ctx, tm.text, 13, ty + 3, { color: '#9be7c4' });
       ctx.globalAlpha = 1;
     }
     // título al empezar
