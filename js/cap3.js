@@ -2083,30 +2083,58 @@ const ART3 = (() => {
   function paintCitadel(g, W, H) {
     for (let i = 0; i < 9; i++) {
       const y = i * 12, x0 = i * 6;
-      R(g, '#55534a', x0, y, W - x0, 12); R(g, '#9a978c', x0, y + 2, W - x0, 10); R(g, '#6f9a52', x0, y, W - x0, 3);
-      for (let x = x0 + (i % 2) * 6; x < W; x += 12) R(g, '#7a776c', x, y + 6, 1, 6);
+      R(g, '#4a3e2c', x0, y, W - x0, 12); R(g, '#a08a62', x0, y + 2, W - x0, 10); R(g, '#7a9a3a', x0, y, W - x0, 3); R(g, '#9ab24a', x0, y, W - x0, 1);
+      for (let x = x0 + (i % 2) * 6; x < W; x += 12) { R(g, '#6e5e44', x, y + 6, 1, 6); R(g, '#6e5e44', x, y + 8, 6, 1); R(g, '#bba67a', x + 2, y + 4, 3, 1); }
     }
     // la plaza principal (pasto) y las casas
-    R(g, '#7fae5c', 60, 46, 200, 20); R(g, '#93c06a', 60, 46, 200, 2);
+    R(g, '#7fa83e', 60, 46, 200, 20); R(g, '#9abf52', 60, 46, 200, 2);
     for (let k = 0; k < 14; k++) {
       const x = 20 + k * 34 + Math.floor(hash(k * 3) * 10), y = 14 + (k % 3) * 24, w = 14 + Math.floor(hash(k * 7) * 8);
-      R(g, '#6e6c62', x - 1, y - 1, w + 2, 11); R(g, '#a8a598', x, y, w, 9); R(g, '#8c897c', x, y + 6, w, 3);
-      R(g, '#a8a598', x, y - 4, 3, 4); R(g, '#a8a598', x + w - 3, y - 4, 3, 4);   // hastiales
+      R(g, '#5a4a34', x - 1, y - 1, w + 2, 11); R(g, '#b09a6e', x, y, w, 9); R(g, '#8e7a56', x, y + 6, w, 3); R(g, '#c4ae80', x, y, w, 1);
+      R(g, '#b09a6e', x, y - 4, 3, 4); R(g, '#b09a6e', x + w - 3, y - 4, 3, 4);   // hastiales
       R(g, '#2a2a30', x + 3, y + 3, 2, 4); R(g, '#2a2a30', x + w - 5, y + 3, 2, 4);
     }
     // las llamas que pastan en la ciudadela
     for (const [x, y] of [[120, 52], [180, 49]]) { R(g, '#f4efe4', x, y, 7, 4); R(g, '#f4efe4', x + 5, y - 4, 2, 4); R(g, '#3a2414', x + 1, y + 4, 1, 2); R(g, '#3a2414', x + 5, y + 4, 1, 2); }
   }
-  // Huayna Picchu: el pico verde y empinado detrás de la ciudadela
+  // Huayna Picchu: el pico verde y empinado detrás de la ciudadela, píxel a píxel
+  // como en la referencia: cara izquierda en sombra (verdes oscuros), cara derecha
+  // al sol (verdes amarillentos), vetas de roca que bajan por las quebradas,
+  // vegetación tramada y andenes en la cumbre.
   function paintHuayna(g, W, H) {
-    for (let x = 0; x < W; x += 2) {
-      const d1 = Math.abs(x - 210) / 70, d2 = Math.abs(x - 80) / 60;
-      const top = Math.min(16 + Math.pow(d1, 1.7) * 150 + Math.round(hash(x >> 2) * 4), 170 + Math.pow(d2, 1.6) * 90);
-      R(g, x > 210 ? '#3f6a42' : '#4f7f4c', x, top, 2, H - top);
-      if (top < 110 && hash(x * 3) > 0.5) R(g, '#7a7a72', x, top + 2 + Math.floor(hash(x) * 20), 2, 6);   // roca viva
-      if (top < 60 && (x >> 1) % 3 === 0) R(g, '#8a8a80', x, top + 4, 2, 1);                             // andenes en la cumbre
+    const SH = ['#1c3420', '#25422a', '#2f5232', '#3a5f36'];             // sombra
+    const LT = ['#4f6e2c', '#6a8634', '#86983c', '#a3a84a', '#bdb85c'];   // al sol
+    const top = (x) => Math.min(16 + Math.pow(Math.abs(x - 210) / 70, 1.7) * 150 + hash(x >> 2) * 4, 170 + Math.pow(Math.abs(x - 80) / 60, 1.6) * 90);
+    for (let x = 0; x < W; x++) {
+      const t = Math.round(top(x));
+      for (let y = t; y < H; y++) {
+        // arista entre la sombra y el sol: ondulada, con una franja tramada de transición
+        const ridge = 204 + (y - 16) * 0.22 + Math.sin(y * 0.07) * 7 + Math.sin(y * 0.23) * 3;
+        const lit = x > ridge + 3 || (x > ridge - 3 && hash(x * 17 + y * 29) < (x - ridge + 3) / 6);
+        const depth = (y - t) / 40;                                        // más claro cerca de la cresta
+        const n = hash(x * 131 + y * 7919);
+        let col;
+        if (lit) {
+          const k = Math.max(0, Math.min(LT.length - 1, Math.floor(4 - depth * 1.2 - (x - ridge) / 50 + n * 1.4)));
+          col = LT[k];
+        } else {
+          const k = Math.max(0, Math.min(SH.length - 1, Math.floor(3 - depth - (ridge - x) / 45 + n * 1.3)));
+          col = SH[k];
+        }
+        // quebradas: vetas verticales más oscuras que bajan por la ladera
+        const gully = hash((x >> 1) * 37 + Math.floor(y / 9)) < 0.1 && hash(x * 3 + 1) < 0.5;
+        if (gully) col = lit ? '#4a5e2a' : '#16291a';
+        // roca viva que asoma
+        if (y < t + 90 && hash(Math.floor(x / 3) * 53 + Math.floor(y / 4) * 17) < 0.035) col = lit ? '#8a8a6e' : '#4e5248';
+        // trama de vegetación (tablero) para que no se vea plano
+        if (((x + y) & 1) && n < 0.25) col = lit ? LT[Math.max(0, LT.indexOf(col) - 1)] || col : SH[Math.max(0, SH.indexOf(col) - 1)] || col;
+        g.fillStyle = col; g.fillRect(x, y, 1, 1);
+      }
+      g.fillStyle = x > 206 ? '#3c5428' : '#14261a'; g.fillRect(x, t, 1, 1);   // borde de la silueta
+      // andenes en la cumbre
+      if (t < 60 && Math.floor((t + 3) / 4) % 2 === 0) { g.fillStyle = '#9a9478'; g.fillRect(x, t + 3 + (t % 4), 1, 1); }
     }
-    g.globalCompositeOperation = 'source-atop'; R(g, 'rgba(240,248,255,0.2)', 0, 0, W, H); g.globalCompositeOperation = 'source-over';   // un velo de neblina
+    g.globalCompositeOperation = 'source-atop'; R(g, 'rgba(240,248,255,0.12)', 0, 0, W, H); g.globalCompositeOperation = 'source-over';   // un velo de neblina
   }
 
   // piezas del decorado: [x en casillas, fila del suelo, ancho y alto (px), pintor, ajuste x, ajuste y]

@@ -539,7 +539,13 @@
   }
 
   // ── LA PANAMERICANA: combis ─────────────────────────────────────────────────
-  const COMBI_PAINT = [['#c8322a', '#f2c230'], ['#2b6fb8', '#f4efe4'], ['#1f8a4a', '#f2c230'], ['#7a3c96', '#f08a7a']];
+  // pinturas de micro limeño: [carrocería, sombra, franja 1, franja 2, franja 3] (la primera, la del micro rojo de referencia)
+  const COMBI_PAINT = [
+    ['#d8261f', '#9a1a14', '#1f4fa8', '#3f86d8', '#f4f4f6'],
+    ['#f2c230', '#b88a14', '#c8322a', '#1f8a4a', '#f4f4f6'],
+    ['#1f8a4a', '#146032', '#f2c230', '#f4f4f6', '#c8322a'],
+    ['#f4f1ea', '#c9c3b6', '#c8322a', '#1f4fa8', '#3f86d8'],
+  ];
   const STOP_SHOUTS = ['¡SUBE, SUBE, HAY SITIO!', '¡LIMA, LIMA, LIMA!', '¡AL FONDO HAY SITIO!'];
   // Combi: el techo es una plataforma móvil (te lleva); el cuerpo, en marcha, te atropella.
   class Combi extends Actor {
@@ -548,7 +554,7 @@
       this.isMover = true; this.dx = 0; this.dy = 0; this.bodyH = 30; this.roadY = roadY;
       this.v = 2.4; this.vmax = 2.6; this.state = 'drive'; this.stopT = 0; this.t = 0; this.hazardKind = 'combi';
       this.stops = def.stops.map(s => ({ x: s.x * TS, wait: s.wait || 110, peaje: !!s.peaje })).filter(s => s.x > x + 31 + 4);
-      this.end = def.end * TS; this.paint = COMBI_PAINT[def.n % COMBI_PAINT.length]; this.sayT = 0; this.say = '';
+      this.end = def.end * TS; this.n = def.n || 0; this.paint = COMBI_PAINT[this.n % COMBI_PAINT.length]; this.sayT = 0; this.say = '';
     }
     onRespawn() { this.dead = true; }
     shout(g, text) { this.say = text; this.sayT = 100; if (g.near(this.cx, 280)) { g.toast(text); g.audio('shout'); } }
@@ -580,25 +586,52 @@
       if (this.v > 0.5 && this.t % 3 === 0) for (const wx of [this.x + 10, this.x + 48]) if (liquidAt(g.level, wx, this.roadY + 2)) g.burst(wx, this.roadY - 2, 'splash', 2);
     }
     hazardBox() { return Math.abs(this.dx) > 0.3 ? { x: this.x + 3, y: this.y + 8, w: this.w - 6, h: this.bodyH - 8 } : null; }
+    // micro limeño de perfil, al estilo del de referencia: carrocería de color, franja
+    // negra de ventanas con pasajeros, letrero de ruta, franjas en diagonal,
+    // chofer al volante, puerta abierta con el cobrador y aros plateados
     draw(ctx) {
-      const x = Math.round(this.x), y = Math.round(this.y) + (this.v > 0.5 && Math.floor(this.t / 4) % 2 ? 1 : 0), [c1, c2] = this.paint;
+      const x = Math.round(this.x), y = Math.round(this.y) + (this.v > 0.5 && Math.floor(this.t / 4) % 2 ? 1 : 0);
+      const [c1, cS, s1, s2, s3] = this.paint;
       R(ctx, 'rgba(20,20,30,0.3)', x + 2, this.roadY - 2, 60, 3);
-      // carrocería
-      R(ctx, '#efe6cf', x + 1, y + 3, 60, 22); R(ctx, '#efe6cf', x, y + 5, 62, 19);
-      R(ctx, '#d9cfb3', x + 3, y, 54, 4); for (let k = 6; k < 54; k += 8) R(ctx, '#5d5768', x + k, y - 1, 2, 2);   // parrilla del techo
-      R(ctx, c1, x, y + 20, 62, 2); R(ctx, c2, x, y + 22, 62, 1);
-      // ventanas
-      for (let k = 0; k < 4; k++) { R(ctx, '#3a4a5c', x + 4 + k * 9, y + 5, 7, 6); R(ctx, '#8fb3cf', x + 5 + k * 9, y + 6, 2, 2); }
-      // puerta corrediza abierta con el cobrador colgado
-      R(ctx, '#2a2530', x + 40, y + 6, 8, 16);
+      // carrocería con esquinas redondeadas y techo
+      R(ctx, c1, x + 1, y + 1, 59, 23); R(ctx, c1, x, y + 3, 62, 20); R(ctx, c1, x + 2, y, 56, 1);
+      R(ctx, cS, x + 2, y, 56, 1); R(ctx, 'rgba(255,255,255,0.25)', x + 3, y + 1, 52, 1);
+      // franja de ventanas (negra) con pasajeros en silueta
+      R(ctx, '#1d1a22', x + 1, y + 3, 47, 10);
+      for (let k = 0; k < 4; k++) {
+        const wx = x + 3 + k * 9;
+        R(ctx, '#46566a', wx, y + 4, 8, 8); R(ctx, '#6a7c92', wx, y + 4, 8, 1);
+        const sx = wx + 1 + ((k * 3 + this.n) % 3);
+        R(ctx, '#2a2a35', sx, y + 7, 3, 3); R(ctx, '#2a2a35', sx - 1, y + 10, 5, 2);   // cabeza y hombros
+        if (k % 2 === 0) { R(ctx, '#2a2a35', sx + 4, y + 8, 2, 2); R(ctx, '#2a2a35', sx + 3, y + 10, 4, 2); }
+      }
+      // letrero de ruta bajo las ventanas
+      R(ctx, '#1d1a22', x + 1, y + 13, 39, 2);
+      for (let k = 3; k < 38; k += 3) if ((k * 7 + 3) % 5) R(ctx, '#e8e8e8', x + k, y + 13, 2, 1);
+      // franjas en diagonal que cruzan el costado
+      for (let r = 0; r < 9; r++) {
+        const yy = y + 15 + r, x0 = x + 16 + (8 - r) * 3;
+        R(ctx, s1, x0, yy, 9, 1); R(ctx, s2, x0 + 9, yy, 5, 1); R(ctx, s3, x0 + 14, yy, 3, 1);
+      }
+      R(ctx, s1, x + 46, y + 15, 14, 2);
+      // nombre de la empresa: un trazo cursivo blanco
+      R(ctx, '#ffffff', x + 5, y + 17, 9, 1); R(ctx, '#ffffff', x + 4, y + 18, 2, 1); R(ctx, '#ffffff', x + 9, y + 16, 2, 1);
+      // puerta abierta con el cobrador colgado
+      R(ctx, '#2a2530', x + 40, y + 4, 8, 19);
       const lean = this.state === 'stop' ? 3 : 1;
       R(ctx, '#3f6fb8', x + 44 + lean, y + 9, 4, 7); R(ctx, '#e7b089', x + 44 + lean, y + 5, 4, 4); R(ctx, '#1f1620', x + 44 + lean, y + 4, 4, 2);
       R(ctx, '#e7b089', x + 48 + lean, y + 7 - (Math.floor(this.t / 10) % 2) * 2, 3, 1);   // agita la mano
-      // parabrisas, faro y parachoques
-      R(ctx, '#3a4a5c', x + 51, y + 5, 9, 9); R(ctx, '#8fb3cf', x + 57, y + 6, 2, 3); R(ctx, '#fffaf0', x + 52, y + 3, 7, 2);
-      R(ctx, '#fff6b0', x + 59, y + 16, 3, 2); R(ctx, '#5d5768', x - 1, y + 23, 64, 2);
-      drawText(ctx, 'LIMA', x + 8, y + 12, { color: c1 });
-      for (const wx of [11, 50]) { R(ctx, '#1d1622', wx + x - 4, y + 22, 8, 8); R(ctx, '#1d1622', wx + x - 3, y + 21, 6, 10); R(ctx, '#9aa0a8', wx + x - 1, y + 25, 2, 2); }
+      // frente: parabrisas con el chofer al volante, número de ruta, faro y parachoques
+      R(ctx, '#1d1a22', x + 50, y + 3, 11, 11); R(ctx, '#46566a', x + 51, y + 4, 9, 9); R(ctx, '#8fb3cf', x + 57, y + 5, 2, 3);
+      R(ctx, '#e7b089', x + 52, y + 6, 3, 3); R(ctx, '#3f86d8', x + 52, y + 9, 4, 4); R(ctx, '#1f1620', x + 52, y + 5, 3, 1);
+      R(ctx, '#f2c230', x + 52, y + 17, 4, 3); R(ctx, '#1d1a22', x + 53, y + 18, 2, 1);
+      R(ctx, '#fff6b0', x + 59, y + 18, 3, 2); R(ctx, '#3a3640', x - 1, y + 23, 64, 2);
+      // ruedas con aro plateado
+      for (const wx of [11, 50]) {
+        R(ctx, cS, wx + x - 6, y + 20, 12, 2);
+        R(ctx, '#1d1622', wx + x - 4, y + 22, 8, 8); R(ctx, '#1d1622', wx + x - 5, y + 23, 10, 6);
+        R(ctx, '#9aa0a8', wx + x - 2, y + 24, 4, 4); R(ctx, '#d6dbe0', wx + x - 1, y + 25, 2, 2);
+      }
       if (this.sayT > 0 && !this.wasAboard) bubble(ctx, this.say, x + 46, y - 4);
     }
   }
@@ -872,6 +905,42 @@
         R(ctx, '#3a3442', x + 10, y, 1, 16);
         if (h2(this.seed + fl * 3 + c * 5) > 0.6) R(ctx, '#e8d06a', x + 12, y + 3, 6, 10);   // luz prendida
       }
+    }
+  }
+
+  // Tienda de barrio de la avenida (un Tambo): letrero amarillo con letras moradas,
+  // frente morado con vitrinas, segundo piso a medio terminar de ladrillo con
+  // fierros saliendo del techo, poste de luz y un grifo rojo en la vereda.
+  // Es decorado de fondo: no choca.
+  class TamboStore extends Actor {
+    constructor(def) { super(def.x * TS, ST * TS - 84, 104, 84); }
+    update() {}
+    draw() {}
+    drawBack(ctx) {
+      const x = Math.round(this.x), b = ST * TS;
+      // casa vecina de ladrillo sin tarrajear (a la izquierda)
+      R(ctx, '#c86a32', x - 30, b - 64, 30, 64);
+      for (let r = 0; r < 16; r++) for (let c = 0; c < 4; c++) R(ctx, '#f0e2c8', x - 30 + c * 8 + (r % 2) * 4, b - 64 + r * 4, 1, 3);
+      for (let r = 0; r < 16; r++) R(ctx, '#f0e2c8', x - 30, b - 61 + r * 4, 30, 1);
+      R(ctx, '#9a9086', x - 30, b - 66, 30, 2); for (const fx of [-27, -15, -4]) R(ctx, '#5d5768', x + fx, b - 72, 1, 6);   // fierros
+      // segundo piso: pared amarilla a medio pintar, ventanas y fierros en la azotea
+      R(ctx, '#e2c870', x, b - 78, 104, 34); R(ctx, '#cdb35c', x, b - 78, 104, 2);
+      for (const [wx, col] of [[14, '#4a8a2a'], [36, '#2fd0e8'], [52, '#1f8ad8'], [70, '#7ad61f'], [88, '#3fe0b0']]) {
+        R(ctx, '#5a5048', wx - 1, b - 70, 10, 10); R(ctx, col, wx, b - 69, 8, 8); R(ctx, '#1d1a22', wx + 3, b - 64, 3, 3);   // cortinas de colores
+      }
+      R(ctx, '#d8cf9a', x, b - 46, 104, 2);
+      for (const fx of [4, 30, 62, 98]) R(ctx, '#5d5768', x + fx, b - 86, 1, 8);
+      // letrero amarillo con el nombre
+      R(ctx, '#b8a420', x - 2, b - 46, 108, 3); R(ctx, '#f6e33a', x - 2, b - 43, 108, 13);
+      drawText(ctx, 'TAMBO', x + 50, b - 40, { color: '#a24ad8', align: 'center' });
+      R(ctx, '#a24ad8', x + 69, b - 42, 3, 3); R(ctx, '#f6e33a', x + 70, b - 41, 1, 1);   // el "+"
+      // frente morado con dos vitrinas y la puerta
+      R(ctx, '#b65ad8', x, b - 30, 70, 30);
+      for (const vx of [4, 36]) { R(ctx, '#5ad8f0', vx + x, b - 26, 28, 13); R(ctx, '#ffffff', vx + x + 18, b - 26, 2, 5); R(ctx, '#ffffff', vx + x + 20, b - 21, 2, 4); }
+      R(ctx, '#3a3a40', x + 70, b - 30, 34, 30); R(ctx, '#2a2a30', x + 74, b - 27, 26, 27);   // portón de la cochera
+      // poste de luz y grifo en la vereda
+      R(ctx, '#9a9a9a', x - 6, b - 92, 4, 92); R(ctx, '#7a7a7a', x - 4, b - 92, 2, 92);
+      R(ctx, '#d8162a', x + 82, b - 9, 5, 8); R(ctx, '#d8162a', x + 80, b - 7, 9, 2); R(ctx, '#a00e1e', x + 81, b - 1, 7, 1);
     }
   }
 
@@ -2097,6 +2166,7 @@
       { type: 'rampa', x: 517 },
       { type: 'parkedCombi', x: 521, n: 1, line: '¡SUBE, SUBE, HAY SITIO!' },
       { type: 'hint', x: 518, y: ST, text: 'SALTA', key: 'jump', r: 3, pass: 1, when: (g) => g.player.riding instanceof MotoRide },
+      { type: 'tambo', x: 525.5 },
       { type: 'cruce', x: 532, line: '¡OE, CUIDADO, CAUSA!' },
       { type: 'bache', x: 538 }, { type: 'bache', x: 540.5 }, { type: 'bache', x: 543 },
       { type: 'sign', x: 547, y: ST, lines: ['¡VUELA,', 'CAUSA!'], style: 'board', col: '#f6c94a' },
@@ -2217,6 +2287,7 @@
     rampa: (d) => new Rampa(d),
     bache: (d) => new Bache(d),
     parkedCombi: (d) => new ParkedCombi(d),
+    tambo: (d) => new TamboStore(d),
     cruce: (d) => new Cruce(d),
     contramano: (d) => new Contramano(d),
     casona: (d) => new Casona(d),
