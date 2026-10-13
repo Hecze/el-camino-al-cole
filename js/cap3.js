@@ -950,12 +950,13 @@ const ART3 = (() => {
   // `behind`, la balsa rodea la isla por detrás (sin ti) y te espera al otro
   // lado; si no, zarpa cuando te subes. Si te bajas a medio camino, vuelve.
   const BALSA_W = 64;
+  let currentBalsa = null;
   class Balsa {
     constructor(def) {
       this.stops = def.stops.map(s => ({ x: s.x * TS, behind: !!s.behind }));
       this.wl = def.wl * TS + 4; this.isMover = true;
       this.w = BALSA_W; this.h = 8; this.dx = 0; this.dy = 0; this.t = 0; this.offT = 0;
-      this.place(0);
+      this.place(0); currentBalsa = this;
     }
     get cx() { return this.x + this.w / 2; }
     get cy() { return this.y + 4; }
@@ -997,14 +998,6 @@ const ART3 = (() => {
       if (k < 0) k = this.stops.length - 1;
       this.place(k);
     }
-    // TODO-GUIA: pasar estas ayudas a entidades `hint` (key: 'jump') cuando llegue la guía
-    hint(g) {
-      const p = g.player, on = p.lastMover === this, nx = this.next();
-      if (this.state !== 'wait' || !nx) return null;
-      if (!nx.behind && !on && p.cx < this.x && this.x - p.cx < 8 * TS && p.onGround) return ['¡SALTA A LA BALSA!'];
-      if (nx.behind && on) return ['¡SALTA A LA ISLA!'];
-      return null;
-    }
     paint(ctx, g) {
       const x = Math.round(this.x), y = Math.round(this.y), w = this.w, wl = this.wl;
       R(ctx, 'rgba(15,40,100,0.35)', x + 6, wl + 3, w - 8, 3);   // sombra en el agua
@@ -1033,7 +1026,7 @@ const ART3 = (() => {
       if (this.state === 'behind' || !onScreen(this.x, this.w)) return;
       this.paint(ctx, g);
       const p = g.player, on = p.lastMover === this, nx = this.next();
-      // TODO-GUIA: la remera es parte de la balsa; si la guía trae globos que siguen a una entidad, usarlos aquí
+      // la remera va con la balsa (un npc de la guía no se mueve): su globo lo dibuja la balsa
       if (this.i === 0 && this.state === 'wait' && !on && Math.abs(p.cx - this.x) < 9 * TS) bubble(ctx, this.x + 12, this.y - 26, ['¡SUBE, HIJITO!', '¡TU PROMO YA ZARPÓ!'], this.x + 12);
       else if (on && this.state === 'sail' && this.offT === 0 && this.x - this.stops[this.i].x < 80) bubble(ctx, this.x + 12, this.y - 26, ['¡AGÁRRATE, OE!'], this.x + 12);
     }
@@ -1210,7 +1203,6 @@ const ART3 = (() => {
       }
       this.rider.syncRide();
     }
-    hint(g) { const p = g.player; return !this.rider && !this.retired && p.cx < this.x && this.x - p.cx < 8 * TS ? ['¡TOCA EL BUS PARA SUBIR!'] : null; }
     draw(ctx, g) {
       if (!onScreen(this.x, this.w)) return;
       const x = Math.round(this.x), y = Math.round(this.y), w = this.w, h = this.h;
@@ -1302,8 +1294,7 @@ const ART3 = (() => {
   }
   const ENDING = {
     frames: SC[SC.length - 1], music: 'c3condor',
-    // TODO-GUIA: VOICE.play('gana') al empezar el final, cuando llegue el sistema de voces
-    start() {},
+    start() { VOICE.play('gana', 700); },
     skip(t) { return SC.find(s => s > t + 1) || SC[SC.length - 1]; },
     draw(ctx, W, H, t, tick) {
       const s = SC.findIndex((v, i) => t >= v && t < (SC[i + 1] || 1e9)), u = t - SC[s], len = SC[s + 1] - SC[s];
@@ -1386,7 +1377,7 @@ const ART3 = (() => {
     wagon: (d) => new Wagon(d),
     classPhoto: (d) => new ClassPhoto(d),
   });
-  window.CAP3 = { get train() { return currentTrain; }, ending: ENDING };
+  window.CAP3 = { get train() { return currentTrain; }, get balsa() { return currentBalsa; }, ending: ENDING };
 })();
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -1407,6 +1398,33 @@ const ART3 = (() => {
   const LAKE_PAL = { foam: '#ffffff', hi: '#bfe2ff', bands: ['#3f86d8', '#2f6fc4', '#2459a8', '#1b468c', '#133572'], streak: ['#9fd0ff', '#7ab8f2', '#5c9ee0', '#4686cc', '#3570b4'], speed: 0.25, amp: 0.8, chunks: null };
   const hash = (n) => { n = (n | 0) ^ 0x9e3779b9; n = Math.imul(n ^ (n >>> 16), 0x85ebca6b); n = Math.imul(n ^ (n >>> 13), 0xc2b2ae35); n ^= n >>> 16; return (n >>> 0) / 4294967296; };
   const R = (g, c, x, y, w, h) => { g.fillStyle = c; g.fillRect(Math.round(x), Math.round(y), w, h); };
+
+  // pistas de la balsa: solo cuando espera en la parada i y estás (o no) encima
+  const balsaAt = (i, onIt) => (g) => { const b = CAP3.balsa; return !!b && b.state === 'wait' && b.i === i && (g.player.lastMover === b) === onIt; };
+
+  // la gente del capítulo para los NPCs de la guía
+  Object.assign(GUIDE.models, { uro: () => A3.URO, chullera: () => A3.CHULLERA, guia: () => A3.GUIA });
+  // CORTINA de una casita de totora: al pasar se enrolla la manta y asoma un
+  // niño uro que saluda en aimara
+  const CORT = [['#d8432f', '#5c9f4a', '#f0913c'], ['#c2185b', '#f6c94a', '#3f6fb8']];
+  GUIDE.PROP_KINDS.cortina = { w: 8, h: 12,
+    update(e, g, p, near) {
+      if (!e.go && near(14)) { e.go = 1; g.audio('click'); }
+      if (e.go && e.go < 200) e.go++;
+    },
+    draw(e, ctx) {
+      const x = Math.round(e.x), y = Math.round(e.y), up = e.go ? Math.min(11, e.go >> 1) : 0, M = CORT[e.d.c || 0];
+      if (up) {
+        // el niño: chullo rojo, cara y manitos que saludan
+        R(ctx, '#2a1f2d', x, y, 8, 12); R(ctx, '#d8432f', x + 1, y + 3, 6, 3); R(ctx, '#f6c94a', x + 3, y + 2, 2, 1);
+        R(ctx, '#c4855c', x + 2, y + 6, 4, 4); R(ctx, '#1f1620', x + 3, y + 7, 1, 1); R(ctx, '#1f1620', x + 5, y + 7, 1, 1);
+        if (Math.floor(e.go / 8) % 2) R(ctx, '#c4855c', x + 6, y + 5, 2, 2); else R(ctx, '#c4855c', x + 6, y + 7, 2, 2);
+      }
+      for (let k = 0; k < 6; k++) if (k * 2 >= up) R(ctx, M[k % 3], x + 1, y + 1 + k * 2 - Math.min(up, k * 2), 6, 2);
+      if (e.go > 20 && e.go < 170) drawText(ctx, e.d.c ? '¡HOLA, OE!' : '¡KAMISARAKI!', x + 4, y - 12 - (e.go < 30 ? 30 - e.go : 0) / 3, { color: '#fff3d6', align: 'center', shadow: true, shadowColor: '#2a1f2d' });
+    },
+    reset(e) { e.go = 0; },
+  };
 
   // tiles propios (con prefijo para no chocar con otros capítulos)
   Object.assign(TILE_SPECS, {
@@ -1564,33 +1582,43 @@ const ART3 = (() => {
         birds: [31, 70, 104, 135, 152] },
       { type: 'sign3', x: 8, y: GC, lines: ['PUERTO DE PUNO'], color: 'blue' },
       { type: 'sign3', x: 16, y: GC, lines: ['LAGO TITICACA', '3812 M'], color: 'white', post: 10 },
-      // TODO-GUIA hint: { type: 'hint', x: 18, y: GC, text: '¡SALTA A LA BALSA!', key: 'jump', arrow: 'right' }
+      { type: 'hint', x: 21, y: GC, text: '¡SÚBETE A LA BALSA!', key: 'right', arrow: 'down', r: 14, pass: 1, dy: 20, when: balsaAt(0, false) },
+      { type: 'help', x0: 12, x1: 100, kind: 'water', text: '¡QUÉDATE EN LA BALSA!' },
       // la balsa: Puno → isla 1, la rodea, isla 2, rodea la 2, los islotes y la 3, y a la otra orilla
       { type: 'balsa', wl: WL, stops: [{ x: 19 }, { x: 42 }, { x: 60, behind: true }, { x: 80 }, { x: 127, behind: true }, { x: SHORE - 4 }] },
       { type: 'trucha', x: 31, wl: WL, period: 170, phase: 40 },
       // isla 1: la señora uro, las casitas y el mirador de totora
+      { type: 'hint', x: 46.5, y: GC, text: 'SALTA', key: 'jump', arrow: 'right', r: 6, pass: 1, when: balsaAt(1, true) },
       { type: 'checkpoint', x: 48, y: GC },
-      { type: 'sign3', x: 47.5, y: GC, lines: ['ISLAS DE LOS UROS', '¡KAMISARAKI!'], color: 'yellow', post: 22 },
-      { type: 'npc', x: 52.5, y: GC, model: 'uro', lines: ['¡KAMISARAKI, HIJITO!', 'ACÁ TODO ES DE TOTORA', 'LA ISLA FLOTA, NO TE ASUSTES'] },   // TODO-GUIA npc
-      { type: 'npc', x: 57, y: GC, model: 'nina', lines: ['¡MI ISLA SE MUEVE, OE!'] },                                                   // TODO-GUIA npc
-      // TODO-GUIA prop: casitas de totora que asoman a un niño uro al pasar (kind propio del capítulo)
+      { type: 'npc', x: 51.5, y: GC, model: 'uro', r: 4, lines: ['¡KAMISARAKI, HIJITO!', 'ACÁ TODO ES DE TOTORA', 'LA ISLA FLOTA, NO TE ASUSTES'] },
+      { type: 'npc', x: 58.5, y: GC, model: 'nina', r: 3, lines: ['¡MI ISLA SE MUEVE, OE!'] },
+      // las casitas de totora: al pasar se corre la manta y asoma un niño uro
+      { type: 'prop', kind: 'cortina', x: 47.31, y: GC }, { type: 'prop', kind: 'cortina', x: 49.56, y: GC, c: 1 },
+      { type: 'hint', x: 62, y: GC, text: '¡A LA BALSA!', key: 'right', arrow: 'down', r: 8, pass: 1, dy: 20, when: balsaAt(2, false) },
       { type: 'trucha', x: 70, wl: WL, period: 160, phase: 0 },
       // isla 2: la vendedora de chullos; luego los islotes que flotan
+      { type: 'hint', x: 84.5, y: GC, text: 'SALTA', key: 'jump', arrow: 'right', r: 6, pass: 1, when: balsaAt(3, true) },
       { type: 'checkpoint', x: 86, y: GC },
-      { type: 'npc', x: 92, y: GC, model: 'chullera', lines: ['¡CHULLITO, CHULLITO!', '¡PARA EL FRÍO, CASERITO!', '¡TE LO DEJO EN DIEZ!'] }, // TODO-GUIA npc
-      // TODO-GUIA hint: { type: 'hint', x: 100, y: GC, text: '¡SALTA DE ISLOTE EN ISLOTE!', key: 'jump' }
+      { type: 'prop', kind: 'cortina', x: 85.375, y: GC, c: 1 }, { type: 'prop', kind: 'cortina', x: 98.44, y: GC },
+      { type: 'npc', x: 92, y: GC, model: 'chullera', lines: ['¡CHULLITO, CHULLITO!', '¡PARA EL FRÍO, CASERITO!', '¡TE LO DEJO EN DIEZ!'] },
+      { type: 'hint', x: 101, y: GC, text: ['¡DE ISLOTE', 'EN ISLOTE!'], key: 'jump', arrow: 'right', r: 5, pass: 1 },
+      { type: 'help', x0: 100, x1: 116, kind: 'water', text: 'SALTA EN EL BORDE DEL ISLOTE' },
       { type: 'islote', x: 101.5, w: 3.5, wl: WL }, { type: 'islote', x: 106.5, w: 3.5, wl: WL }, { type: 'islote', x: 111.5, w: 4.5, wl: WL },
       // isla 3: el guía con sus turistas
       { type: 'checkpoint', x: 119, y: GC },
-      { type: 'npc', x: 121.5, y: GC, model: 'guia', lines: ['¡GRUPO, POR AQUÍ!', 'EL LAGO NAVEGABLE MÁS ALTO', '¡NO SE QUEDEN, OIGAN!'] },  // TODO-GUIA npc
+      { type: 'prop', kind: 'cortina', x: 117.25, y: GC },
+      { type: 'hint', x: 129, y: GC, text: '¡A LA BALSA!', key: 'right', arrow: 'down', r: 8, pass: 1, dy: 20, when: balsaAt(4, false) },
+      { type: 'npc', x: 121.5, y: GC, model: 'guia', lines: ['¡GRUPO, POR AQUÍ!', 'EL LAGO NAVEGABLE MÁS ALTO', '¡NO SE QUEDEN, OIGAN!'] },
       { type: 'tourist', x: 124, y: GC, v: 1 },
       // la travesía larga: saltan las truchas
       { type: 'trucha', x: 133, wl: WL, period: 150, phase: 0 },
       { type: 'trucha', x: 142, wl: WL, period: 150, phase: 50, dir: 1 },
       { type: 'trucha', x: 151, wl: WL, period: 150, phase: 100 },
+      { type: 'hint', x: SHORE + 0.5, y: GC, text: 'SALTA', key: 'jump', arrow: 'right', r: 6, pass: 1, when: balsaAt(5, true) },
       // ── RUMBO AL CUSCO ──
       { type: 'checkpoint', x: SHORE + 2, y: GC },
       { type: 'bus', x: SHORE + 9, y: GC, stop: C - 4 },
+      { type: 'hint', x: SHORE + 10, y: GC, text: '¡SÚBETE AL BUS!', key: 'right', arrow: 'down', r: 9, pass: 0, dy: 46, when: (g) => !g.player.riding },
       { type: 'sign3', x: SHORE + 30, y: GC, lines: ['CUSCO 389 KM'], color: 'green' },
       { type: 'sign3', x: SHORE + 52, y: GC, lines: ['ABRA LA RAYA', '4338 M'], color: 'blue' },
       { type: 'sign3', x: C - 12, y: GC, lines: ['BIENVENIDOS', 'AL CUSCO'], color: 'yellow' },
@@ -1598,7 +1626,7 @@ const ART3 = (() => {
       { type: 'checkpoint', x: C + 5, y: GC },
       { type: 'sign3', x: C + 15.5, y: GC, lines: ['NO TOCAR LOS', 'MUROS INCAS'], color: 'white', post: 12 },
       { type: 'tourist', x: C + 9.5, y: GC, v: 0 },
-      { type: 'npc', x: C + 21, y: GC, model: 'chullera', lines: ['¡CHULLO DE ALPACA, CASERITO!', '¡BARATITO, BARATITO!'] },     // TODO-GUIA npc
+      { type: 'npc', x: C + 21, y: GC, model: 'chullera', lines: ['¡CHULLO DE ALPACA, CASERITO!', '¡BARATITO, BARATITO!'] },
       { type: 'photoLady', x: C + 27, y: GC },
       { type: 'alpaca', x: C + 29.5, y: GC, retireX: V + 60 },
       { type: 'tourist', x: C + 31, y: GC, v: 1 },
@@ -1637,7 +1665,7 @@ const ART3 = (() => {
       { type: 'tourist', x: AC + 9, y: ROOF, v: 1 },
       { type: 'sign3', x: AC + 15, y: ROOF, lines: ['A MACHU PICCHU:', 'BUS S/ 80', 'A PIE: GRATIS'], color: 'wood' },
       { type: 'sign3', x: AC + 22, y: 72, lines: ['CAMINO INCA', '¡SOLO 1700 ESCALONES!'], color: 'wood' },
-      { type: 'npc', x: AC + 27, y: 70, model: 'guia', lines: ['¡RESPIREN, JÓVENES!', '¡LA FOTO ES ARRIBA!'] },                      // TODO-GUIA npc
+      { type: 'npc', x: AC + 27, y: 70, model: 'guia', lines: ['¡RESPIREN, JÓVENES!', '¡LA FOTO ES ARRIBA!'] },
       { type: 'checkpoint', x: AC + 46, y: 60 },
       { type: 'tourist', x: AC + 48, y: 60, v: 0 },
       { type: 'rockfall', x: AC + 75, y: 40, interval: 150 },
