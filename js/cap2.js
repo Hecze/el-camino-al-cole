@@ -1,4 +1,4 @@
-// cap2.js — CAPÍTULO 2 · LA HACKATÓN DE LOS ANDES. El niño viaja a Lima para la
+// cap2.js — CAPÍTULO 2 · LA HACKATÓN EN LIMA. El niño viaja a Lima para la
 // hackatón, pero el bus se malogra en pleno desierto de Ica. El viaje
 // es la entrada; el capítulo pasa sobre todo en el Centro de Lima:
 //   x 0–195    EL DESIERTO      · baja las dunas en tabla de sandboard; cactus y tubulares
@@ -1808,7 +1808,7 @@
       }
       // banderola del concurso
       R(ctx, '#1d1622', x + 59, b - 151, 222, 22); R(ctx, '#d8432f', x + 60, b - 150, 220, 20); R(ctx, '#ffffff', x + 60, b - 140, 220, 1);
-      drawText(ctx, 'HACKATÓN DE LOS ANDES', x + 170, b - 147, { color: '#ffffff', align: 'center' });
+      drawText(ctx, 'HACKATÓN ESCOLAR', x + 170, b - 147, { color: '#ffffff', align: 'center' });
       drawText(ctx, '¡BIENVENIDOS!', x + 170, b - 138, { color: '#f6c94a', align: 'center' });
       R(ctx, '#5d5768', x + 60, b - 129, 2, 9); R(ctx, '#5d5768', x + 278, b - 129, 2, 9);
     }
@@ -2053,7 +2053,7 @@
   // balcones de cajón que se pisan (Jr. de la Unión): [x, ancho, fila]
   const BALCONES = [[608, 5, 43], [615, 5, 41], [622, 5, 43], [634, 5, 43], [641, 5, 41], [647, 6, 43]];
   const L2 = {
-    name: 'LA HACKATÓN DE LOS ANDES', w: CASONA + 54, h: H, anchorRow: 46,
+    name: 'LA HACKATÓN EN LIMA', w: CASONA + 54, h: H, anchorRow: 46,
     dunes: DUNES,
     // amanecer despejado en el desierto
     sky: { dawn: ['#3a3466', '#d9826a', '#ffc68a'], morning: ['#5a9ad6', '#a9d4ee', '#f8e6bf'] },
@@ -2373,9 +2373,9 @@
   //  EL CAPÍTULO
   // ───────────────────────────────────────────────────────────────────────────
   CHAPTERS.push({
-    num: 2, title: 'LA HACKATÓN DE LOS ANDES', short: 'LIMA', color: '#e0b47c',
+    num: 2, title: 'LA HACKATÓN EN LIMA', short: 'LIMA', color: '#e0b47c',
     goal: '¡LLEGA A LA HACKATÓN ANTES DE LAS 8:00!', goalShort: '¡ANTES DE LAS 8:00!',
-    banner: ['LA HACKATÓN DE LOS ANDES', '¡LA HACKATÓN EMPIEZA A LAS 8:00!'],
+    banner: ['LA HACKATÓN EN LIMA', '¡LA HACKATÓN EMPIEZA A LAS 8:00!'],
     dayStart: 6 * 60 + 30,   // el bus se malogró a las 6:30: Miraflores, Barranco y el Centro hasta las 8:00
     deathTitle: '¡ASU MARE!',
     deathMsgs: {
