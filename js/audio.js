@@ -150,6 +150,8 @@ const AUDIO = (() => {
     brake:   () => { tone(1800, 0.3, 'sawtooth', 0.04, 0, 1500); noise(0.3, 0.1, 3000, 0, { type: 'highpass' }); },
     flap:    () => { noise(0.12, 0.25, 1200, 0, { type: 'bandpass', q: 0.7 }); },
     applause: () => { const t = now(); for (let i = 0; i < 26; i++) noise(0.04, 0.12 + Math.random() * 0.1, 2000 + Math.random() * 2000, t + i * 0.045 + Math.random() * 0.03, { type: 'bandpass', q: 1.2 }); },
+    // soroche: un "uuuuu" que se tambalea
+    dizzy:   () => { const t = now(); [0, 0.22, 0.44].forEach((d, i) => tone(520 - i * 60, 0.25, 'triangle', 0.14, t + d, 420 - i * 60)); },
     nope:    () => { tone(220, 0.12, 'square', 0.12); tone(165, 0.18, 'square', 0.12, now() + 0.1); },
     win:     () => { [523, 659, 784, 1046, 784, 1046, 1318].forEach((f, i) => tone(f, 0.3, 'triangle', 0.24, now() + 0.15 + i * 0.13)); },
   };

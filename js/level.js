@@ -97,6 +97,14 @@ const SONGS = {
          mel: 'F5:4 D5:2 F5:2 | A5:6 C6:2 | G5:4 E5:2 G5:2 | A5:8 | F5:4 D5:2 F5:2 | C6:4 A5:2 F5:2 | E5:3 G5:1 E5:2 C5:2 | D5:8' },
   }, ['A', 'B', 'A*', 'B~'], slowBass),
 
+  // EL CÓNDOR PASA (Daniel Alomía Robles, 1913; dominio público): la frase
+  // inicial del yaraví, transcrita en la menor para quena y zampoña. Suena una
+  // vez al llegar a la cumbre del Apu; el último compás es silencio.
+  condorPasa: makeSong({ bpm: 84, vol: 0.3, strum: 'D...D.U.', drums: 'B...b...', orn: 0.25, lead2Vol: 0.12 }, {
+    A: { ch: ['Am', 'Am', 'Am', 'C', 'Am', 'E', 'Am', 'Am'],
+         mel: 'r:6 E4:2 | A4:2 G#4:2 A4:2 B4:2 | C5:2 B4:2 C5:2 D5:2 | E5:4 G5:2 E5:2 | D5:2 C5:2 A4:4 | E5:3 D5:1 C5:2 B4:2 | A4:8 | r:8' },
+  }, ['A'], slowBass),
+
   // carnavalito del huaico: rápido y urgente
   huayco: makeSong({ bpm: 152, vol: 0.28, strum: 'D.DUD.DU', drums: 'B..bB..b', shaker: true, orn: 0.2, lead2Vol: 0.13 }, {
     A: { ch: ['Em', 'D', 'G', 'Em', 'C', 'Em', 'G', 'Em'],
@@ -184,6 +192,8 @@ const BIRDS = [];
 // pasto para la cabra: algo apartado del camino (cuesta ir a por él)
 const HERBS = [];
 MTN.up.forEach((l, i) => { if (i % 4 === 2) HERBS.push({ type: 'herb', x: mid(l) + (i % 8 === 2 ? 3 : -3), y: l[1] - 3 }); });
+// hojitas de coca para el soroche: en el centro de las salientes altas, donde rebota la cabra
+const COCA = [20, 24, 28].map(i => ({ type: 'coca', x: mid(MTN.up[i]) - 0.5, y: MTN.up[i][1] - 1 }));
 // puntos de control en la montaña (reapareces montado en la cabra)
 
 // Silueta de la montaña calculada a partir del camino: cada saliente queda
@@ -248,6 +258,7 @@ const LEVEL = {
   glide: { x0: 119, x1: 155.4 },   // a la derecha no pasa de la orilla: más allá está el precipicio del huaico
   glideLandRow: 100,   // la hoja solo se suelta al aterrizar por debajo de esta fila (el valle)
   altitude: { baseRow: G, baseM: 3650, perRow: 13 },
+  soroche: { minM: 4600 },   // desde aquí arriba te da soroche
   zones: [
     { x: 0,   name: 'EL VALLE',  music: 'valle' },
     { x: 86,  name: 'EL APU',    music: 'apu', alt: true },
@@ -347,6 +358,7 @@ const LEVEL = {
     { type: 'mototaxi', x: SCH - 4.8, y: 110, model: 'azul' },   // esperando pasajeros en el puerto
     ...BIRDS,
     ...HERBS,
+    ...COCA,
     // las 3 hojas de tarea que se le volaron al niño, enganchadas en el camino
     { type: 'page', x: 47, y: G - 5 },                                            // sobre la pirca alta
     { type: 'page', x: MTN.up[19][0] - 5, y: MTN.up[19][1] - 6 },                 // en el aire, junto al risco

@@ -118,7 +118,8 @@ class Player extends Actor {
     else if (right && !left) { ax = accel; this.facing = 1; }
     if (ax !== 0) this.vx += ax; else this.vx *= (this.onGround ? 1 - PHYS.FRICTION : 0.985);
     // planeando no hay límite de carrera: se aplica el del parapente más abajo
-    if (!(this.gliding && !this.onGround)) this.vx = Math.max(-PHYS.RUN_MAX, Math.min(PHYS.RUN_MAX, this.vx));
+    const runMax = PHYS.RUN_MAX * (g.soroche ? 0.85 : 1);   // con soroche caminas más lento
+    if (!(this.gliding && !this.onGround)) this.vx = Math.max(-runMax, Math.min(runMax, this.vx));
     if (Math.abs(this.vx) < 0.05) this.vx = 0;
 
     if (this.onGround) this.coyote = PHYS.COYOTE; else if (this.coyote > 0) this.coyote--;
@@ -430,7 +431,8 @@ class Cabra extends Mount {
       if (left && !right) { this.vx -= 0.4; this.facing = -1; }
       else if (right && !left) { this.vx += 0.4; this.facing = 1; }
       else this.vx *= 0.9;
-      this.vx = Math.max(-PHYS.GOAT_MAX, Math.min(PHYS.GOAT_MAX, this.vx));
+      const gm = PHYS.GOAT_MAX * (g.soroche ? 0.9 : 1);   // con soroche la guías algo más lento (rebota igual)
+      this.vx = Math.max(-gm, Math.min(gm, this.vx));
       if (this.onGround) {
         // llegó a la cumbre (no basta con la columna: también hay que estar arriba)
         if (g.level.goatEnd && this.cx > g.level.goatEnd * TS && this.y + this.h <= (g.level.goatEndRow || 999) * TS + 2) {
@@ -729,14 +731,20 @@ class Pickup extends Actor {
   constructor(type, x, y) {
     super(x * TS + 3, y * TS + 5, 10, 11);
     if (type === 'herb') { this.x -= 3; this.y -= 3; this.w = 16; this.h = 16; }
-    this.type = type; this.animT = Math.random() * 10; this.baseY = this.y;
+    // (la coca no gasta números al azar: así el resto del nivel sale igual que antes)
+    this.type = type; this.animT = type === 'coca' ? x : Math.random() * 10; this.baseY = this.y;
   }
   update(g) {
     this.animT += 0.1;
+    if (this.hidden > 0) { this.hidden--; return; }   // la coca vuelve a crecer al rato
     const p = g.player;
     if (this.overlaps(p, 3) || (p.riding && this.overlaps(p.riding, 1))) this.collect(g);
   }
   collect(g) {
+    if (this.type === 'coca') {
+      this.hidden = 900; g.cureSoroche(900); g.audio('checkpoint'); g.burst(this.cx, this.cy, 'leaf', 12);
+      return;
+    }
     if (this.type === 'herb') {
       // solo la cabra come pasto: le da un súper salto
       const goat = g.player.riding; if (!(goat instanceof Cabra)) return;
@@ -747,6 +755,15 @@ class Pickup extends Actor {
     g.audio('page'); g.pages++; g.burst(this.cx, this.cy, 'paper', 16);
   }
   draw(ctx) {
+    if (this.hidden > 0) return;
+    if (this.type === 'coca') {
+      // hojitas de coca con un brillo suave
+      const bob = Math.round(Math.sin(this.animT) * 1.5), cx = Math.round(this.cx), cy = Math.round(this.cy + bob);
+      ctx.fillStyle = 'rgba(200,255,170,' + (0.3 + Math.sin(this.animT * 2) * 0.12).toFixed(2) + ')';
+      ctx.beginPath(); ctx.arc(cx, cy, 9, 0, Math.PI * 2); ctx.fill();
+      ctx.drawImage(OBJ.coca, cx - 6, cy - 5);
+      return;
+    }
     if (this.type === 'herb') {
       // brillo que late + destello que gira: tiene que verse desde lejos
       const bob = Math.sin(this.animT) * 1.5, cx = this.cx, cy = this.cy + bob;
@@ -1392,6 +1409,7 @@ function makeEntity(def, level) {
     case 'eagle': return new Eagle(def);
     case 'page': return new Pickup('page', def.x, def.y);
     case 'herb': return new Pickup('herb', def.x, def.y);
+    case 'coca': return new Pickup('coca', def.x, def.y);
     case 'condor': return new Condor(def);
     default: return EXTRA_ENTITIES[def.type] ? EXTRA_ENTITIES[def.type](def, level) : null;
   }

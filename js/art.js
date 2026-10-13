@@ -626,6 +626,19 @@ OBJ.leaf = spr([
   'kGkkGkGGkkGGGGkGkkGGGkGkkGGGGk..',
   'k...k.k..k...k.k...k..k.k...k...',
 ]);
+// hojitas de coca (curan el soroche). 12x10
+OBJ.coca = spr([
+  '.....kk.....',
+  '....kggk....',
+  '.kk.kgek.kk.',
+  'kggkkgeGkggk',
+  'kgegkgGkgegk',
+  '.kgGkkkkGgk.',
+  '..kkGkkGkk..',
+  '....kMMk....',
+  '.....Mk.....',
+  '.....k......',
+]);
 // platanal de la cumbre (de él se arranca la hoja)
 OBJ.bananaPlant = spr([
   '.......kk.......kk......',

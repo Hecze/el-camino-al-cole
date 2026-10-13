@@ -150,7 +150,18 @@
   Game.onPlayerJump = (a) => { Game.burst(a.cx, a.y + a.h, 'dust', 6); AUDIO.play('jump'); };
   Game.onPlayerLand = (a) => { Game.burst(a.cx, a.y + a.h, 'dust', 4); };
   Game.onMount = () => {};
-  Game.onGoatDone = () => {};
+  // en la cumbre del Apu suena una frase de El Cóndor Pasa y luego vuelve la música del tramo
+  Game.onGoatDone = () => {
+    const s = SONGS.condorPasa; if (!s) return;
+    AUDIO.playMusic(s);
+    const token = Game.jingle = {}, ms = (s.chords.length - 1) * 8 * 60 / s.bpm / 4 * 1000 + 150;
+    setTimeout(() => {
+      if (Game.jingle !== token) return;
+      Game.jingle = null;
+      const Z = Game.level && Game.level.zones[Game.zone];
+      if (Z && ['play', 'respawn', 'pause'].includes(Game.state)) AUDIO.playMusic(SONGS[Z.music]);
+    }, ms);
+  };
   Game.setCheckpoint = (cp) => {
     Game.spawn = { x: cp.spawn.x, y: cp.spawn.y };
     const m = Game.player.riding;
@@ -197,7 +208,8 @@
   function startGame(ci) {
     if (ci == null) ci = Game.chapterIdx;
     const ch = CHAPTERS[ci], lv = ch.level;
-    Game.chapterIdx = ci; Game.chapter = ch; Game.menuChapter = ci;
+    Game.chapterIdx = ci; Game.chapter = ch; Game.menuChapter = ci; Game.jingle = null;
+    Game.soroche = false; Game.sorocheK = 0; Game.cocaT = 0; Game.sorocheTold = false;
     DAY_START = ch.dayStart || DAY_START_DEFAULT;
     Game.level = lv;
     Game.entities = []; Game.movers = []; Game.particles = []; Game.huaico = null;
@@ -258,6 +270,39 @@
     if (sy > BASE_H * 0.86) cam.y = p.cy - BASE_H * 0.86;
     cam.x = clamp(cam.x, 0, lv.cols * TILE - BASE_W);
     cam.y = clamp(cam.y, 0, lv.rows * TILE - BASE_H);
+  }
+
+  // ── SOROCHE: el mal de altura del Apu ──────────────────────────────────
+  // Sobre lev.soroche.minM metros te mareas: la vista ondula y vas un poco más
+  // lento (la cabra rebota igual). Las hojitas de coca lo curan por un rato.
+  function altitudeM() {
+    const A = Game.level.altitude, p = Game.player;
+    return A.baseM + (A.baseRow * TILE - (p.y + p.h)) / TILE * A.perRow;
+  }
+  function updateSoroche() {
+    const S = Game.level.soroche, Z = Game.level.zones[Game.zone];
+    if (!S) { Game.soroche = false; Game.sorocheK = 0; return; }
+    if (Game.cocaT > 0) Game.cocaT--;
+    const sick = !!(Z && Z.alt && altitudeM() >= S.minM && Game.cocaT <= 0);
+    if (sick && !Game.soroche) { Game.toast(Game.sorocheTold ? '¡OTRA VEZ EL SOROCHE!' : '¡SOROCHE! BUSCA HOJITAS DE COCA'); Game.sorocheTold = true; AUDIO.play('dizzy'); }
+    Game.soroche = sick;
+    Game.sorocheK += ((sick ? 1 : 0) - Game.sorocheK) * 0.03;
+  }
+  Game.cureSoroche = (frames) => {
+    Game.cocaT = frames; Game.soroche = false;
+    Game.toast(Game.sorocheTold ? '¡HOJITA DE COCA! SE TE PASÓ EL SOROCHE' : '¡HOJITA DE COCA! PARA EL SOROCHE');
+  };
+  // la vista ondula y se ve doble, con un tinte verdoso
+  let sorocheBuf = null;
+  function renderSoroche(k) {
+    if (!sorocheBuf || sorocheBuf.width !== BASE_W || sorocheBuf.height !== BASE_H) sorocheBuf = PIX.createCanvas(BASE_W, BASE_H);
+    const b = sorocheBuf.getContext('2d'); b.clearRect(0, 0, BASE_W, BASE_H); b.drawImage(canvas, 0, 0);
+    for (let y = 0; y < BASE_H; y += 2) {
+      const off = Math.round(Math.sin(y * 0.045 + tick * 0.06) * 2.4 * k);
+      if (off) ctx.drawImage(sorocheBuf, 0, y, BASE_W, 2, off, y, BASE_W, 2);
+    }
+    ctx.globalAlpha = 0.16 * k; ctx.drawImage(sorocheBuf, Math.round(3 + Math.sin(tick * 0.03) * 2), 0); ctx.globalAlpha = 1;
+    ctx.fillStyle = 'rgba(110,150,80,' + (0.07 * k).toFixed(3) + ')'; ctx.fillRect(0, 0, BASE_W, BASE_H);
   }
 
   // ── zonas: la música cambia por tramo ─────────────────────────────────────
@@ -461,6 +506,7 @@
     collisionPass();
     updateParticles();
     updateZone();
+    updateSoroche();
     updateCamera(false);
     // el huaico hace temblar el suelo
     if (Game.zoneName === 'EL HUAICO' && tick % 90 === 0) Game.shake(1, 10);
@@ -593,6 +639,7 @@
     renderSnowfall(lv, camy);
     if (lv.renderScreen) lv.renderScreen(ctx, Game);   // efectos de pantalla (garúa...)
     renderAttackAlert();
+    if (Game.sorocheK > 0.01) renderSoroche(Game.sorocheK);
     // luz fría y violácea del amanecer que se va disipando
     if (day < 1) { ctx.fillStyle = 'rgba(70,40,110,' + (0.22 * (1 - day)) + ')'; ctx.fillRect(0, 0, BASE_W, BASE_H); }
 
@@ -1120,10 +1167,10 @@
     drawText(ctx, clockText(), BASE_W - 29, 11, { color: late ? '#f2917d' : '#fff3d6', align: 'center' });
     const Z = Game.level.zones[Game.zone], A = Game.level.altitude;
     if (Z && Z.alt && A) {
-      // altímetro: en la montaña, en vez del nombre del tramo
-      const m = Math.max(A.baseM, Math.round((A.baseM + (A.baseRow * TILE - (Game.player.y + Game.player.h)) / TILE * A.perRow) / 10) * 10);
+      // altímetro: en la montaña, en vez del nombre del tramo (en rojo con soroche)
+      const m = Math.max(A.baseM, Math.round(altitudeM() / 10) * 10);
       const txt = String(m).replace(/\B(?=(\d{3})+(?!\d))/g, '.') + ' M';
-      drawText(ctx, txt, BASE_W - 58, 11, { color: '#d9f1ff', align: 'right', shadow: true, shadowColor: '#00000088' });
+      drawText(ctx, txt, BASE_W - 58, 11, { color: Game.soroche ? '#f2917d' : '#d9f1ff', align: 'right', shadow: true, shadowColor: '#00000088' });
     } else if (Game.zoneName) drawText(ctx, Game.zoneName, BASE_W - 58, 11, { color: '#fff3d6', align: 'right', shadow: true, shadowColor: '#00000088' });
 
     // en la cumbre: explicar el parapente
