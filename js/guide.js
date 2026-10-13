@@ -26,6 +26,8 @@
 //   { type: 'goal', x: 400, y: 110 }   (o level.goal = { x, y })
 //       Si el jugador pasa ~5 s sin acercarse a lo siguiente (el próximo punto
 //       de control o goal), aparece una flecha "¡POR AQUÍ!" que apunta hacia allá.
+//       Opcional: when(g) → la meta vale solo mientras devuelva true (en vez de
+//       "hasta pasarla"); at(g) → { x, y } en píxeles, para metas que se mueven.
 //
 // El motor llama a GUIDE.start / update / onDeath / onCheckpoint / onRespawn /
 // renderScreen / deathLine desde game.js.
@@ -140,12 +142,12 @@ const GUIDE = (() => {
     const c = PIX.createCanvas(src.width, src.height), g = c.getContext('2d');
     g.drawImage(src, 0, 0);
     const im = g.getImageData(0, 0, c.width, c.height), px = im.data;
-    const M = {};
-    for (const k in map) M[parseInt(k.slice(1), 16)] = parseInt(map[k].slice(1), 16);
+    // con tolerancia: algunos navegadores alteran un poco los colores del canvas
+    const hex = (h) => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16));
+    const M = Object.keys(map).map(k => [hex(k), hex(map[k])]);
     for (let i = 0; i < px.length; i += 4) {
       if (!px[i + 3]) continue;
-      const v = (px[i] << 16) | (px[i + 1] << 8) | px[i + 2], n = M[v];
-      if (n != null) { px[i] = n >> 16; px[i + 1] = (n >> 8) & 255; px[i + 2] = n & 255; }
+      for (const [f, t] of M) if (Math.abs(px[i] - f[0]) < 3 && Math.abs(px[i + 1] - f[1]) < 3 && Math.abs(px[i + 2] - f[2]) < 3) { px[i] = t[0]; px[i + 1] = t[1]; px[i + 2] = t[2]; break; }
     }
     g.putImageData(im, 0, 0);
     return c;
@@ -190,7 +192,7 @@ const GUIDE = (() => {
     profe: () => [OBJ.teacher, OBJ.teacher],
     profa: () => [OBJ.teacher2, OBJ.teacher2],
     nino: kidModel({ '#d8432f': '#5c9f4a', '#962a22': '#3a7d36', '#f6c94a': '#f0913c' }),
-    nina: kidModel({ '#d8432f': '#c2185b', '#962a22': '#7f1040', '#27426e': '#5a3088' }),
+    nina: kidModel({ '#d8432f': '#8a4cc0', '#962a22': '#5a3088', '#27426e': '#c2185b', '#3f6fb8': '#f08a7a' }),
   };
   const modelCache = {};
   function modelFrames(name, sprite) {
@@ -397,7 +399,7 @@ const GUIDE = (() => {
     cpDeaths = 0; cpHelp = (lv.spawn && lv.spawn.help) || null; helpText = null; helpT = 0;
     // a dónde ir: puntos de control y metas, en orden de izquierda a derecha
     targets = g.entities.filter(e => e instanceof Checkpoint).map(e => ({ x: e.spawn.x, y: e.spawn.y - 8, cp: e }));
-    for (const d of lv.entities) if (d.type === 'goal') targets.push({ x: d.x * TS, y: d.y * TS - 8 });
+    for (const d of lv.entities) if (d.type === 'goal') targets.push({ x: d.x * TS, y: d.y * TS - 8, when: d.when, at: d.at });
     if (lv.goal) targets.push({ x: lv.goal.x * TS, y: lv.goal.y * TS - 8 });
     targets.sort((a, b) => a.x - b.x);
     target = null; best = Infinity; idle = 0; arrowA = 0;
@@ -417,10 +419,10 @@ const GUIDE = (() => {
     if (helpT > 0) helpT--;
     const p = g.player;
     // el siguiente objetivo: el primer punto de control apagado o la primera meta por delante
-    const t = targets.find(o => (o.cp ? !o.cp.on : p.cx < o.x - 16)) || null;
+    const t = targets.find(o => (o.cp ? !o.cp.on : o.when ? o.when(g) : p.cx < o.x - 16)) || null;
     if (t !== target) { target = t; best = Infinity; idle = 0; }
     if (!t) { arrowA = Math.max(0, arrowA - 0.1); return; }
-    const d = Math.hypot(t.x - p.cx, t.y - p.cy);
+    const T = t.at ? t.at(g) : t, d = Math.hypot(T.x - p.cx, T.y - p.cy);
     if (d < best - 24) { best = d; idle = 0; } else idle++;
     arrowA = Math.max(0, Math.min(1, arrowA + (idle > G.IDLE_FRAMES ? 0.06 : -0.15)));
   };
@@ -435,23 +437,18 @@ const GUIDE = (() => {
       ctx.globalAlpha = 1;
     }
     if (arrowA > 0 && target) {
-      const p = g.player, sx = p.cx - g.cam.x, sy = p.cy - g.cam.y;
-      const ang = Math.atan2(target.y - p.cy, target.x - p.cx), push = 26 + Math.sin(g.T * 0.15) * 3;
-      const ax = sx + Math.cos(ang) * push, ay = sy + Math.sin(ang) * push;
+      const p = g.player, sx = Math.round(p.cx - g.cam.x), sy = Math.round(p.cy - g.cam.y);
+      const T = target.at ? target.at(g) : target, dx = T.x - p.cx, dy = T.y - p.cy;
+      // flecha grande en la dirección que más pesa (derecha, arriba...), latiendo hacia allá;
+      // si la meta está lejos de lado, primero hay que avanzar
+      const dir = Math.abs(dx) > 160 || Math.abs(dx) > Math.abs(dy) * 0.8 ? (dx > 0 ? 'right' : 'left') : (dy > 0 ? 'down' : 'up');
+      const k = 24 + Math.round(Math.sin(g.T * 0.15) * 3), V = { right: [k, 0], left: [-k, 0], down: [0, k], up: [0, -k - 6] }[dir];
+      const ax = sx + V[0], ay = sy + V[1];
       ctx.globalAlpha = arrowA;
-      // flecha gruesa: un rombo de puntos a lo largo de la dirección
-      for (let k = -6; k <= 6; k++) {
-        const wdt = k > 0 ? 7 - k : 2;
-        for (let s = -wdt; s <= wdt; s++) {
-          const x = ax + Math.cos(ang) * k - Math.sin(ang) * s, y = ay + Math.sin(ang) * k + Math.cos(ang) * s;
-          R(ctx, '#2a1f2d', x + 1, y + 1, 1, 1);
-        }
-      }
-      for (let k = -6; k <= 6; k++) {
-        const wdt = k > 0 ? 7 - k : 2;
-        for (let s = -wdt; s <= wdt; s++) R(ctx, '#ffd166', ax + Math.cos(ang) * k - Math.sin(ang) * s, ay + Math.sin(ang) * k + Math.cos(ang) * s, 1, 1);
-      }
-      drawText(ctx, '¡POR AQUÍ!', sx, sy - 34, { color: '#ffd166', align: 'center', shadow: true, shadowColor: '#2a1f2d' });
+      tri(ctx, ax + 1, ay + 1, dir, 7, '#2a1f2d'); tri(ctx, ax, ay, dir, 7, '#ffd166');
+      if (dir === 'right' || dir === 'left') { const bx = dir === 'right' ? ax - 14 : ax + 7; R(ctx, '#2a1f2d', bx + 1, ay - 1, 8, 4); R(ctx, '#ffd166', bx, ay - 2, 8, 4); }
+      else { const by = dir === 'down' ? ay - 14 : ay + 7; R(ctx, '#2a1f2d', ax, by + 1, 4, 8); R(ctx, '#ffd166', ax - 2, by, 4, 8); }
+      drawText(ctx, '¡POR AQUÍ!', sx, dir === 'up' ? ay - 18 : sy - 30, { color: '#ffd166', align: 'center', shadow: true, shadowColor: '#2a1f2d' });
       ctx.globalAlpha = 1;
     }
   };
