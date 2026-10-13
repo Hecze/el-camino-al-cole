@@ -996,6 +996,16 @@
   }
 
   // EL GRASS de la Plaza: si lo pisas, el guardián te pita. No pasa nada más.
+  // el megáfono del ambulante: suena más fuerte mientras más cerca pasas (VOICE.ambient)
+  class Megafono extends Actor {
+    constructor(def) { super(0, 0, 0, 0); this.xs = def.xs.map(x => x * TS); this.r = (def.r || 18) * TS; }
+    update(g) {
+      const px = g.player.cx, d = Math.min(...this.xs.map(x => Math.abs(px - x)));
+      const v = Math.max(0, Math.min(1, (this.r - d) / (this.r - 4 * TS)));
+      if (v > 0) VOICE.ambient('ambulante', v * 0.7);
+    }
+    draw() {}
+  }
   class Grass extends Actor {
     constructor(def) { super(def.x0 * TS, ST * TS - 3, (def.x1 - def.x0) * TS, 3); this.t = 0; this.told = false; this.sayT = 0; }
     onRespawn() { this.told = false; }
@@ -1743,6 +1753,7 @@
       { type: 'checkpoint', x: 416, y: ST, help: 'SALTA LOS HUECOS EN EL BORDE' },
       { type: 'sign', x: 323, y: 46.4, lines: ['BIENVENIDOS', 'A LIMA'], style: 'paint', col: '#f6c94a' },
       { type: 'sign', x: 327, y: 44, lines: ['CENTRO DE LIMA'], style: 'post' },
+      { type: 'megafono', xs: [423.5, 617.5] },   // el ambulante del Jr. de la Unión y el del Mercado
       { type: 'npc', x: 423.5, y: ST, model: 'ambulante', lines: ['¡CHICLE, CARAMELO, CHUPETÍN!', '¡A SOL NOMÁS, CAUSA!'] },
       { type: 'hint', x: 427.5, y: ST, text: '¡SALTA EL HUECO!', key: 'jump', arrow: 'down', r: 6, pass: 1 },
       ...BUZONES.map(([x, w]) => ({ type: 'buzon', x, w })),
@@ -1843,6 +1854,7 @@
     balcon: (d) => new Balcon(d),
     buzon: (d) => new Buzon(d),
     carretilla: (d) => new Carretilla(d),
+    megafono: (d) => new Megafono(d),
     palomas: (d) => new Palomas(d),
     grass: (d) => new Grass(d),
     pileta: (d) => new Pileta(d),

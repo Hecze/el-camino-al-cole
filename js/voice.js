@@ -48,5 +48,31 @@ const VOICE = (() => {
       }, delayMs);
     });
   }
-  return { play };
+  // AMBIENTE en bucle (p. ej. el megáfono del ambulante): VOICE.ambient('ambulante', 0..1)
+  // se llama en cada update con el volumen deseado; si deja de llamarse (pausa,
+  // muerte, otro capítulo) se apaga solo en ~0,3 s. No baja la música.
+  const amb = {};   // nombre -> { src, gain, seen }
+  function ambient(name, v) {
+    const c = (clips[name] || [])[0];
+    if (!c || c.bad || !AUDIO.isEnabled()) return;
+    let a = amb[name];
+    if (!a) {
+      a = amb[name] = { src: null, gain: null, seen: 0 };
+      decode(c).then(buf => {
+        if (!buf) { delete amb[name]; return; }   // aún sin contexto de audio: se reintenta
+        const ctx = AUDIO.context();
+        a.gain = ctx.createGain(); a.gain.gain.value = 0; a.gain.connect(AUDIO.voiceOut());
+        a.src = ctx.createBufferSource(); a.src.buffer = buf; a.src.loop = true; a.src.connect(a.gain); a.src.start();
+      });
+    }
+    a.seen = performance.now();
+    if (a.gain) a.gain.gain.setTargetAtTime(Math.max(0, Math.min(1, v)), AUDIO.context().currentTime, 0.1);
+  }
+  setInterval(() => {
+    for (const k in amb) {
+      const a = amb[k];
+      if (a.gain && (performance.now() - a.seen > 200 || !AUDIO.isEnabled())) a.gain.gain.setTargetAtTime(0, AUDIO.context().currentTime, 0.1);
+    }
+  }, 150);
+  return { play, ambient };
 })();
