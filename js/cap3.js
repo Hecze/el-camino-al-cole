@@ -1,15 +1,19 @@
 // cap3.js — CAPÍTULO 3: LA EXCURSIÓN A MACHU PICCHU. La promo salió de
-// excursión y el niño se quedó dormido en el hostal: tiene que alcanzar al
-// grupo antes de la foto de las 8:00. Un solo nivel, de izquierda a derecha:
+// excursión desde Puno y el niño se quedó dormido en el hostal: tiene que
+// alcanzar al grupo antes de la foto de las 8:00. Un solo nivel, de izquierda
+// a derecha (C = 250, donde empieza El Cusco):
 //
-//   x 0–151    EL CUSCO        · calles empedradas, muro inca, la plaza y la
+//   x 0–163    LAGO TITICACA   · del puerto de Puno a las islas flotantes de
+//                                los Uros en la balsa de totora (proa de puma)
+//   x 164–C    RUMBO AL CUSCO  · el bus Puno–Cusco por el altiplano
+//   C+0–151    EL CUSCO        · calles empedradas, muro inca, la plaza y la
 //                                alpaca de la foto: se sube a los tejados
-//   x 152–284  VALLE SAGRADO   · andenes de Pisac, el puente del Urubamba,
+//   C+152–284  VALLE SAGRADO   · andenes de Pisac, el puente del Urubamba,
 //                                el mercado (las mantas rebotan) y los andenes
 //                                de Ollantaytambo
-//   x 285–714  EL TREN         · techo del tren en marcha: túneles y vagones
+//   C+285–714  EL TREN         · techo del tren en marcha: túneles y vagones
 //                                que se sueltan
-//   x 715–     MACHU PICCHU    · Aguas Calientes, el Camino Inca y la foto
+//   C+715–     MACHU PICCHU    · Aguas Calientes, el Camino Inca y la foto
 // ─────────────────────────────────────────────────────────────────────────────
 // Todo lo propio del capítulo vive aquí: arte, entidades, música y nivel.
 
@@ -278,7 +282,146 @@ const ART3 = (() => {
     '.cc.',
   ], { c: '#cfe8c0' });
 
-  return { T: T3, P: P3, ALP, TOURIST, DANCER, DANCER_B, SPIT };
+  // ── LAGO TITICACA ────────────────────────────────────────────────────────────
+  // totora seca: la paja dorada de las islas flotantes y de las balsas
+  const TOT = { '+': '#efd585', '=': '#d6b257', '-': '#ad8738', '~': '#7f5e24', '^': '#a9b255' };
+  // isla flotante: paja suelta arriba y capas de totora apisonada
+  T3.totora = spr3([
+    '.+.^.=+..+=.^.+.',
+    '+=+=+==+.=+=+=+=',
+    '=+==+=+==+=+==+=',
+    '++=+++=++=++=+++',
+    '================',
+    '-=+==+=-=+==+=-=',
+    '=+=-=+==+=-=+==+',
+    '~~-~~~~-~~~~-~~~',
+    '+=+==+=+=+==+=+=',
+    '==+=+==-==+=+===',
+    '=-==+=+==+==-=+=',
+    '~~~-~~~~~-~~~~-~',
+    '=+==+=+==+=+==+=',
+    '-=+=-==+=-=+=-==',
+    '~-~~~-~~~-~~~-~~',
+    '~~~~~~~~~~~~~~~~',
+  ], TOT);
+  // muelle de madera del puerto de Puno (los pilotes siguen bajo el agua)
+  T3.pier = spr3([
+    'KKKKKKKKKKKKKKKK',
+    'ttjtttTtjttttTtt',
+    'TTTTTTTTTTTTTTTT',
+    'jttTtjtttTtjtttT',
+    'KKKKKKKKKKKKKKKK',
+    '.KmmK......KmmK.',
+    '.KmMK......KmMK.',
+    '.KmMK......KmMK.',
+    '.KmMKK....KKmMK.',
+    '.KmMKmK..KmKmMK.',
+    '.KmMK.KmmK.KmMK.',
+    '.KmMK..KK..KmMK.',
+    '.KmMK.KmmK.KmMK.',
+    '.KmMKmK..KmKmMK.',
+    '.KmMKK....KKmMK.',
+    '.KmMK......KmMK.',
+  ]);
+  // carretera Puno–Cusco: asfalto con la línea amarilla
+  T3.road = spr3([
+    'SSSSSSSSSSSSSSSS',
+    'DDDDDDDDDDDDDDDD',
+    'D5DDDDDDD5DDDDDD',
+    'DD7777DDDDDD7777',
+    'DDDDDDD5DDDDDDDD',
+    'MDMMDMMMDMMDMMDM',
+    'mmmmmmmmmmmmmmmm',
+    'mmjmmmmmmmmjmmmm',
+    'mmmmmMmmmmmmmmmm',
+    'mmmmmmmmmmMmmsmm',
+    'mjmmmmmmmmmmmmjm',
+    'mmmsmmmmMmmmmmmm',
+    'mmmMmmmmmmmmmmmm',
+    'mmmmmmmmmmmmjmmm',
+    'mmmmmmmmmmmmmmmm',
+    'MmmmmmmmmmmmmmmM',
+  ]);
+
+  // la cabeza de puma de la proa (mirando a la derecha): orejas cortas y redondas, ojo grande, hocico chato,
+  // colmillos y bigotes, sobre un cuello de totora que sale del casco. 24x24
+  const PUMA = spr3([
+    '...KKK.......KKK........',
+    '..K+x+K.....K+x+K.......',
+    '..K+xx+KKKKK+xx+K.......',
+    '.K+++++++++++++++K......',
+    'K+++++++++++++++++K.....',
+    'K++++++++++++++++++K....',
+    'K+++KKKK+++++++++++K....',
+    'K++K1yyKK++++++++++=K...',
+    'K++K1y0K-+++++++++++K...',
+    'K++KKKKK-+++++++++++=K..',
+    'K=++++++-++++++fffffKK..',
+    'K=++++++-+++++ffffK00K.1',
+    '.K=+++++~+++fff1ffKKK1..',
+    '.K=++++++++ffKrrrrrK.1..',
+    '..K=+++++++fK1K..K1K....',
+    '..K==++++++fKrrrrrK.....',
+    '...KK==++++ffKKKKK......',
+    '....KK=++++KK...........',
+    '....K=++++K.............',
+    '...K=++++=K.............',
+    '..K=+++++K..............',
+    '.K=+++++K...............',
+    'K=+++++=K...............',
+    'K-+++++K................',
+  ], TOT);
+
+  // SEÑORA URO: sombrero con cinta, trenzas con pompones, chompa morada y
+  // polleras de colores, una sobre otra. La segunda pose saluda. 16x25
+  const URO_HEAD = ['......KKKK......', '.....KhhhhK.....', '...KKhrrrhhKK...', '..KhhhhhhhhhhK..'];
+  const URO_SKIRT = [
+    '..KxxxxxxxxxK...',
+    '.KxxxxxxxxxxxK..',
+    '.KyyyyyyyyyyyK..',
+    'KxxxxxxxxxxxxxK.',
+    'KoooooooooooooK.',
+    'KxxxxxxxxxxxxxK.',
+    'KyyyyyyyyyyyyyK.',
+    'KXXXXXXXXXXXXXK.',
+    '.KKKKKKKKKKKKK..',
+    '....KaK..KaK....',
+    '...KKKK.KKKK....',
+  ];
+  const URO_ROWS = [
+    URO_HEAD.concat([
+      '.....KhaaaaK....',
+      '.....KhaaKaK....',
+      '....hKhaaaabK...',
+      '....hKKaaRaK....',
+      '....h..KaaK.....',
+      '...yKqqqqqqK....',
+      '...oKqyqyqqqK...',
+      '..KqqqqqqqqqaK..',
+      '..KqqqqqqqqqK...',
+      '..KQqqqqqqqK....',
+    ], URO_SKIRT),
+    ['......KKKK......', '.....KhhhhK...a.', '...KKhrrrhhKKKaK', '..KhhhhhhhhhhKaK'].concat([
+      '.....KhaaaaK.Ka.',
+      '.....KhaaKaK.Kq.',
+      '....hKhaaaabKqK.',
+      '....hKKaaRaKqK..',
+      '....h..KaaKqK...',
+      '...yKqqqqqqqK...',
+      '...oKqyqyqqqK...',
+      '..KqqqqqqqqqK...',
+      '..KqqqqqqqqqK...',
+      '..KQqqqqqqqK....',
+    ], URO_SKIRT),
+  ];
+  const URO = URO_ROWS.map(r => spr3(r));
+  // la vendedora de chullos: chompa verde y pollera turquesa
+  const CHULLERA = URO_ROWS.map(r => spr3(r, { q: '#3f7a4c', Q: '#2f5a3c', x: '#4fb6b0', X: '#2d7f7a' }));
+  // el guía de turistas: gorra roja y chaleco verde (el turista con otra ropa)
+  const GUIA = [spr3(TOURIST_ROWS, { t: '#d8432f', o: '#3f7a4c', r: '#f6c94a', y: '#f6c94a' })];
+  GUIA.push(GUIA[0]);
+
+  return { T: T3, P: P3, ALP, TOURIST, DANCER, DANCER_B, SPIT, PUMA, URO, CHULLERA, GUIA };
 })();
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -590,6 +733,7 @@ const ART3 = (() => {
       if (on) this.carry = p.lastMover.dx;
       else if (p.onGround) this.carry = 0;
       else if (this.carry) p.x += this.carry;
+      this.limits(g, p);
       if (!inZone || g.state !== 'play') return;
       // sale cuando te subes o cuando ya estás al borde del andén un rato
       if (this.state === 'wait' && p.cx > this.platEnd - 5 * TS) { this.state = 'ready'; this.readyT = 0; g.audio('whistle'); }
@@ -607,7 +751,41 @@ const ART3 = (() => {
       if (this.warn && r && g.T % 3 === 0) g.particles.push({ x: r.x + r.w + GAP / 2 + (Math.random() * 6 - 3), y: this.roofY + 36, vx: Math.random() * 2 - 1, vy: -1 - Math.random(), life: 18, max: 18, col: '#ffe27a', size: 1, grav: 0.15 });
       if (this.state === 'go' && g.T % 9 === 0) { const fr = this.front(); g.particles.push({ x: fr.x + LOCO_W - 20, y: this.roofY - 2, vx: -this.v * 0.6, vy: -0.6, life: 50, max: 50, col: '#c8c2cc', size: 2, grav: -0.01 }); }
     }
+    // LÍMITES: el cerro de cada túnel es sólido (lo que ves es lo que chocas) y
+    // sobre el tren hay un techo invisible: nunca se salta por encima del monte.
+    // Debajo del cerro (en la boca y bajo sus faldas) te das con la cabeza; si
+    // llegas por el aire, te frena la ladera y caes de vuelta al techo del tren.
+    limits(g, p) {
+      const cy = this.roofY - 17, ceil = this.roofY - 62, prevTop = this.prevTop;
+      this.prevTop = p.y;
+      if (p.riding || p.cx < this.platEnd - 2 * TS || p.cx > this.stopX + 2 * TS) return;
+      if (p.y < ceil) { p.y = ceil; p.vy = Math.max(0, p.vy); }
+      for (const t of this.tunnels) {
+        const a = t.x0 - 64, b = t.x1 + 64;
+        if (p.x + p.w <= a || p.x >= b || p.y >= cy) continue;
+        if (prevTop != null && prevTop >= cy - 1) {
+          // saltaste debajo del cerro: cabezazo contra la roca
+          p.y = cy; if (p.vy < 0) { p.vy = 0.5; g.audio('land'); g.burst(p.cx, cy, 'rock', 4); }
+        } else {
+          // venías por el aire: la ladera te devuelve a tu vagón (sin morir)
+          const face = a + Math.max(0, cy - Math.min(p.y + p.h, cy)) / 1.1;
+          if (p.x + p.w > face) this.backToWagon(g, p, Math.min(face, a + 8) - p.w - 2);
+        }
+      }
+      this.prevTop = p.y;
+    }
+    // te deja parado en el techo del vagón que tienes debajo (o el más cercano), antes de la ladera
+    backToWagon(g, p, maxX) {
+      const ws = this.wagons.filter(w => w.coupled);
+      let x = Math.min(p.x, maxX), best = null, bd = Infinity;
+      for (const w of ws) { const d = x + p.w / 2 < w.x ? w.x - (x + p.w / 2) : x + p.w / 2 > w.x + w.w ? x + p.w / 2 - w.x - w.w : 0; if (d < bd) { bd = d; best = w; } }
+      if (!best) { p.x = x; p.vx = Math.min(0, p.vx); return; }
+      x = Math.max(best.x + 2, Math.min(best.x + best.w - p.w - 2, x));
+      p.x = x; p.y = this.roofY - p.h; p.vy = 0; p.vx = 0; p.onGround = true; p.lastMover = best; this.carry = best.dx;
+      g.audio('land'); g.burst(p.cx, this.roofY - 20, 'rock', 6); g.burst(p.cx, this.roofY, 'dust', 6);
+    }
     onRespawn(g) {
+      this.prevTop = null;
       if (this.state === 'stop') return;
       this.carry = 0;
       if (this.cpTaken) {
@@ -673,7 +851,7 @@ const ART3 = (() => {
         // quedan por encima del tren, para no taparlo)
         const a = t.x0 - 64, b = t.x1 + 64;
         for (let x = a; x < b; x += 2) {
-          const edge = Math.min(x - a, b - x), top = cy - Math.min(150, edge * 1.1) - Math.round(hash(x >> 3) * 8);
+          const edge = Math.min(x - a, b - x), top = cy - Math.min(150, edge * 1.1) - Math.round(hash(x >> 3) * 6) - 2;
           R(ctx, '#6a6270', x, top, 2, cy - top);
           for (let y = top + 8; y < cy; y += 6) if (hash((x >> 1) * 13 + (y >> 1) * 7) > 0.72) R(ctx, '#57505e', x, y, 2, 2);
           R(ctx, '#3f7a4c', x, top - 4, 2, 8); R(ctx, '#2f5a3c', x, top + 4, 2, 3);
@@ -745,6 +923,124 @@ const ART3 = (() => {
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
+  // CÓNDOR DEL TREN: el águila del Cap. 1 (mismos estados y la misma alerta en
+  // pantalla) con un ataque fijo y fácil de leer. Al pasar por `at` aparece y
+  // planea sobre ti (su sombra cruza el techo); cuando no hay túnel ni vagón
+  // por soltarse cerca, chilla, tiembla con su "!" y baja en vuelo rasante a la
+  // altura de tu cabeza, de adelante hacia atrás. Agachado o saltando, pasa.
+  // el cóndor grande, de alas bien abiertas: negro con la franja blanca de las
+  // alas, collar blanco y cabeza rosada. flap: -1..1 (aleteo) o 'dive' (alas atrás)
+  function paintCondor(ctx, cx, cy, f, flap) {
+    // primero un halo claro (se ve contra el cerro verde), luego el ave
+    for (const [ox, oy] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) condorShape(ctx, cx + ox, cy + oy, f, flap, 'rgba(255,246,226,0.75)');
+    condorShape(ctx, cx, cy, f, flap, null);
+  }
+  function condorShape(ctx, cx, cy, f, flap, halo) {
+    const C = (c) => halo || c, dive = flap === 'dive', L = dive ? 16 : 23;
+    for (const side of (dive ? [-f] : [-1, 1])) {
+      for (let i = 0; i < L; i++) {
+        // planeando: alas en V con las puntas que suben y bajan; en picada, plegadas hacia atrás
+        const k = i / L, x = cx + side * (5 + i);
+        const y = cy - 2 + (dive ? Math.round(k * 3) : -Math.round(k * 3 + flap * k * k * 6));
+        if (i >= L - 6) {
+          // las plumas de la punta, separadas como dedos
+          if (i % 2 === 0) R(ctx, C('#1d1622'), x, y - 1 + ((i >> 1) % 3) - 1, 1, 4);
+          continue;
+        }
+        R(ctx, C('#1d1622'), x, y - 1, 1, 2);
+        R(ctx, C(i > 3 ? '#f4efe4' : '#1d1622'), x, y + 1, 1, 2);   // franja blanca del ala
+        R(ctx, C('#2e2838'), x, y + 3, 1, 2);
+      }
+    }
+    R(ctx, C('#1d1622'), cx - 8, cy - 3, 16, 7);                     // cuerpo
+    R(ctx, C('#1d1622'), cx - f * 12 - 2, cy - 1, 5, 4);             // cola
+    R(ctx, C('#ffffff'), cx + f * 7 - 2, cy - 4, 5, 6);              // collar
+    R(ctx, C('#e08a7a'), cx + f * 10 - 2, cy - 6, 5, 4);             // cabeza pelada, rosada
+    R(ctx, C('#2a1f2d'), cx + f * 11 - (f > 0 ? 0 : 1), cy - 5, 1, 1);
+    R(ctx, C('#f0e0b0'), cx + f * 13 - (f > 0 ? 0 : 2), cy - 5, 3, 2); // pico ganchudo
+    R(ctx, C('#f0e0b0'), cx + f * 15 - (f > 0 ? 0 : 1), cy - 4, 1, 2);
+  }
+  class TrainCondor extends Eagle {
+    constructor(def) {
+      super({ rowMin: 0, rowMax: 0 });
+      this.at = def.at * TS; this.armed = true; this.w = 22; this.h = 8;
+      // la primera vez, la pista de la guía va pegada al niño
+      if (def.hint) this.tip = EXTRA_ENTITIES.hint({ x: 0, y: 0, text: def.hint, key: 'down', r: 4, pass: 4, vr: 8, dy: 6, when: () => this.state === 'windup' || this.state === 'dive' });
+    }
+    get dangerous() { const p = Game.player; return this.state === 'dive' && !p.crouching && !p.riding; }
+    get hitbox() { return { x: this.x + 3, y: this.y + 1, w: this.w - 6, h: this.h - 2 }; }
+    // ¿hay sitio para el ataque? ni túneles ni enganches que se sueltan en los próximos metros
+    safe(T, p) {
+      if (T.warn || (T.state !== 'go' && T.state !== 'brake')) return false;
+      const d = T.decs[T.nextDec];
+      if (d != null && T.F + 34 * TS > d) return false;   // el ataque entero (~11 casillas) más el aviso del enganche
+      const dp = T.decs[T.nextDec - 1];
+      if (dp != null && T.F < dp + 10 * TS) return false;  // ni justo después de que se suelte uno
+      return !T.tunnels.some(t => t.x1 + 64 > p.x - 2 * TS && t.x0 - 64 < p.x + 16 * TS);
+    }
+    onRespawn(g) { this.state = 'idle'; this.x = this.y = -9999; this.t = 0; this.armed = g.spawn.x < this.at + 2 * TS; }
+    update(g) {
+      const T = currentTrain, p = g.player; this.animT++; this.t++;
+      if (!T) return;
+      const roof = T.roofY, rel = T.v;
+      switch (this.state) {
+        case 'idle':
+          if (this.armed && p.cx > this.at && T.onTrain(p) && (T.state === 'go' || T.state === 'brake')) {
+            this.armed = false; this.state = 'circle'; this.t = 0; this.x = p.cx + VIEW.w * 0.6; this.y = roof - 100; this.face = -1; g.audio('caw');
+          }
+          break;
+        case 'circle': {
+          // planea por encima, un poco adelante: se ve venir
+          this.angle += 0.035;
+          const tx = p.cx + 40 + Math.cos(this.angle) * 50, ty = roof - 84 + Math.sin(this.angle * 2) * 8;
+          const ox = this.x; this.x += rel + (tx - this.x) * 0.05; this.y += (ty - this.y) * 0.05; this.face = this.x - rel >= ox ? 1 : -1;
+          if (this.t > 60 && this.safe(T, p)) { this.state = 'windup'; this.t = 0; g.audio('screech'); }
+          else if (this.t > 900) { this.state = 'leave'; this.t = 0; }   // no hubo hueco: se va
+          break;
+        }
+        case 'windup': {
+          // se coloca adelante, a la altura de tu cabeza, y tiembla
+          const tx = p.cx + 100, ty = roof - 13;
+          this.x += rel + (tx - this.x) * 0.08; this.y += (ty - this.y) * 0.08; this.face = -1;
+          this.aimX = p.cx; this.aimY = roof - 10;
+          if (this.t > 42) { this.state = 'dive'; this.t = 0; g.audio('swoosh'); g.shake(2, 8); }
+          break;
+        }
+        case 'dive':
+          // rasante sobre el techo, hacia atrás
+          this.x += rel - 5; this.y = roof - 13 + Math.sin(this.t * 0.3);
+          if (this.x < p.cx - 70 || this.t > 60) { this.state = 'recover'; this.t = 0; this.dx = rel - 3; }
+          break;
+        case 'recover':
+          this.x += this.dx; this.y -= 1.6;
+          if (this.t > 60) { this.state = 'idle'; this.x = this.y = -9999; }
+          break;
+        case 'leave':
+          this.x += rel + 2; this.y -= 1.4;
+          if (this.t > 120) { this.state = 'idle'; this.x = this.y = -9999; }
+          break;
+      }
+      if (this.tip) { this.tip.x = p.cx; this.tip.y = p.y + p.h; this.tip.update(g); }
+    }
+    draw(ctx, g) {
+      if (this.state === 'idle') return;
+      const T = currentTrain;
+      // su sombra cruza el techo del tren mientras planea
+      if ((this.state === 'circle' || this.state === 'windup') && T) {
+        const k = Math.max(0.15, 0.45 - (T.roofY - this.y) / 260);
+        ctx.fillStyle = 'rgba(20,14,30,' + k.toFixed(2) + ')'; ctx.fillRect(Math.round(this.cx - 16), T.roofY + 1, 32, 2);
+      }
+      if (this.state === 'windup') {
+        const g2 = Game, cy = Math.max(g2.cam.y + 4, Math.min(g2.cam.y + VIEW.h - 20, this.y - 18)), cx = Math.max(g2.cam.x + 10, Math.min(g2.cam.x + VIEW.w - 10, this.cx));
+        if (Math.floor(this.t / 5) % 2 === 0) drawText(ctx, '!', Math.round(cx), Math.round(cy), { scale: 2, color: '#ffffff', align: 'center', shadow: true, shadowColor: '#2a1f2d' });
+      }
+      const sh = this.state === 'windup' ? (this.t % 4 < 2 ? 1 : -1) : 0;
+      paintCondor(ctx, Math.round(this.cx + sh), Math.round(this.cy), this.face, this.state === 'dive' ? 'dive' : Math.sin(this.animT * 0.14));
+    }
+    drawFront(ctx) { if (this.tip) this.tip.drawFront(ctx); }
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
   // LA FOTO GRUPAL en Machu Picchu: la promo posa y te guardó un sitio.
   let _standing = null;
   function standingKids() {
@@ -800,7 +1096,429 @@ const ART3 = (() => {
     }
   }
 
+  // ═══════════════════════════════════════════════════════════════════════════
+  // LAGO TITICACA
+  // LA BALSA DE TOTORA de los Uros, con proa de cabeza de puma. La rema una
+  // señora uro y va de parada en parada (stops): si la siguiente parada es
+  // `behind`, la balsa rodea la isla por detrás (sin ti) y te espera al otro
+  // lado; si no, zarpa cuando te subes. Si te bajas a medio camino, vuelve.
+  const BALSA_W = 64;
+  let currentBalsa = null;
+  class Balsa {
+    constructor(def) {
+      this.stops = def.stops.map(s => ({ x: s.x * TS, behind: !!s.behind }));
+      this.wl = def.wl * TS + 4; this.isMover = true;
+      this.w = BALSA_W; this.h = 8; this.dx = 0; this.dy = 0; this.t = 0; this.offT = 0;
+      this.place(0); currentBalsa = this;
+    }
+    get cx() { return this.x + this.w / 2; }
+    get cy() { return this.y + 4; }
+    place(i) { this.i = i; this.x = this.stops[i].x; this.y = this.wl - 12; this.v = 0; this.state = 'wait'; this.onT = 0; this.offT = 0; this.falling = false; }
+    next() { return this.stops[this.i + 1]; }
+    update(g) {
+      this.t++;
+      const p = g.player, on = p.lastMover === this, px = this.x, py = this.y, nx = this.next();
+      if (this.state === 'wait') {
+        if (nx && nx.behind) {
+          // llegó a la isla: cuando te bajas, la rodea por detrás
+          if (!on && p.onGround && p.cx > this.x + this.w + 2) this.state = 'behind';
+        } else if (nx) {
+          if (on) { if (++this.onT === 20) { this.state = 'sail'; this.offT = 0; g.audio('swish'); } } else this.onT = 0;
+        }
+      } else {
+        // a bordo cuenta también el salto encima de la balsa
+        const aboard = on || (!p.onGround && Math.abs(p.cx - this.cx) < 48 && p.y < this.wl);
+        if (this.state === 'sail' && !aboard && ++this.offT > 30) this.state = 'back';
+        const to = this.state === 'back' ? this.stops[this.i].x : nx.x, left = Math.abs(to - this.x), dir = Math.sign(to - this.x);
+        // rodeando la isla va rápido: tiene que llegar al otro lado antes que tú
+        const vmax = this.state === 'behind' ? 7 : this.state === 'back' ? 2 : 1.55, acc = this.state === 'behind' ? 0.3 : 0.025;
+        this.v = Math.min(vmax, this.v + acc, Math.sqrt(2 * acc * left) + 0.08);
+        if (left <= this.v) {
+          this.x = to; this.v = 0; this.onT = 0;
+          if (this.state !== 'back') this.i++;
+          this.state = 'wait';
+        } else this.x += dir * this.v;
+      }
+      this.falling = this.state === 'behind';   // por detrás de la isla no se pisa
+      this.y = this.wl - 12 + Math.round(Math.sin(this.t * 0.05) * 1.2) + (on ? 1 : 0);
+      this.dx = this.x - px; this.dy = this.y - py;
+      if (this.state === 'sail' && this.t % 5 === 0) g.particles.push({ x: this.x + 3, y: this.wl, vx: -0.5, vy: -0.4, life: 22, max: 22, col: '#d8f0ff', size: 1, grav: 0.04 });
+    }
+    onRespawn(g) {
+      // vuelve a esperarte en la primera parada de salida que está por delante
+      const s = g.spawn.x;
+      let k = this.stops.findIndex((st, i) => this.stops[i + 1] && !this.stops[i + 1].behind && st.x + this.w >= s - 8);
+      if (k < 0) k = this.stops.length - 1;
+      this.place(k);
+    }
+    paint(ctx, g) {
+      const x = Math.round(this.x), y = Math.round(this.y), w = this.w, wl = this.wl;
+      R(ctx, 'rgba(15,40,100,0.35)', x + 6, wl + 3, w - 8, 3);   // sombra en el agua
+      // casco: haces de totora atados; las puntas se curvan hacia arriba
+      for (let i = 0; i < w; i++) {
+        const e = i < w - 14 ? i : 99, lift = e < 9 ? Math.round((9 - e) * (9 - e) / 9) : 0;
+        const top = y - lift, bot = wl + 1 - Math.round(lift * 0.5);
+        R(ctx, '#7f5e24', x + i, top, 1, bot - top + 1);
+        R(ctx, '#d6b257', x + i, top + 1, 1, Math.max(1, bot - top - 2));
+        R(ctx, '#efd585', x + i, top + 1, 1, 1);
+        R(ctx, '#ad8738', x + i, top + 5, 1, 1);
+        if (i % 8 === 4) R(ctx, '#8a4cc0', x + i, top + 1, 1, bot - top - 2);   // amarres de colores
+      }
+      // espuma en la línea de flotación
+      for (let i = -2; i < w + 2; i += 3) if (hash(i + (this.t >> 3)) > 0.4) R(ctx, '#e8f6ff', x + i, wl + 1, 2, 1);
+      // la proa de puma
+      ctx.drawImage(A3.PUMA, x + w - 19, y - 22);
+      // la señora uro rema de pie en la popa, con su palo largo
+      const sail = this.state !== 'wait', k = sail ? Math.sin(this.t * 0.07) : 0;
+      const uro = A3.URO[!sail && Math.floor(this.t / 30) % 3 === 0 ? 1 : 0];
+      ctx.drawImage(uro, x + 4, y - 24);
+      const hx = x + 15, hy = y - 13, ex = x + 2 + Math.round(k * 8), ey = wl + 6;
+      for (let s = 0; s <= 14; s++) R(ctx, '#6b4524', Math.round(hx + (ex - hx) * s / 14), Math.round(hy + (ey - hy) * s / 14), 1, 2);
+    }
+    draw(ctx, g) {
+      if (this.state === 'behind' || !onScreen(this.x, this.w)) return;
+      this.paint(ctx, g);
+      const p = g.player, on = p.lastMover === this, nx = this.next();
+      // la remera va con la balsa (un npc de la guía no se mueve): su globo lo dibuja la balsa
+      if (this.i === 0 && this.state === 'wait' && !on && Math.abs(p.cx - this.x) < 9 * TS) bubble(ctx, this.x + 12, this.y - 26, ['¡SUBE, HIJITO!', '¡TU PROMO YA ZARPÓ!'], this.x + 12);
+      else if (on && this.state === 'sail' && this.offT === 0 && this.x - this.stops[this.i].x < 80) bubble(ctx, this.x + 12, this.y - 26, ['¡AGÁRRATE, OE!'], this.x + 12);
+    }
+    // rodeando la isla: se ve por detrás, tapada por la totora
+    drawBack(ctx, g) { if (this.state === 'behind' && onScreen(this.x, this.w)) this.paint(ctx, g); }
+  }
+
+  // ISLOTE: un atado de totora que flota; se hunde un poquito al pisarlo
+  class Islote {
+    constructor(def) {
+      this.x = def.x * TS; this.w = (def.w || 2) * TS; this.h = 8; this.wl = def.wl * TS + 4;
+      this.base = this.wl - 9; this.y = this.base; this.isMover = true; this.dx = 0; this.dy = 0;
+      this.t = Math.floor(def.x * 9); this.sink = 0; this.was = false;
+    }
+    get cx() { return this.x + this.w / 2; }
+    get cy() { return this.y + 4; }
+    update(g) {
+      this.t++;
+      const on = g.player.lastMover === this, py = this.y;
+      if (on && !this.was) g.burst(this.cx, this.wl, 'splash', 6);
+      this.was = on;
+      this.sink += ((on ? 4 : 0) - this.sink) * 0.06;
+      this.y = this.base + Math.round(this.sink + Math.sin(this.t * 0.06) * 1.3);
+      this.dy = this.y - py;
+    }
+    draw(ctx) {
+      if (!onScreen(this.x, this.w)) return;
+      const x = Math.round(this.x), y = Math.round(this.y), w = this.w;
+      R(ctx, 'rgba(15,40,100,0.35)', x + 2, this.wl + 3, w - 4, 2);
+      for (let i = 0; i < w; i++) {
+        const e = Math.min(i, w - 1 - i), r = e < 4 ? 4 - e : 0;
+        R(ctx, '#7f5e24', x + i, y + r, 1, this.wl + 2 - y - r);
+        R(ctx, '#d6b257', x + i, y + r + 1, 1, Math.max(1, this.wl - y - r - 1));
+        if (i % 5 === 2) R(ctx, '#ad8738', x + i, y + r + 2, 1, this.wl - y - r - 2);
+        if (hash(i * 13 + x) > 0.6) R(ctx, '#efd585', x + i, y + r - 1, 1, 2);   // paja suelta
+      }
+      for (let i = 0; i < w; i += 3) if (hash(i + (this.t >> 3)) > 0.5) R(ctx, '#e8f6ff', x + i, this.wl + 1, 2, 1);
+    }
+  }
+
+  // TRUCHAS que saltan del lago: si la atrapas en el aire, ¡+1 TRUCHA!
+  class Trucha {
+    constructor(def) {
+      this.x0 = def.x * TS; this.wl = def.wl * TS + 4; this.period = def.period || 150; this.ph = def.phase || 0;
+      this.dir = def.dir || -1; this.x = this.x0; this.y = this.wl; this.w = 10; this.h = 6; this.caught = false; this.gotT = 0; this.k = -1;
+    }
+    onRespawn() { this.caught = false; }
+    update(g) {
+      if (this.gotT > 0) this.gotT++;
+      const u = (g.T + this.ph) % this.period;
+      if (u === 0 && g.near(this.x0, 260)) g.burst(this.x0 - this.dir * 24, this.wl, 'splash', 8);
+      if (u >= 56) { this.k = -1; if (u === 56) { this.caught = false; if (g.near(this.x0, 260)) g.burst(this.x0 + this.dir * 24, this.wl, 'splash', 8); } return; }
+      this.k = u / 56;
+      this.x = this.x0 + this.dir * (this.k * 48 - 24) - 5; this.y = this.wl - Math.sin(this.k * Math.PI) * 46 - 3;
+      const p = g.player;
+      if (!this.caught && p.overlaps(this, 3)) {
+        this.caught = true; this.gotT = 1; this.gotX = this.x; this.gotY = this.y;
+        Game.truchas3 = (Game.truchas3 || 0) + 1; g.audio('page'); g.burst(this.x + 5, this.y + 3, 'splash', 10);
+      }
+    }
+    draw(ctx) {
+      if (this.k >= 0 && !this.caught && onScreen(this.x, 10)) {
+        // trucha arcoíris: lomo verdoso, franja rosada y panza plateada
+        const x = Math.round(this.x), y = Math.round(this.y), f = this.dir, up = this.k < 0.5;
+        const px = (i) => f > 0 ? x + i : x + 9 - i;
+        R(ctx, '#2a1f2d', px(1), y + 1, 1, 4); R(ctx, '#2a1f2d', px(0), y, 1, 2); R(ctx, '#2a1f2d', px(0), y + 4, 1, 2);   // cola
+        for (let i = 2; i < 9; i++) { R(ctx, '#5f8a6a', px(i), y + 1, 1, 1); R(ctx, '#f08a7a', px(i), y + 2, 1, 1); R(ctx, '#e4ecf0', px(i), y + 3, 1, 1); }
+        R(ctx, '#2a1f2d', px(9), y + 2, 1, 1); R(ctx, '#2a1f2d', px(7), y + 1, 1, 1);
+        if (up) R(ctx, '#ffffff', px(4), y, 1, 1);
+      }
+      if (this.gotT > 0 && this.gotT < 70) drawText(ctx, '+1 TRUCHA', Math.round(this.gotX + 5), Math.round(this.gotY - 8 - this.gotT / 6), { color: '#ffd166', align: 'center', shadow: true, shadowColor: '#2a1f2d' });
+    }
+  }
+
+  // EL LAGO: lo que va sobre el agua (después de pintarla): las islas flotan
+  // con su parte hundida, los pilotes del muelle, totorales que se mecen (y se
+  // apartan cuando pasas) y chokas que se zambullen si te acercas.
+  class Lake {
+    constructor(def) {
+      this.wl = def.wl * TS + 4; this.x0 = def.x0 * TS; this.x1 = def.x1 * TS;
+      this.islands = def.islands.map(([a, b]) => [a * TS, b * TS]); this.pier = def.pier.map(v => v * TS);
+      this.reeds = def.reeds.map(([x, n]) => ({ x: x * TS, n, bend: 0 }));
+      this.birds = def.birds.map(x => ({ x: x * TS, hx: x * TS, dive: 0, dir: hash(x) > 0.5 ? 1 : -1 }));
+      this.t = 0;
+    }
+    onRespawn() { for (const b of this.birds) { b.x = b.hx; b.dive = 0; } }
+    update(g) {
+      this.t++;
+      const p = g.player, body = p.riding || p;
+      if (body.cx < this.x0 - 400 || body.cx > this.x1 + 400) return;
+      const movers = g.movers.filter(m => m instanceof Balsa && !m.falling);
+      for (const r of this.reeds) {
+        // la balsa o el niño los apartan al pasar
+        let push = 0;
+        if (Math.abs(body.cx - r.x) < 20 && body.y + body.h > this.wl - 30) push = Math.sign(r.x - body.cx || 1) * 4;
+        for (const m of movers) if (r.x > m.x - 6 && r.x < m.x + m.w + 6) push = Math.sign(m.dx || 1) * 5;
+        r.bend += (push - r.bend) * 0.15;
+      }
+      for (const b of this.birds) {
+        if (b.dive > 0) { if (++b.dive > 120) { b.dive = 0; b.x = b.hx + (hash(b.hx + this.t) - 0.5) * 60; } continue; }
+        b.x += Math.sin(this.t * 0.01 + b.hx) * 0.15;
+        if (Math.abs(body.cx - b.x) < 44 && Math.abs(body.cy - this.wl) < 60) { b.dive = 1; g.burst(b.x + 3, this.wl, 'splash', 6); if (g.near(b.x, 200)) g.audio('splash'); }
+      }
+    }
+    draw(ctx, g) {
+      const cam = g.cam, v0 = cam.x - 16, v1 = cam.x + VIEW.w + 16, wl = this.wl, t = this.t;
+      if (v1 < this.x0 || v0 > this.x1) return;
+      // destellos del sol sobre el agua
+      for (let i = 0; i < 46; i++) {
+        const gx = Math.floor(v0 / 8) * 8 + Math.floor(hash(i * 17 + Math.floor(t / 40)) * (VIEW.w + 32));
+        const gy = wl + 5 + Math.floor(hash(i * 29) * 60);
+        if (gx < this.x0 || gx > this.x1 || hash(i * 7 + Math.floor(t / 9)) < 0.55) continue;
+        R(ctx, i % 3 ? '#cfe8ff' : '#ffffff', gx, gy, i % 4 ? 2 : 3, 1);
+      }
+      // la parte hundida de cada isla, con espuma en el borde del agua
+      for (const [a, b] of this.islands) {
+        if (b < v0 || a > v1) continue;
+        for (let y = wl - 4; y < wl + 16; y++) {
+          const k = (y - wl + 4) / 20, ins = Math.round(k * k * 6);
+          ctx.fillStyle = 'rgba(' + (y < wl + 1 ? '127,94,36,1' : '90,80,60,' + (0.8 * (1 - k)).toFixed(2)) + ')';
+          ctx.fillRect(a + ins, y, b - a - ins * 2, 1);
+        }
+        for (let x = a - 3; x < b + 3; x += 2) if (hash(x * 3 + (t >> 3)) > 0.35) R(ctx, '#f2fbff', x, wl + (hash(x) > 0.5 ? 1 : 0), 2, 1);
+      }
+      // pilotes del muelle
+      const [pa, pb] = this.pier;
+      if (pb > v0 && pa < v1) for (let x = pa + 1; x < pb; x += 16) for (const ox of [1, 12]) { R(ctx, '#2a1f2d', x + ox, wl - 4, 4, 18); R(ctx, '#9b663b', x + ox + 1, wl - 4, 2, 16); R(ctx, '#f2fbff', x + ox - 1, wl + 1, 6, 1); }
+      // totorales vivos: tallos verdes con su espiga
+      for (const r of this.reeds) {
+        if (r.x < v0 || r.x > v1) continue;
+        for (let i = 0; i < r.n; i++) {
+          const h = 10 + Math.floor(hash(r.x + i * 7) * 14), bx = r.x + i * 3 - r.n;
+          const sway = Math.sin(t * 0.03 + i + r.x * 0.01) * 1.5 + r.bend;
+          for (let s = 0; s < h; s++) R(ctx, s > h - 4 ? '#6b8f3a' : '#4f7a34', Math.round(bx + sway * (s / h) * (s / h)), wl + 2 - s, 1, 1);
+          if (i % 2 === 0) R(ctx, '#7a5232', Math.round(bx + sway), wl + 2 - h - 3, 1, 3);
+        }
+        R(ctx, '#e8f6ff', r.x - r.n - 1, wl + 1, r.n * 3 + 2, 1);
+      }
+      // chokas (las gallaretas del lago): negras, pico blanco; se zambullen
+      for (const b of this.birds) {
+        if (b.x < v0 || b.x > v1) continue;
+        if (b.dive > 0 && b.dive < 100) { if (b.dive < 30 && b.dive % 6 < 3) R(ctx, '#e8f6ff', b.x - 2, wl + 1, 10, 1); continue; }
+        const x = Math.round(b.x), y = wl - 3 + (Math.floor((t + b.hx) / 30) % 2), f = b.dir;
+        R(ctx, '#1d1622', x, y, 7, 4); R(ctx, '#2a2a3a', x + 1, y - 1, 5, 1);
+        R(ctx, '#1d1622', f > 0 ? x + 5 : x - 1, y - 3, 3, 3); R(ctx, '#f4efe4', f > 0 ? x + 8 : x - 2, y - 2, 1, 1); R(ctx, '#d8432f', f > 0 ? x + 7 : x - 1, y - 3, 1, 1);
+        R(ctx, '#e8f6ff', x - 1, wl + 1, 9, 1);
+      }
+    }
+  }
+
+  // EL BUS PUNO–CUSCO: tócalo y te subes; te deja en el terminal del Cusco
+  class Bus extends Mount {
+    constructor(def) {
+      super(def.x * TS, def.y * TS - 40, 112, 40, { dx: 78, dy: 14 });
+      this.stopX = def.stop * TS; this.canDismount = false; this.drawsRider = true; this.camMax = 5.2;
+      this.go = 0; this.dist = 0; this.onGround = true;
+    }
+    reset() { super.reset(); this.go = 0; this.onGround = true; }
+    update(g) {
+      this.animT++; this.onGround = true;
+      if (!this.rider || this.retired) { this.vx = 0; return; }
+      if (++this.go === 1) g.audio('honk');
+      if (this.go > 36) {
+        const left = this.stopX - this.x;
+        this.vx = Math.min(5.2, this.vx + 0.07, Math.sqrt(2 * 0.07 * Math.max(0, left)) + 0.1);
+        if (left <= this.vx) {
+          this.x = this.stopX; this.vx = 0; this.retired = true;
+          const p = this.rider; this.rider.syncRide(); p.dismount(g, -3.2); p.x = this.x + this.w + 4;
+          g.audio('brake'); g.toast('¡LLEGASTE AL CUSCO!');
+          return;
+        }
+        this.x += this.vx; this.dist += this.vx;
+        if (this.go % 7 === 0) g.particles.push({ x: this.x - 2, y: this.y + this.h - 6, vx: -0.6, vy: -0.3, life: 30, max: 30, col: '#8a8296', size: 2, grav: -0.01 });
+      }
+      this.rider.syncRide();
+    }
+    draw(ctx, g) {
+      if (!onScreen(this.x, this.w)) return;
+      const x = Math.round(this.x), y = Math.round(this.y), w = this.w, h = this.h;
+      const shake = this.vx > 0.5 && Math.floor(this.animT / 4) % 2 ? 1 : 0, by = y + shake;
+      // carrocería: blanca con franjas rojas y celestes
+      R(ctx, '#2a1f2d', x - 1, by - 1, w + 2, h - 7);
+      R(ctx, '#f4efe4', x, by, w, h - 9);
+      R(ctx, '#d8432f', x, by + 18, w, 9); R(ctx, '#3f6fb8', x, by + 27, w, 2);
+      R(ctx, '#d9d2c4', x, by + h - 12, w, 3);
+      // ventanas con pasajeros (y el niño, si va a bordo)
+      for (let k = 0; k < 6; k++) {
+        const wx = x + 6 + k * 14;
+        R(ctx, '#1d1a24', wx, by + 5, 12, 11); R(ctx, '#9fd3f0', wx + 1, by + 6, 10, 9); R(ctx, '#d9f1ff', wx + 1, by + 6, 3, 2);
+        if (hash(k * 5 + 3) > 0.45) { R(ctx, '#c4855c', wx + 4, by + 10, 4, 4); R(ctx, '#1f1620', wx + 3, by + 9, 6, 2); }
+      }
+      if (this.rider) { const kx = x + 80; R(ctx, '#d8432f', kx + 2, by + 7, 5, 3); R(ctx, '#f6c94a', kx + 4, by + 6, 1, 1); R(ctx, '#e7b089', kx + 2, by + 10, 5, 4); R(ctx, '#2a1f2d', kx + 5, by + 11, 1, 1); }
+      // parabrisas y puerta adelante
+      R(ctx, '#1d1a24', x + w - 10, by + 3, 9, 15); R(ctx, '#9fd3f0', x + w - 9, by + 4, 7, 13); R(ctx, '#d9f1ff', x + w - 8, by + 4, 2, 4);
+      R(ctx, '#fff6b0', x + w - 3, by + 22, 3, 3); R(ctx, '#d8432f', x, by + 22, 2, 3);
+      drawText(ctx, 'PUNO - CUSCO', x + 44, by + 19, { color: '#ffffff', align: 'center' });
+      // ruedas que giran
+      for (const wx of [x + 18, x + w - 22]) {
+        R(ctx, '#1d1622', wx - 7, y + h - 12, 15, 12); R(ctx, '#5d5768', wx - 4, y + h - 9, 9, 6);
+        const a = this.dist / 6;
+        R(ctx, '#c9ced6', wx + Math.round(Math.cos(a) * 3), y + h - 6 + Math.round(Math.sin(a) * 2), 2, 2);
+      }
+      if (!this.rider && !this.retired && Math.abs(g.player.cx - x) < 10 * TS) bubble(ctx, x + w - 20, by - 2, ['¡CUSCO, CUSCO, CUSCO!'], x + w - 14);
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // EL FINAL DEL JUEGO: la foto de la promo en Machu Picchu se vuelve la foto
+  // de egreso; el chico que corría al cole hoy egresa; créditos y al menú.
+  const SC = [0, 270, 560, 860, 1260];   // en qué cuadro empieza cada pantalla
+  function cap(ctx, x, y) {
+    // birrete: tabla negra, casquete y la borla dorada colgando
+    R(ctx, '#1d1622', x - 1, y - 1, 15, 4); R(ctx, '#2a2a3a', x, y, 13, 2); R(ctx, '#1d1622', x + 3, y + 3, 7, 3);
+    R(ctx, '#f6c94a', x + 11, y + 1, 1, 6); R(ctx, '#f6c94a', x + 10, y + 7, 3, 2);
+  }
+  function confetti(ctx, W, H, t, n) {
+    const cols = ['#f6c94a', '#d8432f', '#3f6fb8', '#5c9f4a', '#f08a7a', '#ffffff'];
+    for (let i = 0; i < n; i++) {
+      const x = (hash(i * 13) * W + Math.sin(t * 0.03 + i) * 8) % W, y = (hash(i * 7) * H + t * (0.6 + hash(i) * 0.8)) % (H + 10) - 5;
+      R(ctx, cols[i % cols.length], x, y, 2, i % 3 ? 1 : 2);
+    }
+  }
+  function photo(ctx, W, H, t, egreso, k) {
+    const kids = standingKids(), fw = Math.min(232, W - 24), fh = 116, fx = Math.round(W / 2 - fw / 2), fy = Math.round(H / 2 - fh / 2 - 12);
+    // marco: blanco de foto; dorado cuando ya es la de egreso
+    R(ctx, '#1d1622', fx - 6, fy - 6, fw + 12, fh + 22);
+    R(ctx, egreso ? '#e2b13c' : '#f4efe4', fx - 5, fy - 5, fw + 10, fh + 20);
+    if (egreso) R(ctx, '#f6d97a', fx - 5, fy - 5, fw + 10, 2);
+    ctx.save(); ctx.beginPath(); ctx.rect(fx, fy, fw, fh); ctx.clip();
+    const sky = ctx.createLinearGradient(0, fy, 0, fy + fh); sky.addColorStop(0, '#5aa0e8'); sky.addColorStop(1, '#cfe6ff');
+    ctx.fillStyle = sky; ctx.fillRect(fx, fy, fw, fh);
+    // Huayna Picchu y la ciudadela con sus andenes
+    const cx = fx + fw * 0.62;
+    for (let x = fx; x < fx + fw; x += 2) {
+      const d = Math.abs(x - cx) / 34, top = fy + 14 + Math.pow(d, 1.6) * 40;
+      R(ctx, x > cx ? '#3f6a42' : '#4f7f4c', x, Math.round(top), 2, fh);
+    }
+    for (let i = 0; i < 5; i++) { R(ctx, '#55534a', fx, fy + 66 + i * 6, fw, 6); R(ctx, '#9a978c', fx, fy + 67 + i * 6, fw, 4); R(ctx, '#6f9a52', fx, fy + 66 + i * 6, fw, 1); }
+    // la promo: seis compañeros, el niño al medio y la alpaca de la foto
+    const gy = fy + fh - 6, n = 7, x0 = Math.round(W / 2 - (n * 18) / 2) - 8;
+    R(ctx, '#7fae5c', fx, gy, fw, 6);
+    const bw = n * 18 + 8;
+    R(ctx, '#6b4524', x0 - 2, gy - 44, 2, 44); R(ctx, '#6b4524', x0 + bw - 4, gy - 44, 2, 44);
+    R(ctx, '#1d1622', x0 - 1, gy - 46, bw - 2, 13); R(ctx, egreso ? '#3f6fb8' : '#d8432f', x0, gy - 45, bw - 4, 11);
+    drawText(ctx, egreso ? '¡EGRESAMOS! 2026' : 'PROMO 2026', x0 + bw / 2 - 2, gy - 43, { color: '#ffffff', align: 'center' });
+    for (let i = 0; i < n; i++) {
+      const hero = i === 3, img = hero ? (egreso && k > 0.9 ? P.jump : P.idle[0]) : kids[i % kids.length];
+      const hop = egreso && k > 0.9 ? Math.round(Math.abs(Math.sin(t * 0.15 + i)) * 3) : 0;
+      const kx = x0 + i * 18, ky = gy - 22 - hop;
+      ctx.drawImage(img, kx, ky);
+      if (egreso) {
+        // los birretes caen uno por uno sobre las cabezas
+        const d = Math.min(1, Math.max(0, k * 1.6 - i * 0.09));
+        if (d > 0) cap(ctx, kx + 1, Math.round(ky - 2 - (1 - d) * 60));
+      }
+    }
+    ctx.drawImage(A3.ALP.foto.idle, x0 + n * 18 + 2, gy - 24);
+    if (egreso && k > 0.95) cap(ctx, x0 + n * 18 + 18, gy - 26);
+    ctx.restore();
+  }
+  function caption(ctx, W, y, text, a) {
+    ctx.globalAlpha = Math.max(0, Math.min(1, a));
+    drawText(ctx, text, W / 2, y, { scale: W < 300 ? 1 : 2, color: '#ffd166', align: 'center', shadow: true, shadowColor: '#5a2a12' });
+    ctx.globalAlpha = 1;
+  }
+  const ENDING = {
+    frames: SC[SC.length - 1], music: 'c3condor',
+    // la voz del egreso: un clip 'egreso' de voces/manifest.js; si no hay, la de ganar
+    start() { VOICE.play(VOICE_MANIFEST.egreso && VOICE_MANIFEST.egreso.length ? 'egreso' : 'gana', 700); },
+    skip(t) { return SC.find(s => s > t + 1) || SC[SC.length - 1]; },
+    draw(ctx, W, H, t, tick) {
+      const s = SC.findIndex((v, i) => t >= v && t < (SC[i + 1] || 1e9)), u = t - SC[s], len = SC[s + 1] - SC[s];
+      R(ctx, '#1b1424', 0, 0, W, H);
+      const ty = H - 30;
+      if (s === 0) {
+        photo(ctx, W, H, t, false, 0);
+        if (u > 24 && u < 34) { ctx.fillStyle = 'rgba(255,255,255,' + (1 - (u - 24) / 10) + ')'; ctx.fillRect(0, 0, W, H); }
+        if (u === 24) AUDIO.play('click');
+        caption(ctx, W, ty, '¡SALISTE EN LA FOTO!', (u - 40) / 20);
+      } else if (s === 1) {
+        const k = Math.min(1, u / 170);
+        photo(ctx, W, H, t, k > 0.75, k);
+        if (k > 0.75) confetti(ctx, W, H, t, 60);
+        if (u === 140) AUDIO.play('applause');
+        caption(ctx, W, ty, k > 0.75 ? '¡ES LA FOTO DE EGRESO!' : 'ESA FOTO...', (u - 10) / 20);
+      } else if (s === 2) {
+        // el valle de siempre: antes corría al cole; hoy egresa
+        const sky = ctx.createLinearGradient(0, 0, 0, H); sky.addColorStop(0, '#4f86c6'); sky.addColorStop(1, '#f6dcb0');
+        ctx.fillStyle = sky; ctx.fillRect(0, 0, W, H);
+        for (let x = 0; x < W; x += 2) { const top = H * 0.42 - Math.abs(Math.sin(x * 0.012 + 1)) * 40 - Math.sin(x * 0.05) * 6; R(ctx, '#7a73a6', x, Math.round(top), 2, H); if (top < H * 0.34) R(ctx, '#f4f8ff', x, Math.round(top), 2, 4); }
+        for (let x = 0; x < W; x += 2) { const top = H * 0.62 - Math.sin(x * 0.02) * 10; R(ctx, '#7fa463', x, Math.round(top), 2, H); }
+        const gy = Math.round(H * 0.72); R(ctx, '#64803a', 0, gy, W, H - gy); R(ctx, '#93a84a', 0, gy, W, 2);
+        if (u < 150) {
+          const x = Math.round(-30 + Math.min(1, u / 120) * (W / 2 + 10)), f = Math.floor(tick / 6) % 4;
+          ctx.drawImage(u < 120 ? LL.run[f] : LL.idle[0], x - 34, gy - 24);
+          ctx.drawImage(u < 120 ? P.run[f] : P.idle[0], x, gy - 22);
+          caption(ctx, W, ty, 'CORRÍAS AL COLE...', (u - 10) / 20);
+        } else {
+          const x = Math.round(W / 2 - 8);
+          ctx.drawImage(LL.idle[0], x - 34, gy - 24);
+          ctx.drawImage(P.idle[0], x, gy - 22); cap(ctx, x + 1, gy - 24);
+          R(ctx, '#fffaf0', x + 12, gy - 12, 7, 3); R(ctx, '#d8432f', x + 15, gy - 12, 1, 3);   // el diploma
+          ctx.drawImage(OBJ.mom[Math.floor(tick / 20) % 2], x + 26, gy - 25);
+          confetti(ctx, W, H, t, 30);
+          caption(ctx, W, ty, '¡HOY EGRESAS!', (u - 160) / 20);
+        }
+      } else {
+        // créditos bajo el cielo estrellado de los Andes
+        for (let i = 0; i < 70; i++) R(ctx, hash(i * 3 + Math.floor(tick / 30)) > 0.85 ? '#ffffff' : '#9a94c4', hash(i * 11) * W, hash(i * 17) * H * 0.8, 1, 1);
+        for (let x = 0; x < W; x += 2) { const top = H * 0.78 - Math.abs(Math.sin(x * 0.015)) * 34; R(ctx, '#2c2350', x, Math.round(top), 2, H); }
+        const L = [
+          [0, 'LA MARATÓN DE LOS ANDES', 2, '#ffd166'],
+          [50, 'JUEGO ORIGINAL', 1, '#cdbde8'], [62, 'HECZE', 2, '#ffffff'],
+          [110, 'CAPÍTULOS 2 Y 3', 1, '#cdbde8'], [122, 'HAROLD', 2, '#ffffff'],
+          [190, '¡GRACIAS POR JUGAR!', 1, '#9be7c4'],
+        ];
+        const narrow = W < 300;
+        let y = Math.round(H * 0.16);
+        for (const [at, txt, sc, col] of L) {
+          ctx.globalAlpha = Math.max(0, Math.min(1, (u - at) / 20));
+          const s2 = narrow ? 1 : sc;
+          drawText(ctx, txt, W / 2, y, { scale: s2, color: col, align: 'center', shadow: true, shadowColor: '#000000' });
+          y += s2 === 2 ? 22 : 12;
+          if (txt === 'HECZE' || txt === 'HAROLD') y += 8;
+        }
+        ctx.globalAlpha = 1;
+      }
+      // fundido al entrar y al salir de cada pantalla
+      const fa = Math.max(0, 1 - u / 16, 1 - (len - u) / 16);
+      if (fa > 0) { ctx.fillStyle = 'rgba(11,10,18,' + fa.toFixed(2) + ')'; ctx.fillRect(0, 0, W, H); }
+    },
+  };
+
   Object.assign(EXTRA_ENTITIES, {
+    balsa: (d) => new Balsa(d),
+    islote: (d) => new Islote(d),
+    trucha: (d) => new Trucha(d),
+    lake: (d) => new Lake(d),
+    bus: (d) => new Bus(d),
     alpaca: (d) => new Alpaca(d),
     photoLady: (d) => new PhotoLady(d),
     spitter: (d) => new Spitter(d),
@@ -811,9 +1529,10 @@ const ART3 = (() => {
     awning: (d) => new Awning(d),
     train: (d) => new Train(d),
     wagon: (d) => new Wagon(d),
+    trainCondor: (d) => new TrainCondor(d),
     classPhoto: (d) => new ClassPhoto(d),
   });
-  window.CAP3 = { get train() { return currentTrain; } };
+  window.CAP3 = { get train() { return currentTrain; }, get balsa() { return currentBalsa; }, ending: ENDING };
 })();
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -823,8 +1542,44 @@ const ART3 = (() => {
   const GC = 70;     // fila de la calle del Cusco
   const GV = 76;     // fila del fondo del valle (y de los rieles del tren)
   const ROOF = 73;   // fila del techo del tren (y de los andenes de las estaciones)
+  // ── LAGO TITICACA y la carretera al Cusco ──
+  const WL = GC + 1;                                  // fila del agua del lago
+  const ISL = [[46, 60], [84, 100], [116, 127]];      // islas flotantes de los Uros
+  const SHORE = 164;                                  // la otra orilla: el terminal
+  const C = 250;                                      // EL CUSCO: todo lo que sigue va corrido C casillas
+  // cielo del altiplano: amanece rosado y se pone azul intenso
+  const ALTI_SKY = { dawn: ['#2b3a7a', '#c97a96', '#ffc489'], morning: ['#1d56b8', '#4c94e4', '#bfe0ff'] };
+  // el agua del Titicaca: azul profundo, casi sin corriente
+  const LAKE_PAL = { foam: '#ffffff', hi: '#bfe2ff', bands: ['#3f86d8', '#2f6fc4', '#2459a8', '#1b468c', '#133572'], streak: ['#9fd0ff', '#7ab8f2', '#5c9ee0', '#4686cc', '#3570b4'], speed: 0.25, amp: 0.8, chunks: null };
   const hash = (n) => { n = (n | 0) ^ 0x9e3779b9; n = Math.imul(n ^ (n >>> 16), 0x85ebca6b); n = Math.imul(n ^ (n >>> 13), 0xc2b2ae35); n ^= n >>> 16; return (n >>> 0) / 4294967296; };
   const R = (g, c, x, y, w, h) => { g.fillStyle = c; g.fillRect(Math.round(x), Math.round(y), w, h); };
+
+  // pistas de la balsa: solo cuando espera en la parada i y estás (o no) encima
+  const balsaAt = (i, onIt) => (g) => { const b = CAP3.balsa; return !!b && b.state === 'wait' && b.i === i && (g.player.lastMover === b) === onIt; };
+
+  // la gente del capítulo para los NPCs de la guía
+  Object.assign(GUIDE.models, { uro: () => A3.URO, chullera: () => A3.CHULLERA, guia: () => A3.GUIA });
+  // CORTINA de una casita de totora: al pasar se enrolla la manta y asoma un
+  // niño uro que saluda en aimara
+  const CORT = [['#d8432f', '#5c9f4a', '#f0913c'], ['#c2185b', '#f6c94a', '#3f6fb8']];
+  GUIDE.PROP_KINDS.cortina = { w: 8, h: 12,
+    update(e, g, p, near) {
+      if (!e.go && near(14)) { e.go = 1; g.audio('click'); }
+      if (e.go && e.go < 200) e.go++;
+    },
+    draw(e, ctx) {
+      const x = Math.round(e.x), y = Math.round(e.y), up = e.go ? Math.min(11, e.go >> 1) : 0, M = CORT[e.d.c || 0];
+      if (up) {
+        // el niño: chullo rojo, cara y manitos que saludan
+        R(ctx, '#2a1f2d', x, y, 8, 12); R(ctx, '#d8432f', x + 1, y + 3, 6, 3); R(ctx, '#f6c94a', x + 3, y + 2, 2, 1);
+        R(ctx, '#c4855c', x + 2, y + 6, 4, 4); R(ctx, '#1f1620', x + 3, y + 7, 1, 1); R(ctx, '#1f1620', x + 5, y + 7, 1, 1);
+        if (Math.floor(e.go / 8) % 2) R(ctx, '#c4855c', x + 6, y + 5, 2, 2); else R(ctx, '#c4855c', x + 6, y + 7, 2, 2);
+      }
+      for (let k = 0; k < 6; k++) if (k * 2 >= up) R(ctx, M[k % 3], x + 1, y + 1 + k * 2 - Math.min(up, k * 2), 6, 2);
+      if (e.go > 20 && e.go < 170) drawText(ctx, e.d.c ? '¡HOLA, OE!' : '¡KAMISARAKI!', x + 4, y - 12 - (e.go < 30 ? 30 - e.go : 0) / 3, { color: '#fff3d6', align: 'center', shadow: true, shadowColor: '#2a1f2d' });
+    },
+    reset(e) { e.go = 0; },
+  };
 
   // tiles propios (con prefijo para no chocar con otros capítulos)
   Object.assign(TILE_SPECS, {
@@ -837,28 +1592,32 @@ const ART3 = (() => {
     c3gran:   { solid: true, top: T3.granTop, body: T3.inca },
     c3sacks:  { solid: true, body: T3.sacks },
     c3saruna: { oneway: true, body: T3.saruna },
+    c3quay:   { solid: true, top: T3.cobble, body: T3.inca },   // malecón de piedra
+    c3pier:   { solid: true, body: T3.pier },
+    c3totora: { solid: true, body: T3.totora },
+    c3road:   { solid: true, top: T3.road, body: T.dirt },
   });
 
   // ── las casas coloniales de los tejados (sólidas) ─────────────────────────
   // x, ancho, fila del techo; muro y si llevan balcón
   const ROOFS = [
-    { x: 46, w: 8, top: 66, wall: '#efe6d6', balc: true },
-    { x: 57, w: 9, top: 65, wall: '#e8d2a0' },
-    { x: 69, w: 7, top: 63, wall: '#efe6d6', tower: true },
-    { x: 80, w: 10, top: 65, wall: '#dfe7ea', balc: true },
-    { x: 93, w: 8, top: 64, wall: '#efe6d6' },
-    { x: 104, w: 10, top: 66, wall: '#e8d2a0', balc: true },
-    { x: 117, w: 8, top: 61, wall: '#efe6d6', tower: true },
-    { x: 128, w: 9, top: 64, wall: '#dfe7ea' },
-    { x: 140, w: 8, top: 63, wall: '#e8d2a0', balc: true },
+    { x: C + 46, w: 8, top: 66, wall: '#efe6d6', balc: true },
+    { x: C + 57, w: 9, top: 65, wall: '#e8d2a0' },
+    { x: C + 69, w: 7, top: 63, wall: '#efe6d6', tower: true },
+    { x: C + 80, w: 10, top: 65, wall: '#dfe7ea', balc: true },
+    { x: C + 93, w: 8, top: 64, wall: '#efe6d6' },
+    { x: C + 104, w: 10, top: 66, wall: '#e8d2a0', balc: true },
+    { x: C + 117, w: 8, top: 61, wall: '#efe6d6', tower: true },
+    { x: C + 128, w: 9, top: 64, wall: '#dfe7ea' },
+    { x: C + 140, w: 8, top: 63, wall: '#e8d2a0', balc: true },
   ];
   // calles transversales entre casa y casa: por ahí pasa la comparsa
   const ALLEYS = ROOFS.slice(0, -1).map((b, i) => [b.x + b.w, ROOFS[i + 1].x]);
   // balcones que asoman a la calle (se pisan): [x, fila]
-  const BALCONIES = [[44, 68], [115, 64]];
+  const BALCONIES = [[C + 44, 68], [C + 115, 64]];
 
   // dónde empieza cada tramo
-  const V = 152;          // VALLE SAGRADO
+  const V = C + 152;      // VALLE SAGRADO
   const OL = V + 133;     // andén de Ollantaytambo
   const PE = OL + 18;     // fin del andén: ahí espera el tren
   const AC = PE + 412;    // andén de Aguas Calientes (el tren para justo antes)
@@ -870,14 +1629,28 @@ const ART3 = (() => {
     name: 'LA EXCURSIÓN A MACHU PICCHU', w: AC + 196, h: 84,
     anchorRow: GC,
     spawn: { x: 3, y: GC },
+    // el cielo del altiplano: azul intenso apenas sale el sol
+    sky: ALTI_SKY,
     bgLayers: [
-      { kind: 'mountains', color: '#9a94c4', color2: '#7a73a6', y: GC - 3.4, parallax: 0.08, vpar: 0.10, amp: 7, seed: 9, snow: true },
-      { kind: 'mountains', color: '#8f7f8f', color2: '#6d5d72', y: GC - 1.8, parallax: 0.18, vpar: 0.24, amp: 4.5, seed: 4 },
-      { kind: 'city', build: cuscoSkyline, color: '#c9b293', color2: '#7a5e4c', y: GC - 0.2, parallax: 0.32, vpar: 0.40 },
-      { kind: 'clouds', color: '#fff6e6', parallax: 0.06, count: 8, seed: 7 },
+      // la cordillera nevada al otro lado del lago y las islas lejanas
+      { kind: 'mountains', color: '#a9b2de', color2: '#8890c4', y: GC - 2.4, parallax: 0.05, vpar: 0.08, amp: 5, seed: 31, snow: true },
+      { kind: 'lake', build: lakeFar, color: '#2a64b8', color2: '#1d4f9e', y: GC - 0.6, parallax: 0.14, vpar: 0.2 },
+      { kind: 'clouds', color: '#ffffff', parallax: 0.05, count: 7, seed: 11 },
     ],
     // cada tramo trae su fondo, que se funde con el anterior
     bgZones: [
+      // el altiplano: puna dorada de ichu y los nevados de La Raya
+      { x0: SHORE - 2, x1: SHORE + 12, anchorRow: GC, sky: ALTI_SKY, layers: [
+        { kind: 'mountains', color: '#a7b4d4', color2: '#8590b6', y: GC - 3.0, parallax: 0.06, vpar: 0.08, amp: 7, seed: 18, snow: true },
+        { kind: 'mountains', color: '#c9ad62', color2: '#a68a46', y: GC - 1.0, parallax: 0.2, vpar: 0.26, amp: 2.5, seed: 7 },
+        { kind: 'clouds', color: '#ffffff', parallax: 0.05, count: 6, seed: 4 },
+      ] },
+      { x0: C - 16, x1: C - 4, anchorRow: GC, layers: [
+        { kind: 'mountains', color: '#9a94c4', color2: '#7a73a6', y: GC - 3.4, parallax: 0.08, vpar: 0.10, amp: 7, seed: 9, snow: true },
+        { kind: 'mountains', color: '#8f7f8f', color2: '#6d5d72', y: GC - 1.8, parallax: 0.18, vpar: 0.24, amp: 4.5, seed: 4 },
+        { kind: 'city', build: cuscoSkyline, color: '#c9b293', color2: '#7a5e4c', y: GC - 0.2, parallax: 0.32, vpar: 0.40 },
+        { kind: 'clouds', color: '#fff6e6', parallax: 0.06, count: 8, seed: 7 },
+      ] },
       { x0: V - 2, x1: V + 10, anchorRow: GV, layers: [
         { kind: 'mountains', color: '#a7b4d4', color2: '#8590b6', y: GV - 3.6, parallax: 0.08, vpar: 0.10, amp: 9, seed: 12, snow: true },
         { kind: 'mountains', color: '#6f9a5e', color2: '#557d4a', y: GV - 1.6, parallax: 0.18, vpar: 0.24, amp: 6, seed: 3 },
@@ -898,7 +1671,9 @@ const ART3 = (() => {
       ] },
     ],
     zones: [
-      { x: 0,      name: 'EL CUSCO',      music: 'c3cusco' },
+      { x: 0,      name: 'LAGO TITICACA', music: 'c3titicaca' },
+      { x: SHORE,  name: 'RUMBO AL CUSCO', music: 'c3titicaca' },
+      { x: C,      name: 'EL CUSCO',      music: 'c3cusco' },
       { x: V,      name: 'VALLE SAGRADO', music: 'c3valle' },
       { x: OL + 1, name: 'EL TREN',       music: 'c3tren' },
       { x: AC,     name: 'MACHU PICCHU',  music: 'c3virgenes' },
@@ -906,11 +1681,18 @@ const ART3 = (() => {
       { x: AC + 130, name: 'INTI PUNKU',  music: 'c3condor' },
     ],
     rects: [
+      // ── LAGO TITICACA: el malecón de Puno, las islas y la otra orilla ──
+      [0, GC, 12, 84 - GC, 'c3quay'],
+      [12, GC, 7, 1, 'c3pier'],
+      ...ISL.map(([a, b]) => [a, GC, b - a, 1, 'c3totora']),
+      [SHORE, GC, 6, 84 - GC, 'c3quay'],
+      // ── RUMBO AL CUSCO: la carretera por el altiplano ──
+      [SHORE + 6, GC, C - SHORE - 6, 84 - GC, 'c3road'],
       // ── EL CUSCO ──
-      [0, GC, V + 6, 84 - GC, 'c3cobble'],
+      [C, GC, V + 6 - C, 84 - GC, 'c3cobble'],
       ...ROOFS.map(b => [b.x, b.top, b.w, GC - b.top, 'c3bld']),
       // escalinata de piedra para bajar de los tejados
-      [148, 65, 1, 5, 'c3inca'], [149, 67, 1, 3, 'c3inca'], [150, 69, 1, 1, 'c3inca'],
+      [C + 148, 65, 1, 5, 'c3inca'], [C + 149, 67, 1, 3, 'c3inca'], [C + 150, 69, 1, 1, 'c3inca'],
       // ── VALLE SAGRADO: los andenes de Pisac bajan al valle ──
       [V + 6, 72, 6, 12, 'c3anden'], [V + 12, 74, 6, 10, 'c3anden'], [V + 18, GV, 14, 84 - GV, 'grass'],
       // la otra orilla del Urubamba y el mercado
@@ -942,27 +1724,77 @@ const ART3 = (() => {
       [V + 103, 71, 1, 'c3saruna'], [V + 111, 68, 1, 'c3saruna'], [V + 119, 65, 1, 'c3saruna'],
     ],
     liquids: [
+      // el lago (lleva su propio azul: ver LAKE_PAL más abajo)
+      [12, WL, SHORE - 12, 84 - WL, 'water', 1],
       [V + 32, GV + 1, 22, 7, 'water', 1],
       // el Urubamba corre junto a la vía del tren
       [PE, 79, AC - PE, 5, 'water', 1],
     ],
     entities: [
+      // ── LAGO TITICACA ── (el lago va primero: se pinta justo encima del agua)
+      { type: 'lake', wl: WL, x0: 12, x1: SHORE, islands: ISL, pier: [12, 19],
+        reeds: [[25, 4], [44, 5], [62, 4], [77, 3], [82, 6], [116, 3], [129, 5], [138, 3], [147, 4], [158, 5]],
+        birds: [31, 70, 104, 135, 152] },
+      { type: 'sign3', x: 8, y: GC, lines: ['PUERTO DE PUNO'], color: 'blue' },
+      { type: 'sign3', x: 16, y: GC, lines: ['LAGO TITICACA', '3812 M'], color: 'white', post: 10 },
+      { type: 'hint', x: 21, y: GC, text: '¡SÚBETE A LA BALSA!', key: 'right', arrow: 'down', r: 14, pass: 1, dy: 20, when: balsaAt(0, false) },
+      { type: 'help', x0: 12, x1: 100, kind: 'water', text: '¡QUÉDATE EN LA BALSA!' },
+      // la balsa: Puno → isla 1, la rodea, isla 2, rodea la 2, los islotes y la 3, y a la otra orilla
+      { type: 'balsa', wl: WL, stops: [{ x: 19 }, { x: 42 }, { x: 60, behind: true }, { x: 80 }, { x: 127, behind: true }, { x: SHORE - 4 }] },
+      { type: 'trucha', x: 31, wl: WL, period: 170, phase: 40 },
+      // isla 1: la señora uro, las casitas y el mirador de totora
+      { type: 'hint', x: 46.5, y: GC, text: 'SALTA', key: 'jump', arrow: 'right', r: 6, pass: 1, when: balsaAt(1, true) },
+      { type: 'checkpoint', x: 48, y: GC },
+      { type: 'npc', x: 51.5, y: GC, model: 'uro', r: 4, lines: ['¡KAMISARAKI, HIJITO!', 'ACÁ TODO ES DE TOTORA', 'LA ISLA FLOTA, NO TE ASUSTES'] },
+      { type: 'npc', x: 58.5, y: GC, model: 'nina', r: 3, lines: ['¡MI ISLA SE MUEVE, OE!'] },
+      // las casitas de totora: al pasar se corre la manta y asoma un niño uro
+      { type: 'prop', kind: 'cortina', x: 47.31, y: GC }, { type: 'prop', kind: 'cortina', x: 49.56, y: GC, c: 1 },
+      { type: 'hint', x: 62, y: GC, text: '¡A LA BALSA!', key: 'right', arrow: 'down', r: 8, pass: 1, dy: 20, when: balsaAt(2, false) },
+      { type: 'trucha', x: 70, wl: WL, period: 160, phase: 0 },
+      // isla 2: la vendedora de chullos; luego los islotes que flotan
+      { type: 'hint', x: 84.5, y: GC, text: 'SALTA', key: 'jump', arrow: 'right', r: 6, pass: 1, when: balsaAt(3, true) },
+      { type: 'checkpoint', x: 86, y: GC },
+      { type: 'prop', kind: 'cortina', x: 85.375, y: GC, c: 1 }, { type: 'prop', kind: 'cortina', x: 98.44, y: GC },
+      { type: 'npc', x: 92, y: GC, model: 'chullera', lines: ['¡CHULLITO, CHULLITO!', '¡PARA EL FRÍO, CASERITO!', '¡TE LO DEJO EN DIEZ!'] },
+      { type: 'hint', x: 101, y: GC, text: ['¡DE ISLOTE', 'EN ISLOTE!'], key: 'jump', arrow: 'right', r: 5, pass: 1 },
+      { type: 'help', x0: 100, x1: 116, kind: 'water', text: 'SALTA EN EL BORDE DEL ISLOTE' },
+      { type: 'islote', x: 101.5, w: 3.5, wl: WL }, { type: 'islote', x: 106.5, w: 3.5, wl: WL }, { type: 'islote', x: 111.5, w: 4.5, wl: WL },
+      // isla 3: el guía con sus turistas
+      { type: 'checkpoint', x: 119, y: GC },
+      { type: 'prop', kind: 'cortina', x: 117.25, y: GC },
+      { type: 'hint', x: 129, y: GC, text: '¡A LA BALSA!', key: 'right', arrow: 'down', r: 8, pass: 1, dy: 20, when: balsaAt(4, false) },
+      { type: 'npc', x: 121.5, y: GC, model: 'guia', lines: ['¡GRUPO, POR AQUÍ!', 'EL LAGO NAVEGABLE MÁS ALTO', '¡NO SE QUEDEN, OIGAN!'] },
+      { type: 'tourist', x: 124, y: GC, v: 1 },
+      // la travesía larga: saltan las truchas
+      { type: 'trucha', x: 133, wl: WL, period: 150, phase: 0 },
+      { type: 'trucha', x: 142, wl: WL, period: 150, phase: 50, dir: 1 },
+      { type: 'trucha', x: 151, wl: WL, period: 150, phase: 100 },
+      { type: 'hint', x: SHORE + 0.5, y: GC, text: 'SALTA', key: 'jump', arrow: 'right', r: 6, pass: 1, when: balsaAt(5, true) },
+      // ── RUMBO AL CUSCO ──
+      { type: 'checkpoint', x: SHORE + 2, y: GC },
+      { type: 'bus', x: SHORE + 9, y: GC, stop: C - 4 },
+      { type: 'hint', x: SHORE + 10, y: GC, text: '¡SÚBETE AL BUS!', key: 'right', arrow: 'down', r: 9, pass: 0, dy: 46, when: (g) => !g.player.riding },
+      { type: 'sign3', x: SHORE + 30, y: GC, lines: ['CUSCO 389 KM'], color: 'green' },
+      { type: 'sign3', x: SHORE + 52, y: GC, lines: ['ABRA LA RAYA', '4338 M'], color: 'blue' },
+      { type: 'sign3', x: C - 12, y: GC, lines: ['BIENVENIDOS', 'AL CUSCO'], color: 'yellow' },
       // ── EL CUSCO ──
-      { type: 'sign3', x: 15.5, y: GC, lines: ['NO TOCAR LOS', 'MUROS INCAS'], color: 'white', post: 12 },
-      { type: 'tourist', x: 9.5, y: GC, v: 0 },
-      { type: 'photoLady', x: 27, y: GC },
-      { type: 'alpaca', x: 29.5, y: GC, retireX: V + 60 },
-      { type: 'tourist', x: 31, y: GC, v: 1 },
-      { type: 'dancer', x: 34, y: GC, v: 0, phase: 0 }, { type: 'dancer', x: 37.5, y: GC, v: 1, phase: 3 }, { type: 'dancer', x: 41, y: GC, v: 0, phase: 6 },
+      { type: 'checkpoint', x: C + 5, y: GC },
+      { type: 'sign3', x: C + 15.5, y: GC, lines: ['NO TOCAR LOS', 'MUROS INCAS'], color: 'white', post: 12 },
+      { type: 'tourist', x: C + 9.5, y: GC, v: 0 },
+      { type: 'npc', x: C + 21, y: GC, model: 'chullera', lines: ['¡CHULLO DE ALPACA, CASERITO!', '¡BARATITO, BARATITO!'] },
+      { type: 'photoLady', x: C + 27, y: GC },
+      { type: 'alpaca', x: C + 29.5, y: GC, retireX: V + 60 },
+      { type: 'tourist', x: C + 31, y: GC, v: 1 },
+      { type: 'dancer', x: C + 34, y: GC, v: 0, phase: 0 }, { type: 'dancer', x: C + 37.5, y: GC, v: 1, phase: 3 }, { type: 'dancer', x: C + 41, y: GC, v: 0, phase: 6 },
       ...ALLEYS.map(([x0, x1], i) => ({ type: 'comparsa', x0, x1, y: GC, v: i % 2 })),
-      { type: 'checkpoint', x: 60, y: 65 },
-      { type: 'page', x: 72.5, y: 59 },
-      { type: 'spitter', x: 86, y: 65, face: -1 },
-      { type: 'tourist', x: 97, y: 64, v: 1 },
-      { type: 'spitter', x: 111, y: 66, face: -1 },
-      { type: 'checkpoint', x: 120, y: 61 },
-      { type: 'spitter', x: 135, y: 64, face: -1 },
-      { type: 'tourist', x: 144, y: 63, v: 0 },
+      { type: 'checkpoint', x: C + 60, y: 65 },
+      { type: 'page', x: C + 72.5, y: 59 },
+      { type: 'spitter', x: C + 86, y: 65, face: -1 },
+      { type: 'tourist', x: C + 97, y: 64, v: 1 },
+      { type: 'spitter', x: C + 111, y: 66, face: -1 },
+      { type: 'checkpoint', x: C + 120, y: 61 },
+      { type: 'spitter', x: C + 135, y: 64, face: -1 },
+      { type: 'tourist', x: C + 144, y: 63, v: 0 },
       // ── VALLE SAGRADO ──
       { type: 'checkpoint', x: V + 2, y: GC },
       { type: 'sign3', x: V + 3, y: GC, lines: ['VALLE SAGRADO', 'PISAC >'], color: 'green' },
@@ -983,11 +1815,18 @@ const ART3 = (() => {
         tunnels: [[50, 60], [150, 162], [188, 200], [270, 280], [360, 372]].map(([a, b]) => [PE + a, PE + b]),
         decouples: [120, 250, 330].map(d => PE + d), cp: PE + 125 },
       ...[0, 1, 2, 3, 4].map(i => ({ type: 'wagon', i })),
+      // tres cóndores bajan a atacar donde no hay túnel ni enganche por soltarse (el primero trae su pista)
+      { type: 'trainCondor', at: PE + 62, hint: ['¡CÓNDOR!', '¡AGÁCHATE!'] },
+      { type: 'trainCondor', at: PE + 190 },
+      { type: 'trainCondor', at: PE + 372 },
+      { type: 'help', x0: PE, x1: AC, kind: 'tunnel', text: 'EN EL TÚNEL MANTÉN ABAJO' },
+      { type: 'help', x0: PE, x1: AC, kind: 'eagle', text: 'SI BAJA EL CÓNDOR, MANTÉN ABAJO' },
       // ── MACHU PICCHU ──
       { type: 'checkpoint', x: AC + 3, y: ROOF },
       { type: 'tourist', x: AC + 9, y: ROOF, v: 1 },
       { type: 'sign3', x: AC + 15, y: ROOF, lines: ['A MACHU PICCHU:', 'BUS S/ 80', 'A PIE: GRATIS'], color: 'wood' },
       { type: 'sign3', x: AC + 22, y: 72, lines: ['CAMINO INCA', '¡SOLO 1700 ESCALONES!'], color: 'wood' },
+      { type: 'npc', x: AC + 27, y: 70, model: 'guia', lines: ['¡RESPIREN, JÓVENES!', '¡LA FOTO ES ARRIBA!'] },
       { type: 'checkpoint', x: AC + 46, y: 60 },
       { type: 'tourist', x: AC + 48, y: 60, v: 0 },
       { type: 'rockfall', x: AC + 75, y: 40, interval: 150 },
@@ -1000,6 +1839,8 @@ const ART3 = (() => {
       { type: 'tourist', x: AC + 142, y: 40, v: 1 },
       { type: 'classPhoto', x: AC + 157, y: 40 },
     ],
+    // la flecha «¡POR AQUÍ!» de la guía apunta al final a tu sitio en la foto
+    goal: { x: AC + 160.5, y: 40 },
     renderBack: renderBack3,
     renderScreen: renderScreen3,
   };
@@ -1020,6 +1861,19 @@ const ART3 = (() => {
       x += w; i++;
     }
     R(g, '#7a5e4c', 0, 134, W, H);
+  }
+  // el lago a lo lejos: islas bajas (Amantaní, Taquile) y el agua hasta el horizonte
+  function lakeFar(g, W, H) {
+    for (let x = 0; x < W; x += 2) {
+      // islas con andenes, de vez en cuando
+      const k = Math.sin(x / W * Math.PI * 4 + 0.6), top = Math.round(120 - Math.max(0, k - 0.55) * 30);
+      if (top < 120) { R(g, '#6a73a8', x, top, 2, 120 - top); for (let y = top + 3; y < 120; y += 3) R(g, '#5d6699', x, y, 2, 1); }
+    }
+    for (let y = 120; y < H; y++) {
+      const k = Math.min(1, (y - 120) / 60);
+      R(g, k < 0.15 ? '#5c98dc' : k < 0.45 ? '#3f80cc' : '#2a64b8', 0, y, W, 1);
+    }
+    for (let i = 0; i < 90; i++) R(g, '#9fd0ff', Math.floor(hash(i * 7) * W), 121 + Math.floor(hash(i * 13) * hash(i * 3) * 50), 4 + Math.floor(hash(i) * 10), 1);
   }
   // cerros del Valle Sagrado cubiertos de andenes
   function terraceHills(g, W, H) {
@@ -1136,6 +1990,58 @@ const ART3 = (() => {
     R(g, '#1d1622', W / 2 - 25, 70, 50, 13); R(g, '#3f7a4c', W / 2 - 24, 71, 48, 11);
     drawText(g, 'HOSTAL', W / 2, 73, { color: '#ffffff', align: 'center' });
   }
+  // el terminal de buses del Cusco (donde te deja el bus de Puno)
+  function paintTerminal(g, W, H) {
+    paintHouse(g, W, H, { x: 5, wall: '#dfe7ea', door: true });
+    R(g, '#1d1622', W / 2 - 31, 70, 62, 13); R(g, '#2f6fa8', W / 2 - 30, 71, 60, 11);
+    drawText(g, 'TERMINAL', W / 2, 73, { color: '#ffffff', align: 'center' });
+  }
+  // casita de totora: muros de esteras, techo a dos aguas y una manta en la puerta
+  function totoraHut(g, x, base, w, door) {
+    const h = 18, roof = 12;
+    R(g, '#7f5e24', x, base - h, w, h);
+    for (let k = 1; k < w - 1; k++) R(g, k % 3 === 0 ? '#ad8738' : '#d6b257', x + k, base - h + 1, 1, h - 1);
+    for (let k = 0; k <= roof; k++) {
+      const half = Math.round((w / 2 + 3) * k / roof);
+      R(g, '#7f5e24', x + w / 2 - half - 1, base - h - roof + k, half * 2 + 2, 1);
+      R(g, k % 2 ? '#efd585' : '#d6b257', x + w / 2 - half, base - h - roof + k, half * 2, 1);
+    }
+    const dx = x + Math.floor(w / 2) - 4;
+    R(g, '#2a1f2d', dx, base - 12, 8, 12);
+    const M = door % 2 ? ['#c2185b', '#f6c94a', '#3f6fb8'] : ['#d8432f', '#5c9f4a', '#f0913c'];
+    for (let k = 0; k < 6; k++) R(g, M[k % 3], dx + 1, base - 11 + k * 2, 6, 2);
+  }
+  // cada isla flotante con lo suyo: el mirador, las polleras tendidas, los chullos...
+  function paintIsland(i) {
+    return (g, W, H) => {
+      const b = H;
+      if (i === 0) {
+        // el mirador de totora, con su cabeza de puma arriba
+        const mx = W - 54;
+        for (let y = b - 52; y < b; y++) { const w = 12 + Math.round((y - (b - 52)) / 8); R(g, '#7f5e24', mx + 8 - w / 2, y, w, 1); R(g, y % 4 ? '#d6b257' : '#ad8738', mx + 9 - w / 2, y, w - 2, 1); }
+        R(g, '#7f5e24', mx - 2, b - 54, 20, 3); R(g, '#efd585', mx - 1, b - 54, 18, 1);
+        g.drawImage(A3.PUMA, mx + 2, b - 76);
+        totoraHut(g, 6, b, 30, 0); totoraHut(g, 44, b, 26, 1);
+        // arco de bienvenida
+        for (let y = b - 30; y < b; y++) { R(g, '#ad8738', W - 22, y, 3, 1); R(g, '#ad8738', W - 6, y, 3, 1); }
+      } else if (i === 1) {
+        totoraHut(g, 8, b, 28, 1); totoraHut(g, W - 40, b, 30, 0);
+        // cordel con polleras y chullos tendidos
+        const x0 = 44, x1 = W - 48;
+        R(g, '#6b4524', x0, b - 30, 2, 30); R(g, '#6b4524', x1, b - 30, 2, 30); R(g, '#d9b45a', x0, b - 29, x1 - x0, 1);
+        const cols = ['#c2185b', '#f0913c', '#3f6fb8', '#d8432f', '#5c9f4a', '#8a4cc0', '#f6c94a'];
+        for (let x = x0 + 4, k = 0; x < x1 - 8; x += 11, k++) {
+          if (k % 2) { R(g, cols[k % cols.length], x + 2, b - 28, 6, 6); R(g, '#ffffff', x + 2, b - 25, 6, 1); R(g, cols[(k + 3) % cols.length], x + 4, b - 22, 2, 3); }   // chullo
+          else { for (let r = 0; r < 12; r++) R(g, cols[(k + (r >> 2)) % cols.length], x + 4 - (r >> 2), b - 28 + r, 3 + (r >> 2) * 2, 1); }                  // pollera
+        }
+      } else {
+        totoraHut(g, 6, b, 28, 0);
+        // panel solar (sí: las islas tienen luz) y una balsita varada
+        R(g, '#5d5768', W - 30, b - 26, 2, 26); R(g, '#1d1622', W - 42, b - 34, 26, 10); R(g, '#3f6fb8', W - 41, b - 33, 24, 8);
+        for (let k = 0; k < 24; k += 6) R(g, '#9cc7f0', W - 41 + k, b - 33, 1, 8);
+      }
+    };
+  }
   // estación de tren: casita con alero y el nombre pintado
   function paintStation(name) {
     return (g, W, H) => {
@@ -1206,8 +2112,11 @@ const ART3 = (() => {
   // piezas del decorado: [x en casillas, fila del suelo, ancho y alto (px), pintor, ajuste x, ajuste y]
   const BACK = [
     [0, GC, 8 * TILE + 8, 7 * TILE + 8, paintHostal, -4, 4],
-    [8, GC, 16 * TILE, 96, paintIncaStreet],
-    [27, GC, 18 * TILE, 12 * TILE, paintCathedral],
+    ...ISL.map(([a, b], i) => [a, GC, (b - a) * TILE, 64, paintIsland(i)]),
+    [SHORE, GC, 8 * TILE, 56, paintStation('TERMINAL PUNO')],
+    [C, GC, 8 * TILE + 8, 7 * TILE + 8, paintTerminal, -4, 4],
+    [C + 8, GC, 16 * TILE, 96, paintIncaStreet],
+    [C + 27, GC, 18 * TILE, 12 * TILE, paintCathedral],
     [V + 58, GV, 38 * TILE, 60, paintVillage],
     [V + 121, 64, 108, 44, paintMonoliths],
     [OL + 1, ROOF, 15 * TILE, 58, paintStation('OLLANTAYTAMBO')],
@@ -1230,6 +2139,19 @@ const ART3 = (() => {
       const w = 90 + hash(i * 5) * 90, x = (AC + 40) * TILE + i * 70 + Math.sin(g.T * 0.004 + i) * 12;
       if (vis(x, w)) { cloudBank(ctx, x, 43 * TILE + hash(i * 3) * 40, w, 9, 0.8); cloudBank(ctx, x + 20, 42 * TILE + hash(i * 9) * 24, w * 0.6, 6, 0.9); }
     }
+    // la lancha de la promo, que ya zarpó: se va adelante por el lago
+    const lx = Math.min(21 * TILE + g.time * 1.9, (SHORE - 10) * TILE);   // al final atraca y la promo se baja
+    if (vis(lx - 40, 110)) paintLancha(ctx, Math.round(lx), WL * TILE + 4, g.T, lx < (SHORE - 10) * TILE);
+    // el altiplano junto a la carretera: alpacas que pastan, ichu y una apacheta
+    if (cam.x + vw > SHORE * TILE && cam.x < C * TILE) {
+      for (let i = 0; i < 26; i++) {
+        const x = (SHORE + 8) * TILE + i * 52 + Math.floor(hash(i * 5) * 30); if (!vis(x, 30)) continue;
+        const k = hash(i * 11), gy = GC * TILE;
+        if (k > 0.72) { const img = (k > 0.86 ? A3.ALP.mp : A3.ALP.cafe).idle; ctx.drawImage(i % 2 ? flipS(img) : img, x, gy - 24 + (Math.floor((g.T + i * 40) / 50) % 3 === 0 ? 1 : 0)); }
+        else if (k > 0.6) { for (let r = 0; r < 4; r++) R(ctx, ['#8c8272', '#a89e8c', '#6e6e60', '#c7bdaa'][r], x + r * 2, gy - 4 - r * 3, 12 - r * 4, 3); }
+        for (let t = 0; t < 3; t++) for (let s = 0; s < 6; s++) R(ctx, s % 2 ? '#d9b45a' : '#b8954a', x + 30 + t * 4 + s - 3, gy - 2 - Math.abs(s - 3) * 2, 1, 2 + Math.abs(s - 3) * 2);
+      }
+    }
     for (const [tx, row, w, h, paint, ox = 0, oy = 0] of BACK) {
       const x = tx * TILE + ox; if (!vis(x, w)) continue;
       ctx.drawImage(cached('b' + tx, w, h, paint), x, row * TILE - h + oy);
@@ -1251,6 +2173,23 @@ const ART3 = (() => {
       }
     }
     for (const [bx, br] of BALCONIES) if (vis(bx * TILE - 8, 48)) paintStreetBalcony(ctx, bx * TILE, br * TILE);
+  }
+  // la lancha de la promo: blanca con franja azul, techito y la banderola
+  function paintLancha(ctx, x, wl, t, kids) {
+    const y = wl - 13 + (Math.floor(t / 20) % 2);
+    R(ctx, '#1d1622', x - 1, y + 4, 58, 11); R(ctx, '#f4efe4', x, y + 5, 56, 9); R(ctx, '#2f6fa8', x, y + 9, 56, 2);
+    R(ctx, '#f4efe4', x + 52, y + 2, 6, 6);                       // proa alta
+    R(ctx, '#6b4524', x + 10, y - 12, 1, 17); R(ctx, '#6b4524', x + 38, y - 12, 1, 17);
+    R(ctx, '#1d1622', x + 6, y - 14, 38, 3); R(ctx, '#3f7a4c', x + 7, y - 13, 36, 1);
+    if (kids) for (let k = 0; k < 4; k++) {                       // la promo saluda
+      const kx = x + 13 + k * 6, up = Math.floor((t + k * 9) / 12) % 2;
+      R(ctx, ['#3f6fb8', '#5c9f4a', '#8a4cc0', '#f0913c'][k], kx, y - 2, 4, 6); R(ctx, '#e7b089', kx, y - 5, 4, 3);
+      if (up) R(ctx, '#e7b089', kx + 4, y - 8, 1, 4);
+    }
+    const bw = textWidth('PROMO 2026') + 8;
+    R(ctx, '#1d1622', x + 25 - bw / 2, y - 26, bw + 2, 11); R(ctx, '#d8432f', x + 26 - bw / 2, y - 25, bw, 9);
+    drawText(ctx, 'PROMO 2026', x + 26, y - 24, { color: '#ffffff', align: 'center' });
+    R(ctx, '#e8f6ff', x - 3, wl + 1, 8, 1); R(ctx, '#e8f6ff', x - 9 - (Math.floor(t / 6) % 3), wl + 2, 5, 1);   // estela
   }
   // neblina de Machu Picchu: bancos de nube suaves que pasan por delante
   function renderScreen3(ctx, g) {
@@ -1275,6 +2214,15 @@ const ART3 = (() => {
   //  MÚSICA (misma notación y armonía que level.js: compases de 2/4)
   // ═══════════════════════════════════════════════════════════════════════════
   Object.assign(SONGS, {
+    // sikuri puneño (melodía propia): zampoñas que se contestan sobre el bombo,
+    // tranquilo como la balsa que avanza por el lago
+    c3titicaca: makeSong({ bpm: 100, vol: 0.28, strum: 'D...D.DU', drums: 'B..bB...', shaker: true, orn: 0.2, lead2Vol: 0.16 }, {
+      A: { ch: ['Em', 'D', 'G', 'Em', 'Em', 'D', 'C', 'Em'],
+           mel: 'E5:2 G5:2 B5:3 A5:1 | A5:2 F#5:2 D5:4 | G5:2 B5:1 A5:1 G5:2 D5:2 | E5:6 r:2 | B4:2 E5:2 G5:3 F#5:1 | F#5:2 A5:2 D5:2 F#5:2 | E5:2 G5:1 E5:1 C5:2 D5:2 | E5:4 E5:2 r:2' },
+      B: { ch: ['G', 'D', 'Em', 'Em', 'C', 'D', 'Em', 'Em'],
+           mel: 'D6:2 B5:2 G5:3 B5:1 | A5:2 F#5:1 A5:1 D5:4 | B5:2 G5:2 E5:2 G5:2 | B5:6 r:2 | C6:2 B5:1 A5:1 G5:2 E5:2 | F#5:2 A5:1 F#5:1 D5:4 | E5:2 G5:1 B5:1 A5:2 G5:2 | E5:6 r:2' },
+    }, ['A', 'A*', 'B', 'B*', 'A~', 'A'], huaynoBass),
+
     // huayno cusqueño: alegre, para correr por las calles empedradas
     c3cusco: makeSong({ bpm: 124, vol: 0.28, strum: 'D.DUD.DU', drums: 'B..bB...', shaker: true, orn: 0.3, lead2Vol: 0.13 }, {
       A: { ch: ['Am', 'G', 'C', 'G', 'Am', 'G', 'C', 'Am'],
@@ -1334,23 +2282,25 @@ const ART3 = (() => {
   //  EL CAPÍTULO
   // ═══════════════════════════════════════════════════════════════════════════
   const lv = buildLevel(LEVEL3);
+  lv.liquids[0].pal = LAKE_PAL;   // el Titicaca, de azul intenso
   CHAPTERS.push({
     num: 3, title: 'LA EXCURSIÓN A MACHU PICCHU', short: 'MACHU PICCHU', color: '#4f9a6a',
     goal: '¡ALCANZA A TU PROMO EN MACHU PICCHU!', goalShort: '¡A MACHU PICCHU!',
     banner: ['LA EXCURSIÓN A MACHU PICCHU', '¡ALCANZA A TU PROMO!'],
-    dayStart: 6 * 60 + 50,
+    dayStart: 6 * 60 + 38,   // sale de Puno más temprano: el lago y el bus toman su tiempo
     deathTitle: '¡ATATAU!',
     deathMsgs: {
       spit: '¡LA ALPACA TE ESCUPIÓ!',
       comparsa: '¡TE JALÓ LA COMPARSA!',
       train: '¡SE TE FUE EL TREN, CAUSA!',
       tunnel: '¡AGÁCHATE EN EL TÚNEL, PE!',
-      water: '¡TE BAÑASTE EN EL URUBAMBA!',
+      get water() { return Game.player && Game.player.cx < SHORE * TILE ? '¡CHAPUZÓN EN EL TITICACA!' : '¡TE BAÑASTE EN EL URUBAMBA!'; },
       rock: '¡PIEDRA SUELTA, CAUSA!',
+      eagle: '¡EL CÓNDOR TE TUMBÓ, CAUSA!',
       fall: '¡TE FUISTE AL BARRANCO!',
       default: '¡ASU MARE!',
     },
-    tips: ['ALPACA: TÓCALA PARA MONTARLA. SALTA TEJADOS.', 'MANTAS DEL MERCADO: CAE ENCIMA Y REBOTA.', 'TREN: EN LOS TÚNELES MANTÉN ABAJO.', 'SI SE SUELTA TU VAGÓN, ¡CORRE ADELANTE!'],
+    tips: ['BALSA DE TOTORA: SÚBETE Y TE LLEVA.', 'ALPACA: TÓCALA PARA MONTARLA. SALTA TEJADOS.', 'TREN: TÚNEL O CÓNDOR, MANTÉN ABAJO.', 'SI SE SUELTA TU VAGÓN, ¡CORRE ADELANTE!'],
     win: {
       title: '¡LLEGASTE A LA FOTO!',
       onTime: ['¡SALISTE EN LA FOTO!', '¡SALISTE EN LA FOTO DE LA PROMO, CAUSA!'],
@@ -1368,7 +2318,8 @@ const ART3 = (() => {
         ['CAÍDAS', '' + g.deaths, '#f2917d'],
       ],
     },
-    onStart: (g) => { g.selfies3 = 0; },   // fotos de turistas en que saliste
+    onStart: (g) => { g.selfies3 = 0; g.truchas3 = 0; },   // fotos de turistas en que saliste y truchas atrapadas
+    ending: CAP3.ending,   // al ganar: la foto de egreso, los créditos y al menú
     level: lv,
   });
 })();
