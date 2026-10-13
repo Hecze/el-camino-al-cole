@@ -173,6 +173,7 @@
   Game.gameComplete = () => {
     if (Game.state !== 'play') return;
     Game.arrival = clockMinutes();
+    Game.runMs = performance.now() - Game.runStart - Game.pausedMs;
     Game.state = 'win'; Game.stateT = 0; Game.winSel = 0;
     AUDIO.stopMusic(); AUDIO.play('bell'); AUDIO.play('win');
   };
@@ -202,6 +203,9 @@
     Game.entities = []; Game.movers = []; Game.particles = []; Game.huaico = null;
     Game.pages = 0; Game.herbs = 0; Game.score = 0; Game.deaths = 0; Game.time = 0;
     if (ch.onStart) ch.onStart(Game);   // contadores propios del capítulo
+    // cronómetro real para el ranking (las pausas no cuentan) y ticket de la partida
+    Game.runStart = performance.now(); Game.pausedMs = 0; Game.runMs = 0; Game.rankResult = null; Game.shareMsg = null;
+    if (typeof RANKING !== 'undefined') RANKING.start(ch.num);
     for (const def of lv.entities) { const e = makeEntity(def, lv); if (e) { Game.entities.push(e); if (e.isMover) Game.movers.push(e); } }
     for (const e of Game.entities.slice()) if (e instanceof Huaico) { Game.huaico = e; e.prefill(Game); }
     const px = lv.spawn.x * TILE + 4, py = lv.spawn.y * TILE - 15;
@@ -275,6 +279,8 @@
     if (Game.shakeT > 0) { Game.shakeT--; if (Game.shakeT === 0) Game.shakeMag = 0; }
     Game.fade = Math.max(0, Game.fade - 0.05);
 
+    if (Game.rk) { updateRank(); Input.endFrame(); return; }   // panel del ranking encima de todo
+    const before = Game.state;
     switch (Game.state) {
       case 'menu': updateMenu(); break;
       case 'controls': if (Input.pressed('confirm') || Input.pressed('jump') || Input.pressed('pause')) { AUDIO.play('select'); Game.state = 'menu'; } break;
@@ -289,6 +295,11 @@
         for (const e of Game.entities) if (e instanceof School) e.update(Game);
         updateWin();
         break;
+    }
+    // las pausas no cuentan en el tiempo del ranking
+    if (before !== Game.state) {
+      if (Game.state === 'pause') Game.pauseAt = performance.now();
+      else if (before === 'pause' && Game.pauseAt) { Game.pausedMs += performance.now() - Game.pauseAt; Game.pauseAt = 0; }
     }
     let rv = 0, mv = 0, jv = 0;
     if (Game.level && (Game.state === 'play' || Game.state === 'respawn')) [rv, mv, jv] = ambientVolumes();
@@ -309,21 +320,31 @@
   }
 
   // la primera fila del menú es el selector de capítulo (izquierda/derecha elige)
-  const MENU_OPTS = () => ['JUGAR', 'CONTROLES', AUDIO.isEnabled() ? 'SONIDO: SÍ' : 'SONIDO: NO'];
+  // (RANKING solo aparece si la API del ranking está configurada)
+  const rankOn = () => typeof RANKING !== 'undefined' && RANKING.enabled();
+  const MENU_KEYS = () => ['play', 'controls', ...(rankOn() ? ['ranking'] : []), 'sound'];
+  const MENU_LABEL = { play: 'JUGAR', controls: 'CONTROLES', ranking: 'RANKING' };
+  const MENU_OPTS = () => MENU_KEYS().map(k => MENU_LABEL[k] || (AUDIO.isEnabled() ? 'SONIDO: SÍ' : 'SONIDO: NO'));
   const MENU_Y = 150, MENU_DY = 16, CARDS_Y = 104;
   function menuActivate(i) {
     AUDIO.resume();
-    if (i === 0) {
+    const k = MENU_KEYS()[i];
+    if (k === 'play') {
       if (CHAPTERS[Game.menuChapter]) { AUDIO.play('start'); startGame(Game.menuChapter); }
       else { AUDIO.play('nope'); Game.lockedT = 24; }   // aún no existe: la tarjeta tiembla
     }
-    else if (i === 1) { AUDIO.play('select'); Game.state = 'controls'; }
+    else if (k === 'controls') { AUDIO.play('select'); Game.state = 'controls'; }
+    else if (k === 'ranking') {
+      AUDIO.play('select');
+      if (CHAPTERS[Game.menuChapter]) openRank(Game.menuChapter + 1, false); else { AUDIO.play('nope'); Game.lockedT = 24; }
+    }
     else { AUDIO.toggleMute(); AUDIO.play('select'); }
   }
   function updateMenu() {
     if (Game.lockedT > 0) Game.lockedT--;
-    if (Input.pressed('up')) { Game.menuSel = (Game.menuSel + 2) % 3; AUDIO.play('select'); }
-    if (Input.pressed('down')) { Game.menuSel = (Game.menuSel + 1) % 3; AUDIO.play('select'); }
+    const n = MENU_KEYS().length;
+    if (Input.pressed('up')) { Game.menuSel = (Game.menuSel + n - 1) % n; AUDIO.play('select'); }
+    if (Input.pressed('down')) { Game.menuSel = (Game.menuSel + 1) % n; AUDIO.play('select'); }
     if (Game.menuSel === 0) {
       const d = (Input.pressed('right') ? 1 : 0) - (Input.pressed('left') ? 1 : 0);
       if (d) { Game.menuChapter = mod(Game.menuChapter + d, CHAPTER_SLOTS); Game.lockedT = 0; AUDIO.play('select'); }
@@ -331,16 +352,84 @@
     if (Input.pressed('confirm') || Input.pressed('jump')) menuActivate(Game.menuSel);
   }
   // pantalla final: pasar al siguiente capítulo o volver al menú
-  function winOptions() { return CHAPTERS[Game.chapterIdx + 1] ? ['next', 'menu'] : ['menu']; }
+  // (con ranking: también entrar al ranking y compartir la hora de llegada)
+  function winOptions() {
+    return [...(CHAPTERS[Game.chapterIdx + 1] ? ['next'] : []), ...(rankOn() ? ['ranking', 'share'] : []), 'menu'];
+  }
   function updateWin() {
     const opts = winOptions();
+    if (Game.shareMsg && ++Game.shareMsg.t > 120) Game.shareMsg = null;
     if (Game.stateT <= 90) return;
-    if (opts.length > 1 && (Input.pressed('left') || Input.pressed('right') || Input.pressed('up') || Input.pressed('down'))) { Game.winSel = 1 - Game.winSel; AUDIO.play('select'); }
+    const d = (Input.pressed('right') || Input.pressed('down') ? 1 : 0) - (Input.pressed('left') || Input.pressed('up') ? 1 : 0);
+    if (opts.length > 1 && d) { Game.winSel = mod(Game.winSel + d, opts.length); AUDIO.play('select'); }
     if (Input.pressed('confirm') || Input.pressed('jump')) {
       AUDIO.play('select');
-      if (opts[Math.min(Game.winSel, opts.length - 1)] === 'next') { AUDIO.play('start'); startGame(Game.chapterIdx + 1); }
+      const o = opts[Math.min(Game.winSel, opts.length - 1)];
+      if (o === 'next') { AUDIO.play('start'); startGame(Game.chapterIdx + 1); }
+      else if (o === 'ranking') openRank(Game.chapter.num, true);
+      else if (o === 'share') shareArrival();
       else { Game.state = 'menu'; AUDIO.playMusic(SONGS.menu); }
     }
+  }
+
+  // ── RANKING ──────────────────────────────────────────────────────────────
+  // Panel encima del juego: primero el nombre (formulario HTML de ranking.js),
+  // luego tu puesto y el top 10. Si la API falla, un aviso corto y se sigue jugando.
+  function openRank(chapter, submit) {
+    const rk = Game.rk = { chapter, phase: submit ? 'form' : 'loading', result: null, top: null, error: null, t: 0 };
+    const loadTop = () => {
+      rk.phase = 'loading';
+      RANKING.top(chapter, 10).then(top => { rk.top = top; rk.phase = 'show'; })
+        .catch(() => { rk.error = 'SIN CONEXIÓN CON EL RANKING'; rk.phase = 'show'; });
+    };
+    if (!submit) { loadTop(); return; }
+    // ya enviado en esta partida: solo se vuelve a mirar
+    if (Game.rankResult) { rk.result = Game.rankResult; loadTop(); return; }
+    RANKING.askAndSubmit(Game.runMs, Game.deaths)
+      .then(res => { if (res) { rk.result = Game.rankResult = res; AUDIO.play('page'); } loadTop(); })
+      .catch(() => { rk.error = 'SIN CONEXIÓN CON EL RANKING'; rk.phase = 'show'; });
+  }
+  function updateRank() {
+    const rk = Game.rk; rk.t++;
+    if (rk.phase !== 'show' || rk.t < 10) return;
+    if (Input.pressed('confirm') || Input.pressed('jump') || Input.pressed('pause')) { AUDIO.play('select'); Game.rk = null; }
+  }
+  function shareArrival() {
+    const text = RANKING.shareText(clockText(Game.arrival), Game.chapter.title);
+    Game.shareMsg = { text: '...', t: 0 };
+    RANKING.share(text).then(r => {
+      Game.shareMsg = r === 'cancel' ? null : { text: r === 'shared' ? '¡COMPARTIDO!' : r === 'copied' ? '¡COPIADO!' : 'NO SE PUDO COMPARTIR', t: 0 };
+    });
+  }
+  const fmtTime = (ms) => { const s = ms / 1000, m = Math.floor(s / 60); return m + ':' + (s - m * 60).toFixed(1).padStart(4, '0'); };
+  function renderRank() {
+    const rk = Game.rk;
+    ctx.fillStyle = 'rgba(11,10,18,0.9)'; ctx.fillRect(0, 0, BASE_W, BASE_H);
+    if (rk.phase === 'form') return;   // el formulario HTML va encima
+    drawText(ctx, 'RANKING', BASE_W / 2, 10, { scale: 2, color: '#ffd166', align: 'center', shadow: true, shadowColor: '#5a2a12' });
+    const ch = CHAPTERS[rk.chapter - 1];
+    drawText(ctx, 'CAPÍTULO ' + rk.chapter + (ch && BASE_W >= 300 ? ': ' + ch.title : ''), BASE_W / 2, 30, { color: '#cdbde8', align: 'center' });
+    let y = 44;
+    if (rk.result) {
+      const r = rk.result;
+      drawText(ctx, 'TU PUESTO: #' + r.rank + ' DE ' + r.total, BASE_W / 2, y, { color: '#9be7c4', align: 'center' });
+      if (r.newBest && r.total > 1) drawText(ctx, '¡NUEVO RÉCORD PERSONAL!', BASE_W / 2, y + 10, { color: '#ffd166', align: 'center' });
+      y += 22;
+    } else y += 6;
+    if (rk.phase === 'loading') drawText(ctx, 'CARGANDO...', BASE_W / 2, y + 30, { color: '#fff3d6', align: 'center' });
+    else if (rk.error) drawText(ctx, rk.error, BASE_W / 2, y + 30, { color: '#f2917d', align: 'center' });
+    else if (!rk.top || !rk.top.length) drawText(ctx, '¡NADIE TODAVÍA! SÉ EL PRIMERO', BASE_W / 2, y + 30, { color: '#fff3d6', align: 'center' });
+    else {
+      const half = Math.min(150, BASE_W / 2 - 10), me = (typeof RANKING !== 'undefined' && RANKING.name() || '').toUpperCase();
+      rk.top.forEach((s, i) => {
+        const yy = y + i * 11, mine = me && String(s.name).toUpperCase() === me;
+        const col = mine ? '#9be7c4' : i === 0 ? '#ffd166' : '#fff3d6';
+        drawText(ctx, (i + 1) + '.', BASE_W / 2 - half + 14, yy, { color: col, align: 'right' });
+        drawText(ctx, String(s.name).slice(0, 16), BASE_W / 2 - half + 20, yy, { color: col });
+        drawText(ctx, fmtTime(s.timeMs), BASE_W / 2 + half, yy, { color: col, align: 'right' });
+      });
+    }
+    if (rk.phase === 'show' && Math.floor(tick / 24) % 2 === 0) drawText(ctx, BASE_W < 300 ? 'PULSA A PARA VOLVER' : 'PULSA ESPACIO PARA VOLVER', BASE_W / 2, BASE_H - 16, { color: '#fff3d6', align: 'center' });
   }
   const PAUSE_OPTS = ['CONTINUAR', 'REINICIAR', 'MENÚ'];
   function pauseActivate(i) {
@@ -447,7 +536,7 @@
   function render() {
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.imageSmoothingEnabled = false;
-    if (Game.state === 'menu') { renderMenu(); return; }
+    if (Game.state === 'menu') { renderMenu(); if (Game.rk) renderRank(); return; }
     if (Game.state === 'controls') { renderMenu(); renderControls(); return; }
     const lv = Game.level; if (!lv) return;
 
@@ -509,6 +598,7 @@
 
     renderHUD();
     renderOverlay();
+    if (Game.rk) renderRank();
   }
 
   // pared del risco detrás de las salientes (decorado, no colisiona)
@@ -1129,13 +1219,19 @@
       if (Math.floor(tick / 24) % 2 === 0) drawText(ctx, narrow ? 'PULSA A PARA SEGUIR' : 'PULSA ESPACIO PARA VOLVER AL MENÚ', BASE_W / 2, 194, { color: '#fff3d6', align: 'center' });
       return;
     }
-    const labels = [narrow ? 'SIGUIENTE' : 'SIGUIENTE CAPÍTULO', 'MENÚ'], gap = 26;
-    const ws = labels.map(l => textWidth(l)), total = ws[0] + ws[1] + gap;
+    if (!opts.includes('next') && !Game.shareMsg && Game.chapterIdx + 1 < CHAPTER_SLOTS) drawText(ctx, 'CAPÍTULO ' + (Game.chapterIdx + 2) + ': ¡PRÓXIMAMENTE!', BASE_W / 2, 182, { color: '#cdbde8', align: 'center' });
+    if (Game.shareMsg) drawText(ctx, Game.shareMsg.text, BASE_W / 2, 182, { color: '#9be7c4', align: 'center', shadow: true, shadowColor: '#000000' });
+    const LONG = { next: 'SIGUIENTE CAPÍTULO', ranking: 'RANKING', share: 'COMPARTIR', menu: 'MENÚ' }, SHORT = { next: 'SIGUIENTE', ranking: 'RANKING', share: 'COMPARTIR', menu: 'MENÚ' };
+    let gap = 26, labels = opts.map(o => (narrow ? SHORT : LONG)[o]);
+    const fits = () => labels.reduce((a, l) => a + textWidth(l), 0) + gap * (labels.length - 1) <= BASE_W - 24;
+    if (!fits()) { labels = opts.map(o => SHORT[o]); gap = 16; }
+    if (!fits()) gap = 12;
+    const ws = labels.map(l => textWidth(l)), total = ws.reduce((a, w) => a + w, 0) + gap * (labels.length - 1);
     let x = BASE_W / 2 - total / 2;
     labels.forEach((l, i) => {
       const sel = i === Game.winSel;
       drawText(ctx, l, x, 194, { color: sel ? '#ffffff' : '#b9b3d6' });
-      if (sel && Math.floor(tick / 16) % 2 === 0) { drawText(ctx, '>', x - 10, 194, { color: '#ffd166' }); drawText(ctx, '<', x + ws[i] + 4, 194, { color: '#ffd166' }); }
+      if (sel && Math.floor(tick / 16) % 2 === 0) { drawText(ctx, '>', x - Math.min(10, gap / 2 + 3), 194, { color: '#ffd166' }); drawText(ctx, '<', x + ws[i] + Math.min(4, gap / 2 - 5), 194, { color: '#ffd166' }); }
       x += ws[i] + gap;
     });
   }
@@ -1171,7 +1267,7 @@
     const goal = chSel ? (BASE_W < 260 ? chSel.goalShort : chSel.goal) : '¡MUY PRONTO!';
     drawText(ctx, goal, BASE_W / 2, (ts === 3 ? 90 : 78) + bob, { color: '#fff3d6', align: 'center', shadow: true, shadowColor: '#00000088' });
     // en vertical se juega mejor girando el teléfono
-    if (BASE_H > BASE_W) drawText(ctx, '¡GIRA EL TELÉFONO!', BASE_W / 2, MENU_Y + 2 * MENU_DY + 10, { color: '#ffd166', align: 'center', shadow: true, shadowColor: '#000000' });
+    if (BASE_H > BASE_W) drawText(ctx, '¡GIRA EL TELÉFONO!', BASE_W / 2, MENU_Y + (MENU_KEYS().length - 1) * MENU_DY + 10, { color: '#ffd166', align: 'center', shadow: true, shadowColor: '#000000' });
     renderChapterCards(ts === 3 ? CARDS_Y : CARDS_Y - 10);
     MENU_OPTS().forEach((o, i) => {
       if (i === 0) return;   // "JUGAR" es el selector de capítulos

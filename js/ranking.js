@@ -4,7 +4,9 @@
 
 const RANKING = (() => {
   const meta = document.querySelector('meta[name="ranking-api"]');
-  const API = meta ? meta.content.replace(/\/$/, '') : '';
+  // solo para pruebas en local: ?api=http://localhost:8787 apunta a una API local
+  const dbg = /^(localhost|127\.0\.0\.1)$/.test(location.hostname) ? new URLSearchParams(location.search).get('api') : null;
+  const API = (dbg != null ? dbg : meta ? meta.content : '').replace(/\/$/, '');
   const NAME_KEY = 'maraton-nombre';
   let runId = null, pending = null;
 
