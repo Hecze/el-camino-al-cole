@@ -302,7 +302,8 @@
     // dos ritmos: baja rápido hasta que aparecen los síntomas (así se notan pronto) y
     // desde ahí despacio, para que dé tiempo de entender qué pasa y buscar coca
     const onset = S.onset || 0.3;
-    if (alt > start) Game.sorocheLvl = Math.min(1, Game.sorocheLvl + (Game.sorocheLvl < onset ? (S.fast || 0.0025) : (S.rate || 0.0007) * (1 + (alt - start) / (S.div || 600))));
+    // (planeando con la hoja vas bajando rápido: ahí se recupera el aire)
+    if (alt > start && !Game.player.gliding) Game.sorocheLvl = Math.min(1, Game.sorocheLvl + (Game.sorocheLvl < onset ? (S.fast || 0.0025) : (S.rate || 0.0007) * Math.min(S.maxMul || 9, 1 + (alt - start) / (S.div || 600))));
     else Game.sorocheLvl = Math.max(0, Game.sorocheLvl - 0.003);
     const k = Game.sorocheLvl, was = Game.soroche;
     Game.soroche = k > 0.8;   // ya cuesta moverse
