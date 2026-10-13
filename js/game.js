@@ -1228,6 +1228,7 @@
     ctx.globalAlpha = a;
     const bob = Math.sin(tick / 12) * 2;
     const narrow = BASE_W < 300;   // celular en vertical: textos más cortos
+    winLayout();
     // cada capítulo puede traer sus propios textos, personajes y filas (win)
     const W = Game.chapter.win || {};
     drawText(ctx, W.title || '¡LLEGASTE A CLASES!', BASE_W / 2, 30 + bob, { scale: narrow ? 1 : 2, color: '#ffd166', align: 'center', shadow: true, shadowColor: '#5a2a12' });
@@ -1249,25 +1250,29 @@
     ];
     rows.forEach((r, i) => {
       const half = Math.min(110, BASE_W / 2 - 8);
-      drawText(ctx, r[0], BASE_W / 2 - half, 112 + i * 13, { color: '#cdbde8' });
-      drawText(ctx, r[1], BASE_W / 2 + half, 112 + i * 13, { color: r[2], align: 'right' });
+      drawText(ctx, r[0], BASE_W / 2 - half, WY.rows + i * 13, { color: '#cdbde8' });
+      drawText(ctx, r[1], BASE_W / 2 + half, WY.rows + i * 13, { color: r[2], align: 'right' });
     });
     const done = W.allPages || ['¡TAREA COMPLETA!', '¡TAREA COMPLETA! LA PROFE ESTARÁ ORGULLOSA'];
-    if (Game.pages === 3) drawText(ctx, narrow ? done[0] : done[1], BASE_W / 2, 170, { color: '#9be7c4', align: 'center' });
+    if (Game.pages === 3) drawText(ctx, narrow ? done[0] : done[1], BASE_W / 2, WY.done, { color: '#9be7c4', align: 'center' });
     renderWinOptions(narrow);
     ctx.globalAlpha = 1;
   }
   // al pie: ir al siguiente capítulo (si ya existe) o volver al menú
+  // posiciones del pie de la pantalla final; en pantallas bajitas (celular
+  // horizontal) todo sube un poco para que las opciones entren
+  const WY = { rows: 112, done: 170, info: 182, foot: 194 };
+  function winLayout() { Object.assign(WY, BASE_H < 208 ? { rows: 104, done: 157, info: 169, foot: 181 } : { rows: 112, done: 170, info: 182, foot: 194 }); }
   function renderWinOptions(narrow) {
     if (Game.stateT <= 90) return;
     const opts = winOptions();
     if (opts.length === 1) {
-      if (Game.chapterIdx + 1 < CHAPTER_SLOTS) drawText(ctx, 'CAPÍTULO ' + (Game.chapterIdx + 2) + ': ¡PRÓXIMAMENTE!', BASE_W / 2, 182, { color: '#cdbde8', align: 'center' });
-      if (Math.floor(tick / 24) % 2 === 0) drawText(ctx, narrow ? 'PULSA A PARA SEGUIR' : 'PULSA ESPACIO PARA VOLVER AL MENÚ', BASE_W / 2, 194, { color: '#fff3d6', align: 'center' });
+      if (Game.chapterIdx + 1 < CHAPTER_SLOTS) drawText(ctx, 'CAPÍTULO ' + (Game.chapterIdx + 2) + ': ¡PRÓXIMAMENTE!', BASE_W / 2, WY.info, { color: '#cdbde8', align: 'center' });
+      if (Math.floor(tick / 24) % 2 === 0) drawText(ctx, narrow ? 'PULSA A PARA SEGUIR' : 'PULSA ESPACIO PARA VOLVER AL MENÚ', BASE_W / 2, WY.foot, { color: '#fff3d6', align: 'center' });
       return;
     }
-    if (!opts.includes('next') && !Game.shareMsg && Game.chapterIdx + 1 < CHAPTER_SLOTS) drawText(ctx, 'CAPÍTULO ' + (Game.chapterIdx + 2) + ': ¡PRÓXIMAMENTE!', BASE_W / 2, 182, { color: '#cdbde8', align: 'center' });
-    if (Game.shareMsg) drawText(ctx, Game.shareMsg.text, BASE_W / 2, 182, { color: '#9be7c4', align: 'center', shadow: true, shadowColor: '#000000' });
+    if (!opts.includes('next') && !Game.shareMsg && Game.chapterIdx + 1 < CHAPTER_SLOTS) drawText(ctx, 'CAPÍTULO ' + (Game.chapterIdx + 2) + ': ¡PRÓXIMAMENTE!', BASE_W / 2, WY.info, { color: '#cdbde8', align: 'center' });
+    if (Game.shareMsg) drawText(ctx, Game.shareMsg.text, BASE_W / 2, WY.info, { color: '#9be7c4', align: 'center', shadow: true, shadowColor: '#000000' });
     const LONG = { next: 'SIGUIENTE CAPÍTULO', ranking: 'RANKING', share: 'COMPARTIR', menu: 'MENÚ' }, SHORT = { next: 'SIGUIENTE', ranking: 'RANKING', share: 'COMPARTIR', menu: 'MENÚ' };
     let gap = 26, labels = opts.map(o => (narrow ? SHORT : LONG)[o]);
     const fits = () => labels.reduce((a, l) => a + textWidth(l), 0) + gap * (labels.length - 1) <= BASE_W - 24;
@@ -1277,8 +1282,8 @@
     let x = BASE_W / 2 - total / 2;
     labels.forEach((l, i) => {
       const sel = i === Game.winSel;
-      drawText(ctx, l, x, 194, { color: sel ? '#ffffff' : '#b9b3d6' });
-      if (sel && Math.floor(tick / 16) % 2 === 0) { drawText(ctx, '>', x - Math.min(10, gap / 2 + 3), 194, { color: '#ffd166' }); drawText(ctx, '<', x + ws[i] + Math.min(4, gap / 2 - 5), 194, { color: '#ffd166' }); }
+      drawText(ctx, l, x, WY.foot, { color: sel ? '#ffffff' : '#b9b3d6' });
+      if (sel && Math.floor(tick / 16) % 2 === 0) { drawText(ctx, '>', x - Math.min(10, gap / 2 + 3), WY.foot, { color: '#ffd166' }); drawText(ctx, '<', x + ws[i] + Math.min(4, gap / 2 - 5), WY.foot, { color: '#ffd166' }); }
       x += ws[i] + gap;
     });
   }
