@@ -3,11 +3,12 @@
 // es la entrada; el capítulo pasa sobre todo en el Centro de Lima:
 //   x 0–195    EL DESIERTO      · baja las dunas en tabla de sandboard; cactus y tubulares
 //   x 196–315  LA PANAMERICANA  · combis que pasan: súbete a su techo para cruzar el aniego
-//   x 316–409  JR. DE LA UNIÓN  · balcones de madera, buzones sin tapa y carretillas
-//   x 410–469  PLAZA DE ARMAS   · Catedral, pileta, palomas, el grass y los húsares de Palacio
-//   x 470–565  BARRIO CHINO     · portada china, toldos, farolitos, emolientero y cambistas
-//   x 566–681  LAS AZOTEAS      · garúa, ladrillo, fierros, tanques, ropa tendida y perros chuscos
-//   x 682–     LA CASONA        · el concurso es en una casona colonial del Centro
+//   x 316–419  EN MOTOTAXI      · ¡lo manejas tú! baches, rampas y el tráfico de combis
+//   x 420–499  JR. DE LA UNIÓN  · balcones de madera, buzones sin tapa y carretillas
+//   x 500–559  PLAZA DE ARMAS   · Catedral, pileta, palomas, el grass y los húsares de Palacio
+//   x 560–655  BARRIO CHINO     · portada china, toldos, farolitos, emolientero y cambistas
+//   x 656–771  LAS AZOTEAS      · garúa, ladrillo, fierros, tanques, ropa tendida y perros chuscos
+//   x 772–     LA CASONA        · el concurso es en una casona colonial del Centro
 // Todo lo propio del capítulo vive aquí: tiles, sprites, entidades, música y nivel.
 
 (() => {
@@ -179,6 +180,8 @@
     cargador: { h: '#d8432f', a: '#a86a42', s: '#f0913c', v: '#f0913c', b: '#3a2412', p: '#2b4f86', z: '#2a1f2d' },
     // ambulante de golosinas: casaca celeste
     ambulante:{ h: '#3a2412', a: '#c98e62', s: '#f6c94a', v: '#7fb6d8', b: '#3a2412', p: '#5d5768', z: '#2a1f2d' },
+    // mototaxista: gorra roja, polo amarillo y casaca abierta
+    mototaxista: { h: '#c8322a', a: '#b87a52', s: '#f2c230', v: '#2b4f86', b: '#3a2412', p: '#3a3a52', z: '#2a1f2d' },
     // mozo del chifa: camisa blanca y chaleco negro
     mozo:     { h: '#1d1622', a: '#d9a070', s: '#fffaf0', v: '#1d1622', b: '#1d1622', p: '#1d1622', z: '#1d1622' },
     // guardián del parque: chaleco amarillo
@@ -222,6 +225,12 @@
         [['#8a4a1a', 0], ['#c9a24a', 6], ['#5a8a3a', 12], ['#8a4a1a', 17]].forEach(([c, ox]) => { R(ctx, '#dfe3e8', cx + 1 + ox, b - 22, 5, 8); R(ctx, c, cx + 2 + ox, b - 19, 3, 5); });
         for (const [sx, sy] of k ? [[17, 2], [24, 0], [31, 3]] : [[19, 3], [27, 1]]) R(ctx, 'rgba(255,255,255,0.75)', cx + sx - 15, sy, 2, 3);
       },
+    }),
+    // mototaxista: gorra roja, polo amarillo y casaca abierta
+    mototaxista: { h: '#c8322a', a: '#b87a52', s: '#f2c230', v: '#2b4f86', b: '#3a2412', p: '#3a3a52', z: '#2a1f2d' },
+    // mototaxista con su casco colgado del brazo
+    mototaxista: limenoModel('mototaxista', 16, 24, 1, {
+      front: (ctx, px, py, k) => { R(ctx, '#2a1f2d', px + 10, py + 10, 5, 4); R(ctx, '#f6c94a', px + 11, py + 10, 3, 2); if (k) R(ctx, '#b87a52', px - 1, py + 6, 2, 4); },
     }),
     // mozo del chifa con su secador al brazo
     mozo: limenoModel('mozo', 14, 24, 1, {
@@ -1169,6 +1178,167 @@
     }
   }
 
+  // ── EN MOTOTAXI: el tramo estrella, manejando por la avenida hacia el Centro ──
+  // MOTOTAXI que manejas tú: se monta como la llama. Solo con tocarlo avanza
+  // (no hace falta saber jugar); con la flecha acelera, con el salto brinca.
+  // Al llegar al Centro se queda: los mototaxis no entran al Centro.
+  class MotoRide extends Mount {
+    constructor(def) {
+      super(def.x * TS, def.y * TS - 20, 30, 20, { dx: 12, dy: 2 });
+      this.img = OBJ.torito[def.model] || OBJ.torito.rojo; this.end = def.end * TS;
+      this.canDismount = false; this.drawsRider = true; this.ownJump = true; this.camMax = 3.6; this.taken = false; this.air = 0; this.blockT = 0;
+    }
+    reset() { super.reset(); this.air = 0; }
+    update(g) {
+      this.animT++;
+      if (this.rider) {
+        if (!this.taken) { this.taken = true; g.audio('honk'); g.toast('¡ARRANCA, CAUSA!'); }
+        const left = Input.held('left'), right = Input.held('right');
+        // sin tocar nada avanza solo, despacito; a la derecha acelera; a la izquierda frena
+        let want = right ? 3.6 : left ? -1.2 : 1.7;
+        if (this.launched) want = Math.max(want, this.vx);   // volando por una rampa no pierde impulso
+        this.vx += Math.max(-0.12, Math.min(0.1, want - this.vx));
+        if (this.vx > 0.1) this.facing = 1; else if (this.vx < -0.1) this.facing = -1;
+        if (this.onGround && Input.consumeJump()) { this.vy = -7.8; this.onGround = false; g.onPlayerJump(this); g.audio('honk'); }
+        const held = Input.held('jump') || Input.held('up');
+        if (!held && this.vy < -PHYS.JUMP_CUT && !this.launched) this.vy = -PHYS.JUMP_CUT;
+        // el humito del escape
+        if (this.animT % (Math.abs(this.vx) > 2 ? 4 : 9) === 0) g.particles.push({ x: this.facing > 0 ? this.x : this.x + this.w, y: this.y + this.h - 6, vx: -this.facing * 0.3, vy: -0.25, life: 45, max: 45, col: '#c8c2cc', size: 2, grav: -0.004 });
+      } else { this.vx *= 0.8; if (this.animT % 30 === 0) g.particles.push({ x: this.x, y: this.y + this.h - 6, vx: -0.25, vy: -0.2, life: 50, max: 50, col: '#c8c2cc', size: 2, grav: -0.004 }); }
+      this.vy = Math.min(this.vy + PHYS.GRAV, PHYS.MAX_FALL);
+      const was = this.onGround;
+      moveX(this, g.level); moveY(this, g.level);
+      if (this.onGround) { this.launched = false; if (!was && this.rider) { g.onPlayerLand(this); g.audio('land'); if (this.air > 30) { g.shake(2, 8); g.burst(this.cx, this.y + this.h, 'dust', 12); } } this.air = 0; }
+      else this.air++;
+      // se chocó con algo (una combi parada): toca bocina y, si no saltas tú, brinca solo
+      if (this.wall && this.rider && this.onGround) { if (++this.blockT === 12) { this.vy = -7.8; this.onGround = false; this.launched = true; g.audio('honk'); g.onPlayerJump(this); } }
+      else this.blockT = 0;
+      // llegó al Centro: se estaciona y te bajas
+      if (this.rider && this.onGround && this.cx > this.end) {
+        this.retired = true; this.vx = 0; this.rider.dismount(g, -4); g.audio('honk');
+        g.toast('¡HASTA AQUÍ NOMÁS, CAUSA!');
+      }
+      if (this.rider) this.rider.syncRide();
+      this.hazards(g);
+    }
+    draw(ctx, g) {
+      const p = g.player, x = Math.round(this.x - 2), bob = this.rider && this.onGround && Math.abs(this.vx) > 0.5 && Math.floor(this.animT / 3) % 2 ? -1 : 0;
+      const y = Math.round(this.y + this.h - 28) + bob, f = this.facing < 0;
+      ctx.save();
+      if (f) { ctx.translate(x + 34, 0); ctx.scale(-1, 1); ctx.translate(-x, 0); }
+      ctx.fillStyle = 'rgba(30,20,20,0.25)'; ctx.fillRect(x + 2, Math.round(this.y + this.h), 30, 2);
+      ctx.drawImage(this.img, x, y);
+      // tú al volante: la cabeza asoma por el parabrisas
+      if (this.rider === p && !(p.invuln > 0 && Math.floor(p.invuln / 4) % 2 === 0)) {
+        ctx.save(); ctx.beginPath(); ctx.rect(x + 19, y + 4, 12, 8); ctx.clip();
+        ctx.drawImage(P.sit, x + 17, y + 3); ctx.restore();
+      }
+      ctx.restore();
+      if (!this.rider && !this.retired && Math.floor(this.animT / 20) % 2) drawText(ctx, '¡SUBE!', this.cx, this.y - 14, { color: '#ffd166', align: 'center', shadow: true, shadowColor: '#2a1f2d' });
+    }
+  }
+
+  // RAMPA de tablas en la pista: el mototaxi sale volando (a pie no pasa nada)
+  class Rampa extends Actor {
+    constructor(def) { super(def.x * TS, ST * TS - 12, 32, 12); this.power = def.power || 8.5; this.big = !!def.big; this.t = 0; this.told = false; }
+    onRespawn() { this.told = false; }
+    update(g) {
+      this.t++;
+      const m = g.player.riding;
+      if (!(m instanceof MotoRide) || m.vx < 0.3) return;
+      const front = m.x + m.w;
+      if (front > this.x + 4 && m.x < this.x + this.w && m.y + m.h > this.y + 2) {
+        m.vy = -this.power; m.vx = Math.max(m.vx, this.big ? 3.4 : 2.8); m.onGround = false; m.launched = true;
+        g.audio('boing'); g.audio('honk'); g.burst(this.x + this.w, this.y, 'dust', 10);
+        if (this.big && !this.told) { this.told = true; g.toast('¡VUELA, CAUSA!'); g.shake(2, 10); }
+      }
+    }
+    draw(ctx) {
+      const x = Math.round(this.x), b = ST * TS;
+      for (let k = 0; k < this.w; k += 2) { const hh = Math.round(this.h * k / this.w); R(ctx, '#2a1f2d', x + k, b - hh - 1, 2, hh + 1); R(ctx, (k >> 2) % 2 ? '#a8703c' : '#c9894a', x + k, b - hh, 2, hh); }
+      R(ctx, '#5a3418', x + this.w - 2, b - this.h, 2, this.h);
+      if (this.big) { for (let k = 0; k < this.w; k += 8) R(ctx, '#f6c94a', x + k, b - Math.round(this.h * k / this.w) - 2, 4, 1); }
+    }
+  }
+
+  // BACHE con agua: el mototaxi da un saltito y salpica (no te mata)
+  class Bache extends Actor {
+    constructor(def) { super(def.x * TS, ST * TS - 2, (def.w || 1.5) * TS, 4); this.cd = 0; }
+    update(g) {
+      if (this.cd > 0) this.cd--;
+      const p = g.player, b = p.riding || p;
+      if (this.cd === 0 && b.onGround && b.cx > this.x && b.cx < this.x + this.w && Math.abs(b.vx) > 0.8) {
+        this.cd = 30; g.audio('splash'); g.burst(b.cx, ST * TS - 2, 'splash', 10);
+        if (p.riding instanceof MotoRide) { b.vy = -3.4; b.onGround = false; g.shake(1, 6); }
+      }
+    }
+    drawBack(ctx) {
+      const x = Math.round(this.x), y = ST * TS;
+      R(ctx, '#2a2530', x, y, this.w, 3); R(ctx, '#5a7086', x + 2, y, this.w - 4, 2); R(ctx, '#9fb3c4', x + 4, y, 4, 1);
+    }
+    draw() {}
+  }
+
+  // COMBI ESTACIONADA en el tráfico: se puede pisar (bloques invisibles en el
+  // nivel). Su cobrador grita cuando te acercas.
+  class ParkedCombi extends Combi {
+    constructor(def) { super(def.x * TS, ST * TS, { stops: [], end: 1e9, n: def.n || 0 }); this.isMover = false; this.v = 0; this.hazardKind = null; this.told = false; this.line = def.line || '¡PIII! ¡QUÉ TRÁFICO!'; }
+    onRespawn() { this.told = false; }
+    update(g) { this.t++; if (this.sayT > 0) this.sayT--; this.dx = 0; if (!this.told && g.near(this.cx, 120)) { this.told = true; this.say = this.line; this.sayT = 110; g.audio('honk'); } }
+    hazardBox() { return null; }
+  }
+
+  // AMBULANTE que cruza la pista con su carrito: al oír el mototaxi se aparta
+  class Cruce extends Actor {
+    constructor(def) { super(def.x * TS, ST * TS - 24, 34, 24); this.line = def.line; this.onRespawn(); }
+    onRespawn() { this.go = 0; this.dy = 0; }
+    update(g) {
+      const p = g.player;
+      if (!this.go && p.cx > this.x - 110 && p.cx < this.x + 20) { this.go = 1; g.audio('shout'); g.toast(this.line); }
+      if (this.go && this.go < 40) { this.go++; this.dy = Math.min(14, this.dy + 0.5); }
+    }
+    drawBack(ctx) {
+      // se va a la vereda de atrás: sube un poco y queda detrás de la pista
+      const x = Math.round(this.x + this.dy), b = ST * TS - Math.round(this.dy), run = this.go && this.go < 40 && Math.floor(this.go / 4) % 2;
+      const cw = textWidth('CANCHA') + 6;
+      R(ctx, '#2a1f2d', x, b - 15, cw + 2, 3); R(ctx, '#dfe3e8', x + 1, b - 26, cw, 11); R(ctx, '#f6c94a', x + 2, b - 25, cw - 2, 2);
+      drawText(ctx, 'CANCHA', x + 1 + cw / 2, b - 22, { color: '#d8432f', align: 'center' });
+      R(ctx, '#1d1622', x + 4, b - 12, 6, 6); R(ctx, '#1d1622', x + cw - 6, b - 12, 6, 6);
+      ctx.drawImage(run ? LIMENO.ambulante.step : LIMENO.ambulante.idle, x + cw + 2, b - 24);
+      if (this.go && this.go < 90) { this.go++; bubble(ctx, '¡OE, CUIDADO!', x + cw + 8, b - 28, '#d8432f'); }
+    }
+    draw() {}
+  }
+
+  // el carril de enfrente: combis y buses que pasan tocando bocina (decorado)
+  class Contramano extends Actor {
+    constructor(def) { super(def.x0 * TS, ST * TS - 26, (def.x1 - def.x0) * TS, 8); this.cars = []; this.t = 0; }
+    update(g) {
+      this.t++;
+      const cam = g.cam;
+      if (cam.x + VIEW.w < this.x || cam.x > this.x + this.w) { this.cars.length = 0; return; }
+      if (this.t % 130 === 0) { this.cars.push({ x: cam.x + VIEW.w + 70, n: this.t / 130 | 0 }); g.audio('honk'); }
+      for (const c of this.cars) c.x -= 3.2;
+      this.cars = this.cars.filter(c => c.x > cam.x - 80);
+    }
+    drawBack(ctx) {
+      ctx.save(); ctx.beginPath(); ctx.rect(this.x, this.y - 30, this.w, 40); ctx.clip();
+      for (const c of this.cars) {
+        // una combi del carril de enfrente: más chica, mirando a la izquierda
+        const x = Math.round(c.x), y = this.y - 6 + (Math.floor(this.t / 4) % 2), [c1, c2] = COMBI_PAINT[c.n % COMBI_PAINT.length];
+        R(ctx, '#c9c0aa', x, y, 46, 16); R(ctx, '#b8ae98', x + 2, y - 2, 42, 2);
+        for (let k = 0; k < 4; k++) R(ctx, '#4a5a6a', x + 10 + k * 8, y + 2, 6, 5);
+        R(ctx, '#4a5a6a', x + 1, y + 2, 6, 6); R(ctx, c1, x, y + 11, 46, 2); R(ctx, c2, x, y + 13, 46, 1);
+        R(ctx, '#fff6b0', x, y + 9, 2, 2);
+        for (const wx of [8, 37]) R(ctx, '#2a2530', x + wx - 3, y + 14, 7, 6);
+      }
+      ctx.restore();
+      // la línea amarilla del medio de la avenida
+      for (let x = this.x; x < this.x + this.w; x += 24) R(ctx, '#f2c230', x, ST * TS - 3, 12, 1);
+    }
+    draw() {}
+  }
+
   // ── LA CASONA ───────────────────────────────────────────────────────────────
   // El concurso en el patio de una casona del Centro: el jurado en su mesa, los otros concursantes con
   // sus proyectos y tu sitio vacío. La meta es pararte en tu sitio.
@@ -1416,15 +1586,15 @@
   // ───────────────────────────────────────────────────────────────────────────
   const H = 70;
   // azoteas del Centro: [desde, hasta, fila del techo, tile]
-  const BLD = [[566, 582, 43, 'roof'], [583, 596, 35, 'roofS'], [599, 614, 38, 'roof'], [616, 628, 40, 'roofS'],
-               [635, 650, 38, 'roof'], [653, 666, 41, 'roofS'], [669, 682, 39, 'roof']];
-  const CASONA = 682;   // donde empieza el patio de la casona del concurso
+  const BLD = [[656, 672, 43, 'roof'], [673, 686, 35, 'roofS'], [689, 704, 38, 'roof'], [706, 718, 40, 'roofS'],
+               [725, 740, 38, 'roof'], [743, 756, 41, 'roofS'], [759, 772, 39, 'roof']];
+  const CASONA = 772;   // donde empieza el patio de la casona del concurso
   // escalones del puente peatonal: macizos (te frenan), de 3 casillas y 2 filas de alto
   const FB_STEPS = [[283, GR - 2], [286, GR - 4], [289, GR - 6], [292, GR - 8], [295, GR - 10], [298, GR - 12]];
   const STOPS = [{ x: 213.5 }, { x: 240.5 }, { x: 266.5, peaje: true, wait: 120 }];
   // la calle del Centro (fila ST) con sus buzones sin tapa: [x, ancho]
-  const BUZONES = [[337, 2], [352, 3], [366, 2], [384, 3], [508, 2], [538, 3]];
-  const STREET = [330, 566];
+  const BUZONES = [[427, 2], [442, 3], [456, 2], [474, 3], [598, 2], [628, 3]];
+  const STREET = [420, 656];
   function streetRects() {
     const out = []; let x = STREET[0];
     for (const [bx, bw] of BUZONES) { out.push([x, ST, bx - x, H - ST, 'paving'], [bx, ST + 1, bw, H - ST - 1, 'paving']); x = bx + bw; }
@@ -1433,13 +1603,13 @@
   }
   // casonas de fondo: [desde, hasta, fila de la cornisa, color, letrero]
   const CASONAS = [
-    [330, 340, 36, '#e3c06a', 'BOTICA'], [340, 350, 34, '#9cc3d0', 'BAZAR'], [350, 364, 33, '#d99a8a', null], [364, 376, 35, '#e3c06a', 'JOYERÍA'],
-    [376, 390, 34, '#c4704a', 'CALZADO'], [390, 402, 35, '#e8e0cc', null], [402, 410, 36, '#9cc3d0', null],
-    [470, 488, 35, '#d9c08a', null], [488, 500, 34, '#d0aea4', 'BAZAR'], [500, 518, 35, '#e3c06a', 'IMPORTACIONES'], [518, 532, 34, '#b8322a', 'CHIFA'],
-    [532, 548, 35, '#9cc3d0', 'CASA DE CAMBIO'], [548, 566, 31, '#c9b48a', 'MERCADO CENTRAL'],
+    [420, 430, 36, '#e3c06a', 'BOTICA'], [430, 440, 34, '#9cc3d0', 'BAZAR'], [440, 454, 33, '#d99a8a', null], [454, 466, 35, '#e3c06a', 'JOYERÍA'],
+    [466, 480, 34, '#c4704a', 'CALZADO'], [480, 492, 35, '#e8e0cc', null], [492, 500, 36, '#9cc3d0', null],
+    [560, 578, 35, '#d9c08a', null], [578, 590, 34, '#d0aea4', 'BAZAR'], [590, 608, 35, '#e3c06a', 'IMPORTACIONES'], [608, 622, 34, '#b8322a', 'CHIFA'],
+    [622, 638, 35, '#9cc3d0', 'CASA DE CAMBIO'], [638, 656, 31, '#c9b48a', 'MERCADO CENTRAL'],
   ];
   // balcones de cajón que se pisan (Jr. de la Unión): [x, ancho, fila]
-  const BALCONES = [[344, 5, 43], [351, 5, 41], [358, 5, 43], [370, 5, 43], [377, 5, 41], [383, 6, 43]];
+  const BALCONES = [[434, 5, 43], [441, 5, 41], [448, 5, 43], [460, 5, 43], [467, 5, 41], [473, 6, 43]];
   const L2 = {
     name: 'EL CONCURSO EN LIMA', w: CASONA + 54, h: H, anchorRow: 46,
     dunes: DUNES,
@@ -1471,10 +1641,11 @@
     zones: [
       { x: 0,   name: 'EL DESIERTO',     music: 'desierto' },
       { x: 196, name: 'LA PANAMERICANA', music: 'panamericana' },
-      { x: 330, name: 'JR. DE LA UNIÓN', music: 'plebeyo' },
-      { x: 410, name: 'PLAZA DE ARMAS',  music: 'plebeyo' },
-      { x: 470, name: 'BARRIO CHINO',    music: 'plebeyo' },
-      { x: 566, name: 'LAS AZOTEAS',     music: 'plebeyo' },
+      { x: 330, name: 'EN MOTOTAXI',     music: 'panamericana' },
+      { x: 420, name: 'JR. DE LA UNIÓN', music: 'plebeyo' },
+      { x: 500, name: 'PLAZA DE ARMAS',  music: 'plebeyo' },
+      { x: 560, name: 'BARRIO CHINO',    music: 'plebeyo' },
+      { x: 656, name: 'LAS AZOTEAS',     music: 'plebeyo' },
       { x: CASONA + 2, name: 'LA CASONA', music: 'plebeyo' },
     ],
     rects: [
@@ -1485,15 +1656,19 @@
       ...FB_STEPS.map(s => [s[0], s[1], 3, GR - s[1], 'conc']),   // escalera del puente peatonal
       // ── EL CENTRO: sobre el túnel de la Vía Expresa y la calle de lajas ──
       [316, 44, 14, 10, 'conc'], [322, 54, 8, H - 54, 'conc'],
+      // la avenida del mototaxi, hasta la entrada del Jr. de la Unión
+      [330, ST, 90, H - ST, 'asphalt'],
+      // el tráfico: combis paradas que se pueden pisar
+      [347, ST - 2, 4, 2, 'blockInvis'], [380, ST - 2, 4, 2, 'blockInvis'], [385, ST - 2, 4, 2, 'blockInvis'],
       ...streetRects(),
       // la pileta de la Plaza: taza grande y taza chica
-      [436, ST - 2, 9, 2, 'blockInvis'], [439, ST - 4, 3, 2, 'blockInvis'],
+      [526, ST - 2, 9, 2, 'blockInvis'], [529, ST - 4, 3, 2, 'blockInvis'],
       // cajones de fruta para subir del Mercado a las azoteas
-      [557, ST - 1, 4, 1, 'crate'], [561, ST - 2, 5, 2, 'crate'],
+      [647, ST - 1, 4, 1, 'crate'], [651, ST - 2, 5, 2, 'crate'],
       // ── LAS AZOTEAS ──
       ...BLD.map(b => [b[0], b[2], b[1] - b[0], H - b[2], b[3]]),
       // tanques de agua (sólidos)
-      [590, 33, 2, 2, 'blockInvis'], [639, 36, 2, 2, 'blockInvis'], [675, 37, 2, 2, 'blockInvis'],
+      [680, 33, 2, 2, 'blockInvis'], [729, 36, 2, 2, 'blockInvis'], [765, 37, 2, 2, 'blockInvis'],
       // ── LA CASONA: el patio ──
       [CASONA, 46, 54, H - 46, 'paving'],
     ],
@@ -1506,7 +1681,7 @@
       [301, 44, 15, 'steel'],
       // balcones del Jr. de la Unión y el tejado de la portada china
       ...BALCONES.map(b => [b[0], b[2], b[1], 'balc']),
-      [476, 42, 11, 'tejado'],
+      [566, 42, 11, 'tejado'],
     ],
     liquids: [
       // aniego: la tubería reventó y la pista está inundada
@@ -1546,69 +1721,88 @@
       // casonas y balcones primero: se dibujan detrás de todo lo demás
       ...CASONAS.map(c => ({ type: 'casona', x0: c[0], x1: c[1], top: c[2], col: c[3], sign: c[4] })),
       ...BALCONES.map((b, i) => ({ type: 'balcon', x: b[0], w: b[1], y: b[2], col: ['#5a3418', '#2f5a3a', '#6a3a1a'][i % 3] })),
-      { type: 'checkpoint', x: 322, y: 44, help: 'SALTA LOS HUECOS EN EL BORDE' },
+      { type: 'checkpoint', x: 320, y: 44, help: 'SÚBETE AL MOTOTAXI Y ACELERA' },
+      // ── EN MOTOTAXI ──
+      { type: 'contramano', x0: 330, x1: 420 },
+      { type: 'npc', x: 323.5, y: 44, model: 'mototaxista', lines: ['¡SUBE, CAUSA!', '¡MANÉJALO TÚ NOMÁS!', '¡TE LLEVA AL CENTRO!'] },
+      { type: 'motoRide', x: 325, y: 44, model: 'rojo', end: 412 },
+      { type: 'hint', x: 326, y: 44, text: '¡SÚBETE AL MOTOTAXI!', arrow: 'down', r: 6, pass: 2, dy: 16, when: (g) => !g.player.riding },
+      { type: 'hint', x: 334, y: ST, text: '¡ACELERA!', key: 'right', r: 4, pass: 4, when: (g) => g.player.riding instanceof MotoRide },
+      { type: 'bache', x: 336 }, { type: 'bache', x: 339.5 },
+      { type: 'rampa', x: 343 },
+      { type: 'parkedCombi', x: 347, n: 1, line: '¡SUBE, SUBE, HAY SITIO!' },
+      { type: 'hint', x: 344, y: ST, text: 'SALTA', key: 'jump', r: 3, pass: 1, when: (g) => g.player.riding instanceof MotoRide },
+      { type: 'cruce', x: 358, line: '¡OE, CUIDADO, CAUSA!' },
+      { type: 'bache', x: 364 }, { type: 'bache', x: 366.5 }, { type: 'bache', x: 369 },
+      { type: 'sign', x: 373, y: ST, lines: ['¡VUELA,', 'CAUSA!'], style: 'board', col: '#f6c94a' },
+      { type: 'rampa', x: 375, big: true, power: 10.5 },
+      { type: 'parkedCombi', x: 380, n: 2, line: '¡LIMA, LIMA, LIMA!' }, { type: 'parkedCombi', x: 385, n: 3, line: '¡PIII! ¡QUÉ TRÁFICO!' },
+      { type: 'bache', x: 394 }, { type: 'bache', x: 397 },
+      { type: 'cruce', x: 400, line: '¡MAÑOSO, MÁS DESPACIO!' },
+      { type: 'sign', x: 409, y: ST, lines: ['AL CENTRO NO', 'ENTRAN MOTOTAXIS'], style: 'board' },
+      { type: 'checkpoint', x: 416, y: ST, help: 'SALTA LOS HUECOS EN EL BORDE' },
       { type: 'sign', x: 323, y: 46.4, lines: ['BIENVENIDOS', 'A LIMA'], style: 'paint', col: '#f6c94a' },
       { type: 'sign', x: 327, y: 44, lines: ['CENTRO DE LIMA'], style: 'post' },
-      { type: 'npc', x: 333.5, y: ST, model: 'ambulante', lines: ['¡CHICLE, CARAMELO, CHUPETÍN!', '¡A SOL NOMÁS, CAUSA!'] },
-      { type: 'hint', x: 337.5, y: ST, text: '¡SALTA EL HUECO!', key: 'jump', arrow: 'down', r: 6, pass: 1 },
+      { type: 'npc', x: 423.5, y: ST, model: 'ambulante', lines: ['¡CHICLE, CARAMELO, CHUPETÍN!', '¡A SOL NOMÁS, CAUSA!'] },
+      { type: 'hint', x: 427.5, y: ST, text: '¡SALTA EL HUECO!', key: 'jump', arrow: 'down', r: 6, pass: 1 },
       ...BUZONES.map(([x, w]) => ({ type: 'buzon', x, w })),
-      { type: 'hint', x: 346, y: 43, text: '¡SÚBETE AL BALCÓN!', arrow: 'down', r: 5, pass: 1, dy: 4 },
-      { type: 'help', x0: 330, x1: 410, kind: 'buzon', text: 'SALTA JUSTO EN EL BORDE' },
-      { type: 'help', x0: 330, x1: 470, kind: 'carretilla', text: '¡VE POR LOS BALCONES!' },
-      { type: 'carretilla', x0: 340, x1: 408, speed: 1.5, load: 'papa' },
-      { type: 'palomas', x0: 392, x1: 402, n: 6 },
-      { type: 'vendor', x: 404, y: ST, shout: '¡HELADO, HELADITO!', kind: 'cooler' },
+      { type: 'hint', x: 436, y: 43, text: '¡SÚBETE AL BALCÓN!', arrow: 'down', r: 5, pass: 1, dy: 4 },
+      { type: 'help', x0: 420, x1: 500, kind: 'buzon', text: 'SALTA JUSTO EN EL BORDE' },
+      { type: 'help', x0: 420, x1: 560, kind: 'carretilla', text: '¡VE POR LOS BALCONES!' },
+      { type: 'carretilla', x0: 430, x1: 498, speed: 1.5, load: 'papa' },
+      { type: 'palomas', x0: 482, x1: 492, n: 6 },
+      { type: 'vendor', x: 494, y: ST, shout: '¡HELADO, HELADITO!', kind: 'cooler' },
       // ── PLAZA DE ARMAS (respiro: nada te mata aquí) ──
-      { type: 'plazaFondo', x0: 410, x1: 470, cat: [411, 435], pal: [446, 470] },
-      { type: 'checkpoint', x: 412, y: ST },
+      { type: 'plazaFondo', x0: 500, x1: 560, cat: [501, 525], pal: [536, 560] },
+      { type: 'checkpoint', x: 502, y: ST },
       // el grass (pita el guardián), las palomas y la pileta son escenario que reacciona: entidades propias del capítulo
-      { type: 'grass', x0: 415, x1: 424 },
-      { type: 'palomas', x0: 427, x1: 435, n: 8 },
-      { type: 'pileta', x: 436 },
-      { type: 'palomas', x0: 446, x1: 455, n: 7 },
+      { type: 'grass', x0: 505, x1: 514 },
+      { type: 'palomas', x0: 517, x1: 525, n: 8 },
+      { type: 'pileta', x: 526 },
+      { type: 'palomas', x0: 536, x1: 545, n: 7 },
       // los húsares de Palacio
-      { type: 'npc', x: 456.5, y: ST, model: 'husar', flip: true, lines: ['¡SIGA, JOVEN, SIGA!', '¡AQUÍ NO SE JUEGA!'] },
-      { type: 'npc', x: 466.5, y: ST, model: 'husar', flip: true, lines: ['¡CORRE, QUE LLEGAS TARDE!', '¡EL CONCURSO ES POR ALLÁ!'] },
+      { type: 'npc', x: 546.5, y: ST, model: 'husar', flip: true, lines: ['¡SIGA, JOVEN, SIGA!', '¡AQUÍ NO SE JUEGA!'] },
+      { type: 'npc', x: 556.5, y: ST, model: 'husar', flip: true, lines: ['¡CORRE, QUE LLEGAS TARDE!', '¡EL CONCURSO ES POR ALLÁ!'] },
       // ── BARRIO CHINO Y MERCADO CENTRAL ──
-      { type: 'portadaChina', x0: 476, x1: 487, y: 42 },
-      { type: 'checkpoint', x: 472, y: ST, help: 'LOS TOLDOS TE HACEN REBOTAR' },
-      { type: 'hint', x: 492.5, y: 43, text: '¡CAE EN EL TOLDO!', arrow: 'down', r: 6, pass: 1, dy: 4 },
-      { type: 'toldo', x0: 490, x1: 495, y: 43, col: ['#2b6fb8', '#fffaf0'], goods: 'fruta' },
-      { type: 'npc', x: 498.5, y: ST, model: 'emoliente', lines: ['¡EMOLIENTE, CALIENTITO!', '¿CON UÑA DE GATO?', '¡PARA LA GARÚA, CAUSA!'] },
-      { type: 'npc', x: 504.5, y: ST, model: 'cambista', lines: ['¿DÓLARES? ¿CAMBIO?', '¡A BUEN PRECIO, CASERITO!'] },
-      { type: 'carretilla', x0: 488, x1: 556, speed: 1.8, load: 'naranja' },
-      { type: 'toldo', x0: 512, x1: 517, y: 43, col: ['#c8322a', '#fffaf0'], goods: 'papa' },
+      { type: 'portadaChina', x0: 566, x1: 577, y: 42 },
+      { type: 'checkpoint', x: 562, y: ST, help: 'LOS TOLDOS TE HACEN REBOTAR' },
+      { type: 'hint', x: 582.5, y: 43, text: '¡CAE EN EL TOLDO!', arrow: 'down', r: 6, pass: 1, dy: 4 },
+      { type: 'toldo', x0: 580, x1: 585, y: 43, col: ['#2b6fb8', '#fffaf0'], goods: 'fruta' },
+      { type: 'npc', x: 588.5, y: ST, model: 'emoliente', lines: ['¡EMOLIENTE, CALIENTITO!', '¿CON UÑA DE GATO?', '¡PARA LA GARÚA, CAUSA!'] },
+      { type: 'npc', x: 594.5, y: ST, model: 'cambista', lines: ['¿DÓLARES? ¿CAMBIO?', '¡A BUEN PRECIO, CASERITO!'] },
+      { type: 'carretilla', x0: 578, x1: 646, speed: 1.8, load: 'naranja' },
+      { type: 'toldo', x0: 602, x1: 607, y: 43, col: ['#c8322a', '#fffaf0'], goods: 'papa' },
       // los farolitos del chifa se mecen y suenan al tocarlos (escenario propio del capítulo)
-      { type: 'farolitos', x0: 518, x1: 532, y: 41 },
-      { type: 'npc', x: 521.5, y: ST, model: 'mozo', lines: ['¡PASE, PASE, HAY CHAUFA!', '¡WANTÁN FRITO, CALIENTITO!'] },
-      { type: 'npc', x: 527.5, y: ST, model: 'ambulante', lines: ['¡A SOL, A SOL, A SOL!', '¡LLÉVATE TRES, CAUSA!'] },
-      { type: 'npc', x: 535.5, y: ST, model: 'cambista', lines: ['¡CAMBIO, DÓLAR, EURO!', '¿CUÁNTO CAMBIAS, PATA?'] },
-      { type: 'help', x0: 470, x1: 566, kind: 'carretilla', text: 'SALTA O SÚBETE A UN TOLDO' },
-      { type: 'help', x0: 470, x1: 566, kind: 'buzon', text: 'SALTA JUSTO EN EL BORDE' },
-      { type: 'toldo', x0: 544, x1: 549, y: 43, col: ['#2f7a46', '#f6c94a'], goods: 'fruta' },
-      { type: 'checkpoint', x: 554, y: ST },
-      { type: 'hint', x: 563, y: ST - 2, text: '¡A LAS AZOTEAS!', arrow: 'right', r: 7, pass: 3 },
+      { type: 'farolitos', x0: 608, x1: 622, y: 41 },
+      { type: 'npc', x: 611.5, y: ST, model: 'mozo', lines: ['¡PASE, PASE, HAY CHAUFA!', '¡WANTÁN FRITO, CALIENTITO!'] },
+      { type: 'npc', x: 617.5, y: ST, model: 'ambulante', lines: ['¡A SOL, A SOL, A SOL!', '¡LLÉVATE TRES, CAUSA!'] },
+      { type: 'npc', x: 625.5, y: ST, model: 'cambista', lines: ['¡CAMBIO, DÓLAR, EURO!', '¿CUÁNTO CAMBIAS, PATA?'] },
+      { type: 'help', x0: 560, x1: 656, kind: 'carretilla', text: 'SALTA O SÚBETE A UN TOLDO' },
+      { type: 'help', x0: 560, x1: 656, kind: 'buzon', text: 'SALTA JUSTO EN EL BORDE' },
+      { type: 'toldo', x0: 634, x1: 639, y: 43, col: ['#2f7a46', '#f6c94a'], goods: 'fruta' },
+      { type: 'checkpoint', x: 644, y: ST },
+      { type: 'hint', x: 653, y: ST - 2, text: '¡A LAS AZOTEAS!', arrow: 'right', r: 7, pass: 3 },
       // ── LAS AZOTEAS ──
       ...BLD.map(b => ({ type: 'facade', x0: b[0], x1: b[1], y: b[2] })),
-      { type: 'tank', x: 590, y: 35 }, { type: 'tank', x: 639, y: 38 }, { type: 'tank', x: 675, y: 39 },
-      { type: 'sign', x: 570, y: 44.6, lines: ['CUIDADO', 'CON EL PERRO'], style: 'paper', col: '#1d1622' },
-      { type: 'dog', x0: 566, x1: 572.5, y: 43 },
-      { type: 'help', x0: 566, x1: CASONA, kind: 'dog', text: 'SALTA AL PERRO Y SIGUE' },
-      { type: 'help', x0: 566, x1: CASONA, kind: 'fall', text: 'CAE EN LA ROPA PARA SUBIR' },
+      { type: 'tank', x: 680, y: 35 }, { type: 'tank', x: 729, y: 38 }, { type: 'tank', x: 765, y: 39 },
+      { type: 'sign', x: 660, y: 44.6, lines: ['CUIDADO', 'CON EL PERRO'], style: 'paper', col: '#1d1622' },
+      { type: 'dog', x0: 656, x1: 662.5, y: 43 },
+      { type: 'help', x0: 656, x1: CASONA, kind: 'dog', text: 'SALTA AL PERRO Y SIGUE' },
+      { type: 'help', x0: 656, x1: CASONA, kind: 'fall', text: 'CAE EN LA ROPA PARA SUBIR' },
       // la ropa tendida llega hasta la pared del edificio alto: si caes encima, rebotas
-      { type: 'clothesline', x0: 573, x1: 583, y: 41, base0: 43, base1: 43, hint: '¡SALTA SOBRE LA ROPA TENDIDA!' },
-      { type: 'page', x: 578, y: 32 },
-      { type: 'cable', x0: 594, y0: 33.5, x1: 604, y1: 36.5, shoes: true },
-      { type: 'checkpoint', x: 600.5, y: 38, help: 'SALTA AL PERRO Y SIGUE' },
-      { type: 'dog', x0: 605, x1: 614, y: 38 },
-      { type: 'rebar', x: 621, y: 40 },
-      { type: 'sign', x: 622, y: 41.6, lines: ['PROHIBIDO', 'ARROJAR BASURA'], style: 'paint', col: '#b8322a' },
-      { type: 'clothesline', x0: 627.5, x1: 635, y: 37, base0: 40, base1: 38, hint: '¡OTRA VEZ LA ROPA!' },
-      { type: 'dog', x0: 641, x1: 650, y: 38 },
-      { type: 'rebar', x: 658, y: 41 },
-      { type: 'sign', x: 660, y: 42.6, lines: ['HAY MAZAMORRA', 'MORADA'], style: 'paper' },
-      { type: 'cable', x0: 664, y0: 40, x1: 672, y1: 38 },
-      { type: 'sign', x: 678, y: 40.6, lines: ['SE HACEN', 'TAREAS'], style: 'paper', col: '#2b4f86' },
+      { type: 'clothesline', x0: 663, x1: 673, y: 41, base0: 43, base1: 43, hint: '¡SALTA SOBRE LA ROPA TENDIDA!' },
+      { type: 'page', x: 668, y: 32 },
+      { type: 'cable', x0: 684, y0: 33.5, x1: 694, y1: 36.5, shoes: true },
+      { type: 'checkpoint', x: 690.5, y: 38, help: 'SALTA AL PERRO Y SIGUE' },
+      { type: 'dog', x0: 695, x1: 704, y: 38 },
+      { type: 'rebar', x: 711, y: 40 },
+      { type: 'sign', x: 712, y: 41.6, lines: ['PROHIBIDO', 'ARROJAR BASURA'], style: 'paint', col: '#b8322a' },
+      { type: 'clothesline', x0: 717.5, x1: 725, y: 37, base0: 40, base1: 38, hint: '¡OTRA VEZ LA ROPA!' },
+      { type: 'dog', x0: 731, x1: 740, y: 38 },
+      { type: 'rebar', x: 748, y: 41 },
+      { type: 'sign', x: 750, y: 42.6, lines: ['HAY MAZAMORRA', 'MORADA'], style: 'paper' },
+      { type: 'cable', x0: 754, y0: 40, x1: 762, y1: 38 },
+      { type: 'sign', x: 768, y: 40.6, lines: ['SE HACEN', 'TAREAS'], style: 'paper', col: '#2b4f86' },
       // ── LA CASONA ──
       { type: 'checkpoint', x: CASONA + 3, y: 46 },
       { type: 'contest', x: CASONA + 10, y: 46 },
@@ -1639,6 +1833,12 @@
     cable: (d) => new Cable(d),
     facade: (d) => new Facade(d),
     contest: (d) => new Contest(d),
+    motoRide: (d) => new MotoRide(d),
+    rampa: (d) => new Rampa(d),
+    bache: (d) => new Bache(d),
+    parkedCombi: (d) => new ParkedCombi(d),
+    cruce: (d) => new Cruce(d),
+    contramano: (d) => new Contramano(d),
     casona: (d) => new Casona(d),
     balcon: (d) => new Balcon(d),
     buzon: (d) => new Buzon(d),
@@ -1667,7 +1867,7 @@
       buzon: '¡TE CAÍSTE AL BUZÓN!', carretilla: '¡TE ATROPELLÓ LA CARRETILLA!',
       fall: '¡TE FUISTE DE LA AZOTEA!', default: '¡QUÉ PASÓ, CAUSA!',
     },
-    tips: ['TABLA: TÓCALA, BAJA LAS DUNAS Y SALTA EN LAS CRESTAS.', 'COMBI: SÚBETE AL TECHO PARA CRUZAR EL ANIEGO.', 'BALCONES, TOLDOS Y ROPA: SÚBETE ENCIMA.', 'BUZÓN, CARRETILLA Y PERRO: SÁLTALOS.'],
+    tips: ['TABLA: TÓCALA, BAJA LAS DUNAS Y SALTA EN LAS CRESTAS.', 'COMBI: SÚBETE AL TECHO. MOTOTAXI: ¡MANÉJALO!', 'BALCONES, TOLDOS Y ROPA: SÚBETE ENCIMA.', 'BUZÓN, CARRETILLA Y PERRO: SÁLTALOS.'],
     onStart: (g) => { g.combiRides = 0; },
     win: {
       title: '¡LLEGASTE AL CONCURSO!',
