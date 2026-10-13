@@ -241,7 +241,7 @@ const PUMAS = PUMA_FORKS.map((i, k) => {
 });
 // hojitas de coca para el soroche: en el centro de las salientes, donde rebota la
 // cabra. La primera llega cuando ya se siente el soroche (la vista ya ondula)
-const COCA = [10, 16, 22, 27].map(i => ({ type: 'coca', x: mid(MTN.up[i]) - 0.5, y: MTN.up[i][1] - 1 }));
+const COCA = [9, 14, 20, 25].map(i => ({ type: 'coca', x: mid(MTN.up[i]) - 0.5, y: MTN.up[i][1] - 1 }));
 // puntos de control en la montaña (reapareces montado en la cabra)
 
 // Silueta de la montaña calculada a partir del camino: cada saliente queda
@@ -351,7 +351,9 @@ const LEVEL = {
   glide: { x0: 119, x1: 155.4 },   // a la derecha no pasa de la orilla: más allá está el precipicio del huaico
   glideLandRow: 100,   // la hoja solo se suelta al aterrizar por debajo de esta fila (el valle)
   altitude: { baseRow: G, baseM: 3650, perRow: 13 },
-  soroche: { startM: 3750, rate: 0.0017 },   // desde aquí arriba el oxígeno empieza a bajar (rate: por cuadro)
+  // desde startM el oxígeno baja rápido (fast) hasta los síntomas (onset) y luego
+  // despacio (rate, que crece con la altura): ~13 s quieto antes de desmayarte
+  soroche: { startM: 3750, fast: 0.0025, onset: 0.3, rate: 0.0006, div: 600 },
   zones: [
     { x: 0,   name: 'EL VALLE',  music: 'ayacucho' },
     { x: 86,  name: 'EL APU',    music: 'apu', alt: true },

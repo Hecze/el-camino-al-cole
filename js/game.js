@@ -219,7 +219,7 @@
     const ch = CHAPTERS[ci], lv = ch.level;
     Game.chapterIdx = ci; Game.chapter = ch; Game.menuChapter = ci; Game.jingle = null;
     CORTO.reset();
-    Game.soroche = false; Game.sorocheK = 0; Game.sorocheLvl = 0; Game.cocaFlash = 0; Game.faint = null;
+    Game.soroche = false; Game.sorocheK = 0; Game.sorocheLvl = 0; Game.cocaFlash = 0; Game.faint = null; Game.sorocheTold = false; Game.sorocheFlash = 0;
     DAY_START = ch.dayStart || DAY_START_DEFAULT;
     Game.level = lv;
     Game.entities = []; Game.movers = []; Game.particles = []; Game.huaico = null;
@@ -299,15 +299,24 @@
     const S = Game.level.soroche, Z = Game.level.zones[Game.zone];
     if (!S) { Game.soroche = false; Game.sorocheK = 0; Game.sorocheLvl = 0; return; }
     const start = S.startM || (S.minM - 300), alt = Z && Z.alt ? altitudeM() : 0;
-    if (alt > start) Game.sorocheLvl = Math.min(1, Game.sorocheLvl + (S.rate || 0.0012) * (1 + (alt - start) / 750));
+    // dos ritmos: baja rápido hasta que aparecen los síntomas (así se notan pronto) y
+    // desde ahí despacio, para que dé tiempo de entender qué pasa y buscar coca
+    const onset = S.onset || 0.3;
+    if (alt > start) Game.sorocheLvl = Math.min(1, Game.sorocheLvl + (Game.sorocheLvl < onset ? (S.fast || 0.0025) : (S.rate || 0.0007) * (1 + (alt - start) / (S.div || 600))));
     else Game.sorocheLvl = Math.max(0, Game.sorocheLvl - 0.003);
     const k = Game.sorocheLvl, was = Game.soroche;
     Game.soroche = k > 0.8;   // ya cuesta moverse
     if (Game.soroche && !was) AUDIO.play('dizzy');
-    // la vista ondula desde la mitad de la barra, más fuerte cuanto menos oxígeno
-    Game.sorocheK += (Math.max(0, Math.min(1, (k - 0.45) / 0.55)) - Game.sorocheK) * 0.05;
+    // los síntomas llegan de golpe y bien notorios (la vista ondula y se ve doble),
+    // y empeoran cuanto menos oxígeno queda
+    Game.sorocheK += ((k < onset ? 0 : 0.7 + 0.3 * (k - onset) / (1 - onset)) - Game.sorocheK) * 0.04;
+    // la primera vez: aviso (una sola vez por partida) y la barra se resalta un rato
+    if (k >= onset && !Game.sorocheTold) {
+      Game.sorocheTold = true; Game.sorocheFlash = 360;
+      Game.toast('¡TE DIO SOROCHE! ¡BUSCA HOJAS DE COCA!');
+    }
     // el corazón late más rápido mientras más se vacía
-    if (k > 0.65 && tick % (k > 0.9 ? 30 : k > 0.8 ? 40 : 55) === 0) AUDIO.play('heart');
+    if (k >= onset && tick % (k > 0.9 ? 30 : k > 0.75 ? 40 : 55) === 0) AUDIO.play('heart');
     // sin oxígeno: se desmaya y cae en picada (la cámara se queda quieta)
     const p = Game.player;
     if (k >= 1 && !Game.faint && Game.state === 'play' && !p.grabbed) {
@@ -340,6 +349,11 @@
     const col = k < 0.5 ? '#9be7c4' : k < 0.8 ? '#ffd166' : '#f2917d';
     const blink = Game.soroche && Math.floor(tick / 10) % 2;
     ctx.fillStyle = blink ? '#f2917d' : col; ctx.fillRect(x + 1, y + 4, Math.max(Game.soroche ? 2 : 0, Math.round((w - 2) * (1 - k))), 4);
+    // recién aparecido el soroche: borde dorado que parpadea alrededor de la barra
+    if (Game.sorocheFlash > 0) {
+      Game.sorocheFlash--;
+      if (Math.floor(Game.sorocheFlash / 12) % 2 === 0) { ctx.fillStyle = '#ffd166'; ctx.fillRect(x - 20, y - 2, w + 26, 1); ctx.fillRect(x - 20, y + 14, w + 26, 1); ctx.fillRect(x - 20, y - 2, 1, 17); ctx.fillRect(x + w + 5, y - 2, 1, 17); }
+    }
     if (Game.cocaFlash > 0) { Game.cocaFlash--; ctx.fillStyle = 'rgba(155,231,196,' + (Game.cocaFlash / 30).toFixed(2) + ')'; ctx.fillRect(x - 18, y, w + 22, 12); }
   }
   // la vista ondula y se ve doble, con un tinte verdoso
@@ -1277,7 +1291,8 @@
     // aviso breve (p. ej. al tocar un punto de control)
     if (Game.toastMsg) {
       const tm = Game.toastMsg, w = textWidth(tm.text) + 14;
-      ctx.globalAlpha = Math.min(1, tm.t / 8, (100 - tm.t) / 20);
+      // se ve entero todo el rato que dura (más si es más largo) y se desvanece al final
+      ctx.globalAlpha = Math.max(0, Math.min(1, tm.t / 8, (150 + tm.text.length * 4 - tm.t) / 20));
       const ty = hintBottom || 26;
       panel(6, ty, w, 13); drawText(ctx, tm.text, 13, ty + 3, { color: '#9be7c4' });
       ctx.globalAlpha = 1;
