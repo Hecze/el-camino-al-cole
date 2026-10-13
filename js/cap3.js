@@ -902,6 +902,8 @@ const ART3 = (() => {
       { x: V,      name: 'VALLE SAGRADO', music: 'c3valle' },
       { x: OL + 1, name: 'EL TREN',       music: 'c3tren' },
       { x: AC,     name: 'MACHU PICCHU',  music: 'c3virgenes' },
+      // al subir a la terraza de la Puerta del Sol, con la foto a la vista, entra El Cóndor Pasa
+      { x: AC + 130, name: 'INTI PUNKU',  music: 'c3condor' },
     ],
     rects: [
       // ── EL CUSCO ──
