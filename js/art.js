@@ -970,7 +970,8 @@ OBJ.torito = {
   // amarillo: el de la foto está en sombra (#a07010); este es el mismo tono a pleno sol
   amarillo: PIX.fromRows(TORITO_ROWS, Object.assign({ '.': null, B: '#f0b419', b: '#a07010', n: '#5e4208' }, TORITO_PAL_BASE)),
 };
-// PUMA (león andino): al acecho con las fauces abiertas y estirado en pleno salto. Mira a la derecha.
+// PUMA (león andino): al acecho con las fauces abiertas, encorvado a punto de saltar
+// (ancas arriba, pecho al suelo) y estirado en pleno salto. Mira a la derecha.
 const PUMA_PAL = { '.': null, K: '#1e120c', b: '#b97f42', s: '#875629', S: '#5e3a1c', l: '#e6cda3', d: '#2a1810', w: '#ffffff', r: '#a3202a', y: '#ffd23a', e: '#120a08' };
 E.puma = {
   crouch: PIX.fromRows([
@@ -1024,6 +1025,32 @@ E.puma = {
     '..KSSKbbbbbbbK..............................KKK.........',
     '...KKbbbbbbbK...........................................',
     '.....KbbbbbK............................................',
+  ], PUMA_PAL),
+  pounce: PIX.fromRows([
+    '.KdssK..........................................',
+    'KdddssK.........................................',
+    'KdddsssK..KKKKK.................................',
+    '.KKKKsssKKsssssKK...............................',
+    '.....KssssbbbbbssK..............................',
+    '......KsbbbbbbbbbKKK............................',
+    '......KsbbbbbbbbbsssKK..............KK..........',
+    '......KbbbbbbbbbbbbbssKK...........KddK.........',
+    '......KbbbbbbbbbbbbbbbssKKK.......KbdbKKKK......',
+    '.......KbbbbbbbbbbbbbbbbsssKK.....KbbbbbbbKK....',
+    '.......KbbbbbbbbbbbbbbbbbbbssKK...KbbbSSSbbbK...',
+    '........KbbbbbbbbbbbbbbbbbbbbssKKKKbbbbyeSbbK...',
+    '........KbbbbbbbbbbbbbbbbbbbbbbsssbbbbbbbdbllKKK',
+    '........KbbbbbbssbbbbbbbbbbbbbbbbbbbbbbbbdlllllK',
+    '........KbbbbKSSssssbbbbbbbbbbbbbbbbbbbbbldllllK',
+    '........KbbbbKSSSKKsssbbbbbbbbbbbbbbbbbbbKKKKKKK',
+    '........KbbbbKSSSSKKKsssbbbbbbbbbbbbbbbbKrwrrwK.',
+    '........KbbbbKSSSSK..KKsssbbbbbbbbbbbKKKKKlwrK..',
+    '.......KbbbbbKSSSSK....KKsssbbbbbbbbK..KllllllK.',
+    '.......KbbbbbKSSSSK......KsssssbbbbK....KllllK..',
+    '.......KbbbbbKSSSSK......KsssssssbbKKKK..KKKK...',
+    '.......KbbbbbKKSSSSK.....KssssssssbbbbbK........',
+    '.......KbbbbbbbSSSSSK.....KKssssssbbbbbwK.......',
+    '........KbbbbwKKSSSK........KKKKssbbbbbw........',
   ], PUMA_PAL),
 };
 // victoria regia: hoja gigante flotante con el borde levantado. 30x5

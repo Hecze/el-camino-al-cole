@@ -739,8 +739,27 @@ class Puma extends Actor {
     this.homeX = this.x; this.homeY = this.y; this.homeFace = def.face || 1; this.snowy = !!def.snowy;
     this.onRespawn();
   }
-  onRespawn() { this.state = 'wait'; this.t = 0; this.x = this.homeX; this.y = this.homeY; this.vx = 0; this.vy = 0; this.rot = 0; this.cool = 0; this.face = this.homeFace; this.floor = 0; }
+  onRespawn() { this.state = 'wait'; this.t = 0; this.x = this.homeX; this.y = this.homeY; this.vx = 0; this.vy = 0; this.rot = 0; this.cool = 0; this.face = this.homeFace; this.floor = 0; this.aimVx = undefined; }
   get body() { return { x: this.x + 6, y: this.y + 3, w: this.w - 12, h: this.h - 4 }; }
+  // salta hacia donde VA a estar la cabra en ~22 cuadros: simula su rebote
+  // (gravedad, salto y la saliente donde cae) y su avance a los lados
+  aim(g, goat) {
+    const T = 22, GR = 0.3;
+    // la saliente donde rebota la cabra: la primera bajo sus patas
+    let floor = this.floor;
+    if (!floor) {
+      const lv = g.level, col = Math.floor(goat.cx / TS);
+      for (let r = Math.floor((goat.y + goat.h) / TS); r < lv.rows && r < (goat.y + goat.h) / TS + 12; r++) {
+        const c = lv.tile(col, r); if (isSolidCode(c) || isOnewayCode(c)) { floor = r * TS - goat.h / 2; break; }
+      }
+      if (!floor) floor = goat.cy;
+    }
+    let y = goat.cy, vy = goat.vy;
+    for (let k = 0; k < T; k++) { vy = Math.min(vy + PHYS.GOAT_GRAV, PHYS.GOAT_FALL); y += vy; if (y >= floor && vy > 0) { y = floor; vy = PHYS.GOAT_JUMP; } }
+    const tx = goat.cx + goat.vx * T * 0.5, ty = y;   // se adelanta solo a medias: si te mueves, falla
+    this.aimVx = Math.max(-4.6, Math.min(4.6, (tx - this.cx) / T));
+    this.aimVy = Math.max(-10, Math.min(2, (ty - this.cy) / T - 0.5 * GR * T));
+  }
   update(g) {
     this.t++;
     const p = g.player, goat = p.riding instanceof Cabra ? p.riding : null;
@@ -752,24 +771,9 @@ class Puma extends Actor {
       if (Math.abs(dx) < 136 && Math.sign(dx) === this.face && dy > -80 && dy < 56) { this.state = 'windup'; this.t = 0; }
     } else if (this.state === 'windup') {
       if (goat && goat.onGround) this.floor = goat.cy;   // dónde rebota la cabra
+      if (goat) this.aim(g, goat);   // la mira se recalcula cada cuadro: los puntitos siguen a la cabra
       if (this.t >= 34 && goat) {
-        // salta hacia donde VA a estar la cabra en ~22 cuadros: simula su rebote
-        // (gravedad, salto y la saliente donde cae) y su avance a los lados
-        const T = 22, GR = 0.3;
-        // la saliente donde rebota la cabra: la primera bajo sus patas
-        let floor = this.floor;
-        if (!floor) {
-          const lv = g.level, col = Math.floor(goat.cx / TS);
-          for (let r = Math.floor((goat.y + goat.h) / TS); r < lv.rows && r < (goat.y + goat.h) / TS + 12; r++) {
-            const c = lv.tile(col, r); if (isSolidCode(c) || isOnewayCode(c)) { floor = r * TS - goat.h / 2; break; }
-          }
-          if (!floor) floor = goat.cy;
-        }
-        let y = goat.cy, vy = goat.vy;
-        for (let k = 0; k < T; k++) { vy = Math.min(vy + PHYS.GOAT_GRAV, PHYS.GOAT_FALL); y += vy; if (y >= floor && vy > 0) { y = floor; vy = PHYS.GOAT_JUMP; } }
-        const tx = goat.cx + goat.vx * T * 0.5, ty = y;   // se adelanta solo a medias: si te mueves, falla
-        this.vx = Math.max(-4.6, Math.min(4.6, (tx - this.cx) / T));
-        this.vy = Math.max(-10, Math.min(2, (ty - this.cy) / T - 0.5 * GR * T));
+        this.vx = this.aimVx; this.vy = this.aimVy;
         this.face = this.vx >= 0 ? 1 : -1; this.state = 'leap'; this.t = 0;
         g.audio('puma'); g.burst(this.cx, this.y + this.h, 'dust', 8);
       } else if (this.t >= 34) { this.state = 'wait'; this.cool = 60; }
@@ -807,9 +811,22 @@ class Puma extends Actor {
     if (this.snowy) { ctx.fillStyle = '#f4f8ff'; ctx.fillRect(rx, ry - 1, rw, 2); }
     if (this.state === 'gone') return;
     if (this.state === 'wait' || this.state === 'windup') {
-      const img = E.puma.crouch, wind = this.state === 'windup';
+      const wind = this.state === 'windup', img = wind ? E.puma.pounce : E.puma.crouch;
       const sh = wind ? (this.t % 4 < 2 ? 1 : -1) : 0;
       ctx.drawImage(this.face < 0 ? flipS(img) : img, Math.round(this.cx - img.width / 2 + sh), Math.round(this.y + this.h - img.height + 1));
+      if (wind && this.aimVx !== undefined) {
+        // puntitos de la trayectoria, como la mira del águila: por dónde va a pasar el salto
+        // (con borde oscuro: si no, sobre la roca clara casi no se ven)
+        const lit = (Math.floor(this.t / 4) % 2) ? '#ffffff' : '#ffe9a8';
+        let x = this.cx, y = this.cy, vx = this.aimVx, vy = this.aimVy;
+        for (let k = 1; k <= 26; k++) {
+          vy += 0.3; x += vx; y += vy;
+          if (k % 3) continue;
+          const X = Math.round(x) - 1, Y = Math.round(y) - 1;
+          ctx.fillStyle = '#2a1f2d'; ctx.fillRect(X - 1, Y, 4, 2); ctx.fillRect(X, Y - 1, 2, 4);
+          ctx.fillStyle = lit; ctx.fillRect(X, Y, 2, 2);
+        }
+      }
       if (wind) drawText(ctx, '!', Math.round(this.cx), Math.round(this.y - 18 - (this.t % 10 < 5 ? 1 : 0)), { scale: 2, color: '#ffffff', align: 'center', shadow: true, shadowColor: '#2a1f2d' });
       return;
     }
