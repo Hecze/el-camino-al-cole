@@ -115,6 +115,8 @@ const AUDIO = (() => {
       [784, 988, 1319, 1568].forEach((f, i) => tone(f, 0.18, 'triangle', 0.2, t + 0.12 + i * 0.07));
     },
     // rugido de puma: bufido de aire, gruñido grave y áspero que baja y un chillido encima
+    // gruñido grave del puma al avisar (y mientras espera en la saliente)
+    growl:   () => { const t = now(); for (let i = 0; i < 9; i++) tone(78 + (i % 2) * 9, 0.06, 'sawtooth', 0.16, t + i * 0.045, 70); noise(0.4, 0.12, 380, t, { type: 'lowpass', q: 2 }); },
     puma:    () => { const t = now(); noise(0.55, 0.42, 2400, t, { type: 'bandpass', q: 1.1, sweep: 700, attack: 0.03 }); for (let i = 0; i < 7; i++) tone(170 - i * 9, 0.08, 'sawtooth', 0.24, t + 0.04 + i * 0.065, 120 - i * 8); tone(520, 0.4, 'sawtooth', 0.1, t + 0.02, 210); },
     caw:     () => { const t = now(); tone(900, 0.22, 'sawtooth', 0.06, t, 520); tone(820, 0.28, 'sawtooth', 0.05, t + 0.26, 480); },
     // ave de presa: chillido agudo "kiii-arr" con vibrato

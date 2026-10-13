@@ -401,7 +401,7 @@ const LEVEL = {
     { type: 'cabra', x: 91, y: G },
     // puntos de control invisibles: uno al pie del cerro, junto a la cabra (si un
     // puma te tumba no vuelves a casa; ya montado, reapareces sobre ella), otro en la cumbre antes del parapente
-    { type: 'checkpoint', x: 97, y: G, w: 4, help: '¡SIGUE LOS PUNTITOS Y APÁRTATE DEL PUMA!' },
+    { type: 'checkpoint', x: 97, y: G, w: 4, help: 'SI UN PUMA RUGE, ¡NO TE QUEDES AHÍ!' },
     { type: 'checkpoint', x: 151, y: 110, w: 14, h: 10, help: 'SI CAES AL LODO: ¡SALTA, SALTA!' },   // toda la orilla donde aterriza el parapente
     // un solo punto de control en la selva: en la orilla, antes de entrar al agua
     { type: 'checkpoint', x: SV - 4, y: 110, w: 4, help: 'NO TE QUEDES MUCHO EN LAS HOJAS' },
