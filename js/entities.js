@@ -734,11 +734,12 @@ class Condor extends Actor {
 // Si te alcanza, agarra a la cabra y los tres caen juntos al vacío: la cámara se
 // queda quieta y recién cuando el niño sale de la pantalla cuenta como caída.
 class Puma extends Actor {
-  // Cuando la cabra aterriza cerca, el puma FIJA su blanco: la saliente donde
-  // acaba de caer. Avisa con "!" y los puntitos de su ruta (que ya no cambian),
-  // salta ahí, se queda rugiendo un rato y luego se lanza al vacío. La regla es
-  // una sola y no depende de cuándo rebota la cabra: ¡no te quedes donde marcó!
-  // Sigue subiendo (o baja): quien se queda rebotando en el mismo sitio, cae.
+  // Cuando la cabra aterriza cerca, el puma PRONOSTICA a qué saliente vas a llegar
+  // (la que está dos más arriba: la de después de la que ya estás saltando) y fija
+  // ahí su blanco. Avisa con "!" y los puntitos de su ruta (que ya no cambian),
+  // salta, se queda rugiendo un rato y luego se lanza al vacío. Quien sigue
+  // subiendo sin mirar, cae en sus garras; hay que frenar un escalón antes (lejos
+  // de la saliente marcada) y seguir cuando se vaya.
   constructor(def) {
     super(def.x * TS, def.y * TS - 16, 30, 16);
     this.homeX = this.x; this.homeY = this.y; this.homeFace = def.face || 1; this.snowy = !!def.snowy;
@@ -749,10 +750,20 @@ class Puma extends Actor {
   // el salto puede pasar cerca sin tocarte
   get lethal() { return this.state === 'hold' || (this.state === 'leap' && Math.abs(this.cx - (this.landX + this.w / 2)) < 16); }
   get body() { return this.state === 'hold' ? { x: this.x + 5, y: this.y + 2, w: this.w - 10, h: this.h - 2 } : { x: this.x + 6, y: this.y + 3, w: this.w - 12, h: this.h - 4 }; }
-  // te ve si aterrizas cerca, del lado al que mira y no muy por encima
-  sees(goat) {
-    const dx = goat.cx - this.cx, dy = goat.y + goat.h - (this.y + this.h);
-    return Math.abs(dx) < 136 && Math.abs(dx) > 24 && Math.sign(dx) === this.face && dy > -72 && dy < 72;
+  // la saliente adonde llegará la cabra si sigue subiendo: dos más arriba de la
+  // que acaba de pisar (a esas alturas ya va camino de la siguiente)
+  forecast(g, goat) {
+    const L = g.level.goatLedges; if (!L) return null;
+    const row = Math.ceil((goat.y + goat.h) / TS);   // (ya rebotó: su borde está justo abajo)
+    let k = -1;
+    L.forEach((l, i) => { if (l[2] === row && goat.cx > l[0] * TS - 8 && goat.cx < (l[0] + l[1]) * TS + 8) k = i; });
+    const t = L[Math.min(L.length - 1, k + 2)];
+    const x = (t[0] + t[1] / 2) * TS, y = t[2] * TS;
+    // solo si le queda a tiro: del lado al que mira y no muy lejos
+    const dx = x - this.cx, dy = y - (this.y + this.h);
+    if (Math.abs(dx) > 200 || (Math.abs(dx) > 24 && Math.sign(dx) !== this.face) || dy < -150 || dy > 60) return null;
+    if (Math.abs(goat.cx - this.cx) > 220 || Math.abs(goat.cy - this.cy) > 170) return null;
+    return { x, y };
   }
   // la ruta fija: de la roca a la saliente en LEAP_T cuadros
   route() {
@@ -764,9 +775,9 @@ class Puma extends Actor {
     const p = g.player, goat = p.riding instanceof Cabra ? p.riding : null;
     if (this.state === 'wait') {
       if (this.cool > 0) { this.cool--; return; }
-      if (!goat || g.state !== 'play' || !(goat.onGround || goat.landT === 5) || !this.sees(goat)) return;
-      // marca el sitio donde aterrizó la cabra (sobre la saliente, a su altura)
-      this.landX = goat.cx - this.w / 2; this.landY = Math.ceil((goat.y + goat.h) / TS) * TS - this.h;   // (ya rebotó: su borde está justo abajo)
+      if (!goat || g.state !== 'play' || !(goat.onGround || goat.landT === 5)) return;
+      const f = this.forecast(g, goat); if (!f) return;
+      this.landX = f.x - this.w / 2; this.landY = f.y - this.h;
       this.state = 'windup'; this.t = 0; g.audio('growl');
     } else if (this.state === 'windup') {
       if (this.t >= Puma.WIND_T) {
@@ -852,7 +863,7 @@ class Puma extends Actor {
   // al arrastrarlos se dibuja delante de la cabra y del niño: se ve prendido de ellos
   drawFront(ctx) { if (this.state === 'carry') this.drawLeap(ctx); }
 }
-Puma.WIND_T = 40; Puma.LEAP_T = 28; Puma.HOLD_T = 90; Puma.GR = 0.3;
+Puma.WIND_T = 36; Puma.LEAP_T = 24; Puma.HOLD_T = 80; Puma.GR = 0.3;
 
 // ═════════════════════════════════════════════════════════════════════════════
 class Pickup extends Actor {
@@ -967,12 +978,16 @@ class Eagle extends Actor {
         // se encara al niño, retrocede un poco y abre las garras
         const vx = p.cx - this.cx, vy = p.cy - this.cy, d = Math.hypot(vx, vy) || 1;
         this.face = vx >= 0 ? 1 : -1;
-        this.x -= vx / d * 0.3; this.y -= vy / d * 0.3;
-        // apunta a donde ESTARÁS cuando llegue (el niño sigue cayendo al planear):
-        // si te quedas quieto, te atrapa; hay que cambiar de rumbo en el último momento
-        const T = d / 6.5;
-        const ax = p.cx + p.vx * T, ay = p.cy + p.vy * T;
-        this.aimX = ax; this.aimY = ay;
+        if (this.t <= Eagle.LOCK_T) { this.x -= vx / d * 0.3; this.y -= vy / d * 0.3; }   // retrocede mientras apunta; fijada, se queda quieta
+        // apunta a donde ESTARÁS cuando llegue (el niño sigue cayendo al planear)...
+        // ...pero la mira se FIJA justo antes del picado: la línea deja de moverse y
+        // el picado va exactamente por ahí. Si ves la línea quieta, ¡sal de ella!
+        if (this.t <= Eagle.LOCK_T) {
+          const T = d / 6.5;
+          this.aimX = p.cx + p.vx * T; this.aimY = p.cy + p.vy * T;
+          if (this.t === Eagle.LOCK_T) g.audio('lock');
+        }
+        const ax = this.aimX, ay = this.aimY;
         if (this.t > 38) {
           const wx = ax - this.cx, wy = ay - this.cy, wd = Math.hypot(wx, wy) || 1;
           this.dx = wx / wd * 6.5; this.dy = wy / wd * 6.5; this.state = 'dive'; this.t = 0; g.audio('swoosh'); g.shake(2, 10);
@@ -1000,9 +1015,15 @@ class Eagle extends Actor {
     if (this.state === 'windup') {
       // línea de mira punteada hacia el niño y "!" sobre el águila
       const x0 = this.cx, y0 = this.cy, x1 = this.aimX || x0, y1 = this.aimY || y0;
-      const n = Math.floor(Math.hypot(x1 - x0, y1 - y0) / 6);
-      ctx.fillStyle = (Math.floor(this.t / 4) % 2) ? '#ffffff' : '#d9e6f2';
-      for (let i = 1; i < n; i += 2) ctx.fillRect(Math.round(x0 + (x1 - x0) * i / n), Math.round(y0 + (y1 - y0) * i / n), 2, 2);
+      const n = Math.floor(Math.hypot(x1 - x0, y1 - y0) / 6), locked = this.t > Eagle.LOCK_T;
+      // mientras apunta: puntitos tenues que la siguen; fijada: línea quieta, más
+      // densa y con borde oscuro (y se alarga más allá del blanco: así pasará)
+      const ex = x1 + (x1 - x0) * (locked ? 0.5 : 0), ey = y1 + (y1 - y0) * (locked ? 0.5 : 0), m = locked ? Math.round(n * 1.5) : n;
+      for (let i = 1; i < m; i += locked ? 1 : 2) {
+        const X = Math.round(x0 + (ex - x0) * i / m), Y = Math.round(y0 + (ey - y0) * i / m);
+        ctx.fillStyle = 'rgba(42,31,45,' + (locked ? 1 : 0.6) + ')'; ctx.fillRect(X - 1, Y, 4, 2); ctx.fillRect(X, Y - 1, 2, 4);
+        ctx.fillStyle = locked ? ((Math.floor(this.t / 3) % 2) ? '#ffffff' : '#ffe9a8') : '#c9d6e4'; ctx.fillRect(X, Y, 2, 2);
+      }
       // el "!" nunca se sale de la pantalla: si el águila está fuera, se pega al borde
       const g = Game, cy = Math.max(g.cam.y + 4, Math.min(g.cam.y + VIEW.h - 20, this.y - 16)), cx = Math.max(g.cam.x + 10, Math.min(g.cam.x + VIEW.w - 10, this.cx));
       if (Math.floor(this.t / 5) % 2 === 0) drawText(ctx, '!', Math.round(cx), Math.round(cy), { scale: 2, color: '#ffffff', align: 'center', shadow: true, shadowColor: '#2a1f2d' });
@@ -1018,6 +1039,8 @@ class Eagle extends Actor {
     ctx.restore();
   }
 }
+
+Eagle.LOCK_T = 22;   // a partir de aquí la mira del águila ya no se mueve (el picado sale en el 39)
 
 // EL COLEGIO: se cae a pedazos. Tablones clausurando la puerta, grietas,
 // planchas de calamina oxidadas y sueltas, y puntales sosteniendo la pared. Aquí no hay clases...

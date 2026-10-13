@@ -331,6 +331,7 @@ const LEVEL = {
   // LA SELVA: árboles, lianas y agua quieta
   jungle: { x0: 252, x1: SV + SWID + 4, fade: 16, waterRow: 112, trees: [sx(5), sx(26), sx(35), sx(45), sx(53), sx(61), sx(68), sx(80), sx(90), sx(98), sx(106), sx(116)] },
   goatEnd: 118, goatEndRow: SUMMIT,
+  goatLedges: MTN.up.map(l => [l[0], l[2], l[1]]),   // [col, ancho, fila]: los pumas pronostican por aquí
   // al planear no puedes alejarte de la ladera este
   glide: { x0: 119, x1: 155.4 },   // a la derecha no pasa de la orilla: más allá está el precipicio del huaico
   glideLandRow: 100,   // la hoja solo se suelta al aterrizar por debajo de esta fila (el valle)
