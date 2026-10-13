@@ -343,33 +343,33 @@ const ART3 = (() => {
     'MmmmmmmmmmmmmmmM',
   ]);
 
-  // la cabeza de puma de la proa (mirando a la derecha): orejas, ojo pintado y
-  // colmillos, sobre un cuello de totora que sale del casco. 20x24
+  // la cabeza de puma de la proa (mirando a la derecha): orejas cortas y redondas, ojo grande, hocico chato,
+  // colmillos y bigotes, sobre un cuello de totora que sale del casco. 24x24
   const PUMA = spr3([
-    '....KKK...KKK.......',
-    '...K+=+K.K+=+K......',
-    '...K=x=KKK=x=K......',
-    '..K+++++++++++K.....',
-    '..K++++++++++++K....',
-    '..K++KKKK++++++=K...',
-    '..K+KyyK0K++++++K...',
-    '..K++KKKK+++++++=KK.',
-    '..K=+++++++++++++K0K',
-    '..K=++++++++++++KKK.',
-    '...K=+++++++K1K1K1K.',
-    '...K=++++++KrrrrrK..',
-    '....K==+++++K1K1K...',
-    '....K=+++++==KKK....',
-    '....K=++++++=K......',
-    '...K=+++++++K.......',
-    '...K-++++++K........',
-    '..K=+++++=K.........',
-    '..K-+++++K..........',
-    '.K=+++++=K..........',
-    '.K-+++++K...........',
-    'K=+++++=K...........',
-    'K-+++++K............',
-    'K=++++=K............',
+    '...KKK.......KKK........',
+    '..K+x+K.....K+x+K.......',
+    '..K+xx+KKKKK+xx+K.......',
+    '.K+++++++++++++++K......',
+    'K+++++++++++++++++K.....',
+    'K++++++++++++++++++K....',
+    'K+++KKKK+++++++++++K....',
+    'K++K1yyKK++++++++++=K...',
+    'K++K1y0K-+++++++++++K...',
+    'K++KKKKK-+++++++++++=K..',
+    'K=++++++-++++++fffffKK..',
+    'K=++++++-+++++ffffK00K.1',
+    '.K=+++++~+++fff1ffKKK1..',
+    '.K=++++++++ffKrrrrrK.1..',
+    '..K=+++++++fK1K..K1K....',
+    '..K==++++++fKrrrrrK.....',
+    '...KK==++++ffKKKKK......',
+    '....KK=++++KK...........',
+    '....K=++++K.............',
+    '...K=++++=K.............',
+    '..K=+++++K..............',
+    '.K=+++++K...............',
+    'K=+++++=K...............',
+    'K-+++++K................',
   ], TOT);
 
   // SEÑORA URO: sombrero con cinta, trenzas con pompones, chompa morada y
@@ -767,12 +767,22 @@ const ART3 = (() => {
           // saltaste debajo del cerro: cabezazo contra la roca
           p.y = cy; if (p.vy < 0) { p.vy = 0.5; g.audio('land'); g.burst(p.cx, cy, 'rock', 4); }
         } else {
-          // venías por el aire: la ladera te frena (y el tren sigue debajo)
+          // venías por el aire: la ladera te devuelve a tu vagón (sin morir)
           const face = a + Math.max(0, cy - Math.min(p.y + p.h, cy)) / 1.1;
-          if (p.x + p.w > face) { p.x = face - p.w; p.vx = Math.min(0, p.vx); }
+          if (p.x + p.w > face) this.backToWagon(g, p, Math.min(face, a + 8) - p.w - 2);
         }
       }
       this.prevTop = p.y;
+    }
+    // te deja parado en el techo del vagón que tienes debajo (o el más cercano), antes de la ladera
+    backToWagon(g, p, maxX) {
+      const ws = this.wagons.filter(w => w.coupled);
+      let x = Math.min(p.x, maxX), best = null, bd = Infinity;
+      for (const w of ws) { const d = x + p.w / 2 < w.x ? w.x - (x + p.w / 2) : x + p.w / 2 > w.x + w.w ? x + p.w / 2 - w.x - w.w : 0; if (d < bd) { bd = d; best = w; } }
+      if (!best) { p.x = x; p.vx = Math.min(0, p.vx); return; }
+      x = Math.max(best.x + 2, Math.min(best.x + best.w - p.w - 2, x));
+      p.x = x; p.y = this.roofY - p.h; p.vy = 0; p.vx = 0; p.onGround = true; p.lastMover = best; this.carry = best.dx;
+      g.audio('land'); g.burst(p.cx, this.roofY - 20, 'rock', 6); g.burst(p.cx, this.roofY, 'dust', 6);
     }
     onRespawn(g) {
       this.prevTop = null;
@@ -918,6 +928,38 @@ const ART3 = (() => {
   // planea sobre ti (su sombra cruza el techo); cuando no hay túnel ni vagón
   // por soltarse cerca, chilla, tiembla con su "!" y baja en vuelo rasante a la
   // altura de tu cabeza, de adelante hacia atrás. Agachado o saltando, pasa.
+  // el cóndor grande, de alas bien abiertas: negro con la franja blanca de las
+  // alas, collar blanco y cabeza rosada. flap: -1..1 (aleteo) o 'dive' (alas atrás)
+  function paintCondor(ctx, cx, cy, f, flap) {
+    // primero un halo claro (se ve contra el cerro verde), luego el ave
+    for (const [ox, oy] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) condorShape(ctx, cx + ox, cy + oy, f, flap, 'rgba(255,246,226,0.75)');
+    condorShape(ctx, cx, cy, f, flap, null);
+  }
+  function condorShape(ctx, cx, cy, f, flap, halo) {
+    const C = (c) => halo || c, dive = flap === 'dive', L = dive ? 16 : 23;
+    for (const side of (dive ? [-f] : [-1, 1])) {
+      for (let i = 0; i < L; i++) {
+        // planeando: alas en V con las puntas que suben y bajan; en picada, plegadas hacia atrás
+        const k = i / L, x = cx + side * (5 + i);
+        const y = cy - 2 + (dive ? Math.round(k * 3) : -Math.round(k * 3 + flap * k * k * 6));
+        if (i >= L - 6) {
+          // las plumas de la punta, separadas como dedos
+          if (i % 2 === 0) R(ctx, C('#1d1622'), x, y - 1 + ((i >> 1) % 3) - 1, 1, 4);
+          continue;
+        }
+        R(ctx, C('#1d1622'), x, y - 1, 1, 2);
+        R(ctx, C(i > 3 ? '#f4efe4' : '#1d1622'), x, y + 1, 1, 2);   // franja blanca del ala
+        R(ctx, C('#2e2838'), x, y + 3, 1, 2);
+      }
+    }
+    R(ctx, C('#1d1622'), cx - 8, cy - 3, 16, 7);                     // cuerpo
+    R(ctx, C('#1d1622'), cx - f * 12 - 2, cy - 1, 5, 4);             // cola
+    R(ctx, C('#ffffff'), cx + f * 7 - 2, cy - 4, 5, 6);              // collar
+    R(ctx, C('#e08a7a'), cx + f * 10 - 2, cy - 6, 5, 4);             // cabeza pelada, rosada
+    R(ctx, C('#2a1f2d'), cx + f * 11 - (f > 0 ? 0 : 1), cy - 5, 1, 1);
+    R(ctx, C('#f0e0b0'), cx + f * 13 - (f > 0 ? 0 : 2), cy - 5, 3, 2); // pico ganchudo
+    R(ctx, C('#f0e0b0'), cx + f * 15 - (f > 0 ? 0 : 1), cy - 4, 1, 2);
+  }
   class TrainCondor extends Eagle {
     constructor(def) {
       super({ rowMin: 0, rowMax: 0 });
@@ -986,15 +1028,14 @@ const ART3 = (() => {
       // su sombra cruza el techo del tren mientras planea
       if ((this.state === 'circle' || this.state === 'windup') && T) {
         const k = Math.max(0.15, 0.45 - (T.roofY - this.y) / 260);
-        ctx.fillStyle = 'rgba(20,14,30,' + k.toFixed(2) + ')'; ctx.fillRect(Math.round(this.cx - 9), T.roofY + 1, 18, 2);
+        ctx.fillStyle = 'rgba(20,14,30,' + k.toFixed(2) + ')'; ctx.fillRect(Math.round(this.cx - 16), T.roofY + 1, 32, 2);
       }
       if (this.state === 'windup') {
         const g2 = Game, cy = Math.max(g2.cam.y + 4, Math.min(g2.cam.y + VIEW.h - 20, this.y - 18)), cx = Math.max(g2.cam.x + 10, Math.min(g2.cam.x + VIEW.w - 10, this.cx));
         if (Math.floor(this.t / 5) % 2 === 0) drawText(ctx, '!', Math.round(cx), Math.round(cy), { scale: 2, color: '#ffffff', align: 'center', shadow: true, shadowColor: '#2a1f2d' });
       }
-      const img = E.condorBig[this.state === 'dive' ? 1 : Math.floor(this.animT / 9) % 2];
       const sh = this.state === 'windup' ? (this.t % 4 < 2 ? 1 : -1) : 0;
-      ctx.drawImage(this.face < 0 ? flipS(img) : img, Math.round(this.cx - 14 + sh), Math.round(this.y - 2));
+      paintCondor(ctx, Math.round(this.cx + sh), Math.round(this.cy), this.face, this.state === 'dive' ? 'dive' : Math.sin(this.animT * 0.14));
     }
     drawFront(ctx) { if (this.tip) this.tip.drawFront(ctx); }
   }
@@ -1126,7 +1167,7 @@ const ART3 = (() => {
       // espuma en la línea de flotación
       for (let i = -2; i < w + 2; i += 3) if (hash(i + (this.t >> 3)) > 0.4) R(ctx, '#e8f6ff', x + i, wl + 1, 2, 1);
       // la proa de puma
-      ctx.drawImage(A3.PUMA, x + w - 18, y - 22);
+      ctx.drawImage(A3.PUMA, x + w - 19, y - 22);
       // la señora uro rema de pie en la popa, con su palo largo
       const sail = this.state !== 'wait', k = sail ? Math.sin(this.t * 0.07) : 0;
       const uro = A3.URO[!sail && Math.floor(this.t / 30) % 3 === 0 ? 1 : 0];
