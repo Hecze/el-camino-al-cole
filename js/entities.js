@@ -734,14 +734,15 @@ class Condor extends Actor {
 // Si te alcanza, agarra a la cabra y los tres caen juntos al vacío: la cámara se
 // queda quieta y recién cuando el niño sale de la pantalla cuenta como caída.
 class Puma extends Actor {
-  // Cuando la cabra aterriza cerca, el puma PRONOSTICA a qué saliente vas a llegar
-  // (la que está dos más arriba: la de después de la que ya estás saltando) y fija
-  // ahí su blanco. Avisa con "!" y los puntitos de su ruta (que ya no cambian) y
+  // Cada puma vigila una BIFURCACIÓN: dos salientes a la misma altura, una a su
+  // alcance y otra lejos. Cuando la cabra aterriza dos salientes más abajo, el puma
+  // PRONOSTICA que irás a la de su lado y fija ahí su blanco. Avisa con "!" y los puntitos de su ruta (que ya no cambian) y
   // salta: pasa por encima de esa saliente justo cuando llegarías y sigue de largo
   // al vacío (nunca se queda en el camino). Quien sigue subiendo sin mirar, cae en
-  // sus garras; hay que frenar un escalón antes y seguir cuando haya pasado.
+  // sus garras; hay que ir a la otra saliente (o frenar hasta que haya pasado).
   constructor(def) {
     super(def.x * TS, def.y * TS - 16, 30, 16);
+    this.ledge = def.ledge;   // la saliente de la bifurcación que vigila (índice en goatLedges)
     this.homeX = this.x; this.homeY = this.y; this.homeFace = def.face || 1; this.snowy = !!def.snowy;
     this.onRespawn();
   }
@@ -754,8 +755,11 @@ class Puma extends Actor {
   forecast(g, goat) {
     const L = g.level.goatLedges; if (!L) return null;
     const row = Math.ceil((goat.y + goat.h) / TS);   // (ya rebotó: su borde está justo abajo)
-    let k = -1;
+    let k = -2;
     L.forEach((l, i) => { if (l[2] === row && goat.cx > l[0] * TS - 8 && goat.cx < (l[0] + l[1]) * TS + 8) k = i; });
+    if (k === -2 && row >= L[0][2] + 2) k = -1;   // aún en el suelo, al pie del cerro
+    // solo vigila SU saliente: la de la bifurcación (la otra queda fuera de su alcance)
+    if (this.ledge !== undefined ? k + 2 !== this.ledge : k < -1) return null;
     const t = L[Math.min(L.length - 1, k + 2)];
     const x = (t[0] + t[1] / 2) * TS, y = t[2] * TS;
     // solo si le queda a tiro: del lado al que mira y no muy lejos

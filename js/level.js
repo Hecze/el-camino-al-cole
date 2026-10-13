@@ -212,8 +212,20 @@ function mountainPath() {
     const x = Math.round(center + ZIG[i % ZIG.length] * 0.8);
     up.push([x - 1, row, i < 3 ? 4 : 3, row < 80 ? 'ledgeSnow' : 'ledge']);
   }
-  return { up };
+  // BIFURCACIONES de los pumas: a la altura de cada puma hay DOS salientes. La del
+  // lado del puma (la del camino, up[i]) es su blanco; la otra, alejada, está fuera
+  // de su alcance. Ambas quedan a tiro de la de abajo y de la de arriba.
+  const alt = [];
+  PUMA_FORKS.forEach((i, k) => {
+    const away = k % 2 === 0 ? 1 : -1;   // pumas a la izquierda en las pares: la segura queda a la derecha
+    const m = ((up[i - 1][0] + up[i - 1][2] / 2) + (up[i + 1][0] + up[i + 1][2] / 2)) / 2;
+    const w = up[i][2], type = up[i][3];
+    up[i] = [Math.round(m - away * 3 - w / 2), up[i][1], w, type];   // la del puma
+    alt.push([Math.round(m + away * 3 - w / 2), up[i][1], w, type]);   // la segura
+  });
+  return { up, alt };
 }
+const PUMA_FORKS = [2, 5, 8, 11, 15, 19, 26];   // salientes con bifurcación y puma (más abajo que arriba)
 const MTN = mountainPath();
 const mid = (l) => l[0] + l[2] / 2;
 // cóndores que cruzan el risco a distintas alturas (cada vez más rápidos)
@@ -221,14 +233,15 @@ const BIRDS = [];
 [124, 104, 84, 64, 46, 32].forEach((row, i) => {
   BIRDS.push({ type: 'condor', x0: 90, x1: 123, y: row - 1.5, speed: 1.4 + i * 0.12, phase: i * 0.7, dir: i % 2 ? -1 : 1 });
 });
-// pumas en sus repisas, a un lado del camino de la cabra: más abajo que arriba
-// (las cabras trepan justamente para escapar de ellos)
-const PUMAS = [2, 5, 8, 11, 15, 19, 26].map((i, k) => {
+// pumas en sus repisas, junto a la saliente de la bifurcación que vigilan: más
+// abajo que arriba (las cabras trepan justamente para escapar de ellos)
+const PUMAS = PUMA_FORKS.map((i, k) => {
   const l = MTN.up[i], left = k % 2 === 0;
-  return { type: 'puma', x: left ? l[0] - 6 : l[0] + l[2] + 3, y: l[1] - 1, face: left ? 1 : -1, snowy: l[1] < 80 };
+  return { type: 'puma', x: left ? l[0] - 6 : l[0] + l[2] + 3, y: l[1] - 1, face: left ? 1 : -1, snowy: l[1] < 80, ledge: i };
 });
-// hojitas de coca para el soroche: en el centro de las salientes altas, donde rebota la cabra
-const COCA = [20, 24, 28].map(i => ({ type: 'coca', x: mid(MTN.up[i]) - 0.5, y: MTN.up[i][1] - 1 }));
+// hojitas de coca para el soroche: en el centro de las salientes, donde rebota la
+// cabra. La primera llega cuando ya se siente el soroche (la vista ya ondula)
+const COCA = [10, 16, 22, 27].map(i => ({ type: 'coca', x: mid(MTN.up[i]) - 0.5, y: MTN.up[i][1] - 1 }));
 // puntos de control en la montaña (reapareces montado en la cabra)
 
 // Silueta de la montaña calculada a partir del camino: cada saliente queda
@@ -239,7 +252,7 @@ function mountainShape(peakX, peakRow, rows) {
     if (r < peakRow) { shape.push(null); continue; }
     const d = r - peakRow;
     let L = peakX - d * 0.24 - 1, R = peakX + d * 0.3 + 1;
-    for (const l of MTN.up) if (Math.abs(l[1] - r) <= 6) L = Math.min(L, l[0] - 3);
+    for (const l of [...MTN.up, ...MTN.alt]) if (Math.abs(l[1] - r) <= 6) L = Math.min(L, l[0] - 3);
     shape.push([L, R]);
   }
   // suavizar el borde izquierdo para que no tenga escalones bruscos
@@ -284,6 +297,8 @@ const GUIA = [
   { type: 'hint', x: 91.5, y: G, text: '¡SÚBETE A LA CABRA!', arrow: 'down', r: 7, pass: 1, when: (g) => !onGoat(g) },
   { type: 'hint', x: COCA[0].x + 0.5, y: COCA[0].y + 1.5, text: '¡COCA!', arrow: 'down', r: 6, pass: 3, vr: 4, item: 'coca' },
   { type: 'help', x0: 92, x1: 126, kind: 'bird', text: '¡SI VES EL AVISO, ESPERA!' },
+  { type: 'help', x0: 82, x1: 126, kind: 'soroche', text: 'COME HOJAS DE COCA PARA RESPIRAR' },
+  { type: 'help', x0: 82, x1: 126, kind: 'puma', text: 'SI EL PUMA MARCA UNA SALIENTE, ¡VE A LA OTRA!' },
   { type: 'help', x0: 92, x1: 126, text: 'TÚ SOLO GUÍA: LA CABRA SALTA' },
   { type: 'npc', x: 117, y: SUMMIT, model: 'nina', lines: ['¡QUÉ TAL VISTA!'] },
   { type: 'prop', kind: 'campana', x: 119.5, y: SUMMIT },
@@ -336,7 +351,7 @@ const LEVEL = {
   glide: { x0: 119, x1: 155.4 },   // a la derecha no pasa de la orilla: más allá está el precipicio del huaico
   glideLandRow: 100,   // la hoja solo se suelta al aterrizar por debajo de esta fila (el valle)
   altitude: { baseRow: G, baseM: 3650, perRow: 13 },
-  soroche: { minM: 4600 },   // desde aquí arriba te da soroche
+  soroche: { startM: 3750, rate: 0.0017 },   // desde aquí arriba el oxígeno empieza a bajar (rate: por cuadro)
   zones: [
     { x: 0,   name: 'EL VALLE',  music: 'ayacucho' },
     { x: 86,  name: 'EL APU',    music: 'apu', alt: true },
@@ -371,7 +386,7 @@ const LEVEL = {
     [SCH, 110, 53, 40, 'jungle'],
   ],
   platforms: [
-    ...MTN.up,
+    ...MTN.up, ...MTN.alt,
     // puente colgante sobre el cañón
     [50, G - 2, 14, 'ropeBridge'],
     // ramas firmes de la selva (donde duermen los perezosos)
@@ -402,7 +417,7 @@ const LEVEL = {
     { type: 'cabra', x: 91, y: G },
     // puntos de control invisibles: uno al pie del cerro, junto a la cabra (si un
     // puma te tumba no vuelves a casa; ya montado, reapareces sobre ella), otro en la cumbre antes del parapente
-    { type: 'checkpoint', x: 97, y: G, w: 4, help: 'SI UN PUMA RUGE, ¡NO TE QUEDES AHÍ!' },
+    { type: 'checkpoint', x: 97, y: G, w: 4, help: 'SI EL PUMA MARCA UNA SALIENTE, ¡VE A LA OTRA!' },
     { type: 'checkpoint', x: 151, y: 110, w: 14, h: 10, help: 'SI CAES AL LODO: ¡SALTA, SALTA!' },   // toda la orilla donde aterriza el parapente
     // un solo punto de control en la selva: en la orilla, antes de entrar al agua
     { type: 'checkpoint', x: SV - 4, y: 110, w: 4, help: 'NO TE QUEDES MUCHO EN LAS HOJAS' },
@@ -466,7 +481,7 @@ const CHAPTERS = [{
   deathMsgs: {
     huaico: '¡TE LLEVÓ EL HUAICO, CAUSA!', mud: '¡TE LLEVÓ EL HUAICO, CAUSA!', water: '¡EL RÍO TE JALÓ, COMPADRE!',
     bird: '¡EL CÓNDOR TE CHOTEÓ!', eagle: '¡EL ÁGUILA TE LLEVÓ DE PIQUEO!', caiman: '¡EL CAIMÁN TE HIZO CEBICHE!',
-    puma: '¡UN PUMA SE LLEVÓ A TU CABRA!', rock: '¡TE CAYÓ UN PEDRONÓN, HERMANITO!', fall: '¡TE FUISTE AL BARRANCO, PE!', default: '¡CUIDADO, PUES!',
+    puma: '¡UN PUMA SE LLEVÓ A TU CABRA!', soroche: '¡EL SOROCHE TE TUMBÓ, HIJITO!', rock: '¡TE CAYÓ UN PEDRONÓN, HERMANITO!', fall: '¡TE FUISTE AL BARRANCO, PE!', default: '¡CUIDADO, PUES!',
   },
   level: buildLevel(LEVEL),
 }];

@@ -194,10 +194,10 @@
 
   Game.respawn = function () {
     const p = Game.player;
-    Game.camLock = null; p.grabbed = false;
+    Game.camLock = null; p.grabbed = false; Game.faint = null; Game.sorocheLvl = 0; Game.sorocheK = 0;
     for (const e of Game.entities) { if (e instanceof Mount && !e.retired) e.reset(); if (e.onRespawn) e.onRespawn(Game); }
     Game.entities = Game.entities.filter(e => !(e instanceof Boulder));
-    p.riding = null; p.x = Game.spawn.x; p.y = Game.spawn.y - p.h;
+    p.riding = null; p.mountCd = 0; p.x = Game.spawn.x; p.y = Game.spawn.y - p.h;
     p.vx = 0; p.vy = 0; p.dragged = false; p.overEdge = false; p.stickT = 0; p.gliding = false; p.glideAir = 0; p.fallFrom = null;
     Game.entities = Game.entities.filter(e => !(e instanceof FallingLeaf)); p.mountCd = 0; p.invuln = 50; p.lastMover = null;
     const m = Game.spawnMount && !Game.spawnMount.retired ? Game.spawnMount : null;
@@ -214,7 +214,7 @@
     if (ci == null) ci = Game.chapterIdx;
     const ch = CHAPTERS[ci], lv = ch.level;
     Game.chapterIdx = ci; Game.chapter = ch; Game.menuChapter = ci; Game.jingle = null;
-    Game.soroche = false; Game.sorocheK = 0; Game.sorocheLvl = 0; Game.cocaFlash = 0;
+    Game.soroche = false; Game.sorocheK = 0; Game.sorocheLvl = 0; Game.cocaFlash = 0; Game.faint = null;
     DAY_START = ch.dayStart || DAY_START_DEFAULT;
     Game.level = lv;
     Game.entities = []; Game.movers = []; Game.particles = []; Game.huaico = null;
@@ -280,10 +280,12 @@
   }
 
   // ── SOROCHE: el mal de altura del Apu ──────────────────────────────────
-  // Un nivel de 0 a 1 (la barra bajo el altímetro): sube pasando lev.soroche.startM
-  // metros, más rápido cuanto más alto; baja si desciendes. Al llenarse te mareas
-  // (la vista ondula, vas más lento) hasta que baja de nuevo. Cada hojita de coca
-  // lo baja un buen tramo. Nada de texto: la barra lo explica.
+  // Un nivel de 0 a 1 (la barra de OXÍGENO bajo el altímetro se vacía al subir):
+  // sube pasando lev.soroche.startM metros, más rápido cuanto más alto; baja si
+  // desciendes. Los síntomas llegan antes de vaciarse: pasada la mitad la vista
+  // empieza a ondular y a verse doble, cada vez más; cerca del final vas más lento
+  // y el corazón late fuerte. Si se vacía del todo, el niño se desmaya y cae de la
+  // cabra al vacío. Cada hojita de coca lo baja un buen tramo. Nada de texto.
   function altitudeM() {
     const A = Game.level.altitude, p = Game.player;
     return A.baseM + (A.baseRow * TILE - (p.y + p.h)) / TILE * A.perRow;
@@ -292,14 +294,29 @@
     const S = Game.level.soroche, Z = Game.level.zones[Game.zone];
     if (!S) { Game.soroche = false; Game.sorocheK = 0; Game.sorocheLvl = 0; return; }
     const start = S.startM || (S.minM - 300), alt = Z && Z.alt ? altitudeM() : 0;
-    if (alt > start) Game.sorocheLvl = Math.min(1, Game.sorocheLvl + 0.0012 * (1 + (alt - start) / 750));
+    if (alt > start) Game.sorocheLvl = Math.min(1, Game.sorocheLvl + (S.rate || 0.0012) * (1 + (alt - start) / 750));
     else Game.sorocheLvl = Math.max(0, Game.sorocheLvl - 0.003);
-    const was = Game.soroche;
-    Game.soroche = Game.sorocheLvl >= 1 || (was && Game.sorocheLvl > 0.6);
+    const k = Game.sorocheLvl, was = Game.soroche;
+    Game.soroche = k > 0.8;   // ya cuesta moverse
     if (Game.soroche && !was) AUDIO.play('dizzy');
-    Game.sorocheK += ((Game.soroche ? 1 : 0) - Game.sorocheK) * 0.03;
-    // el corazón late fuerte mientras dura el soroche (y la vista se oscurece con cada latido)
-    if (Game.soroche && tick % 50 === 0) AUDIO.play('heart');
+    // la vista ondula desde la mitad de la barra, más fuerte cuanto menos oxígeno
+    Game.sorocheK += (Math.max(0, Math.min(1, (k - 0.45) / 0.55)) - Game.sorocheK) * 0.05;
+    // el corazón late más rápido mientras más se vacía
+    if (k > 0.65 && tick % (k > 0.9 ? 30 : k > 0.8 ? 40 : 55) === 0) AUDIO.play('heart');
+    // sin oxígeno: se desmaya y cae en picada (la cámara se queda quieta)
+    const p = Game.player;
+    if (k >= 1 && !Game.faint && Game.state === 'play' && !p.grabbed) {
+      Game.faint = { t: 0, vx: (p.riding ? p.riding.facing : p.facing || 1) * -0.8 };
+      if (p.riding) { const m = p.riding; p.riding = null; m.rider = null; }
+      p.grabbed = true; p.vy = -2.5; p.invuln = 999; p.mountCd = 9999;   // (que no se vuelva a montar al rozar la cabra)
+      Game.camLock = { x: Game.cam.x, y: Game.cam.y };
+      AUDIO.play('dizzy');   // el golpe suena recién al salir de la pantalla
+    }
+    if (Game.faint) {
+      const f = Game.faint; f.t++;
+      p.vy = Math.min(p.vy + 0.32, 8); p.y += p.vy; p.x += f.vx;
+      if (p.y > Game.cam.y + VIEW.h + 12) { p.invuln = 0; Game.playerEnvDeath('soroche'); }
+    }
   }
   Game.cureSoroche = () => { Game.sorocheLvl = Math.max(0, Game.sorocheLvl - 0.7); Game.cocaFlash = 30; };
   // la barra del soroche: pulmones + barra que se llena (verde → amarillo → rojo)
@@ -686,7 +703,12 @@
     renderDecor(lv);
     renderEntities();
     const p = Game.player;
-    if (Game.state !== 'respawn' && !p.won) { p.draw(ctx, Game); p.drawRider(ctx); }
+    if (Game.state !== 'respawn' && !p.won) {
+      // desmayado por el soroche: cae dando vueltas
+      if (Game.faint) { ctx.save(); ctx.translate(Math.round(p.cx), Math.round(p.cy)); ctx.rotate(Game.faint.t * 0.18 * Math.sign(Game.faint.vx || 1)); ctx.translate(-Math.round(p.cx), -Math.round(p.cy)); }
+      p.draw(ctx, Game); p.drawRider(ctx);
+      if (Game.faint) ctx.restore();
+    }
     renderFront(lv);
     for (const e of Game.entities) if (e.drawFront) e.drawFront(ctx, Game);
     renderParticles();
