@@ -179,6 +179,8 @@
     cargador: { h: '#d8432f', a: '#a86a42', s: '#f0913c', v: '#f0913c', b: '#3a2412', p: '#2b4f86', z: '#2a1f2d' },
     // ambulante de golosinas: casaca celeste
     ambulante:{ h: '#3a2412', a: '#c98e62', s: '#f6c94a', v: '#7fb6d8', b: '#3a2412', p: '#5d5768', z: '#2a1f2d' },
+    // mozo del chifa: camisa blanca y chaleco negro
+    mozo:     { h: '#1d1622', a: '#d9a070', s: '#fffaf0', v: '#1d1622', b: '#1d1622', p: '#1d1622', z: '#1d1622' },
     // guardián del parque: chaleco amarillo
     sereno:   { h: '#2a1f2d', a: '#b87a52', s: '#3a4a5c', v: '#f2d230', b: '#2a1f2d', p: '#3a4a5c', z: '#1d1622' },
   };
@@ -187,6 +189,45 @@
     const pal = Object.assign({ '.': null, K: '#2a1f2d', R: '#7a2a2a' }, ROLES[r]);
     LIMENO[r] = { idle: PIX.fromRows(MAN, pal), talk: PIX.fromRows(MAN_TALK, pal), step: PIX.fromRows(MAN_STEP, pal) };
   }
+
+  // Modelos para los NPCs de la guía (js/guide.js): el limeño con lo suyo
+  // (lanza, calculadora, carrito...) en el mismo cuadro. [quieto, hablando]
+  const limenoModel = (role, W, H, px, extra) => () => [0, 1].map(k => {
+    const c = PIX.createCanvas(W, H), ctx = c.getContext('2d'), S = LIMENO[role], py = H - 24;
+    if (extra.back) extra.back(ctx, px, py, k);
+    ctx.drawImage(k ? S.talk : S.idle, px, py);
+    if (extra.front) extra.front(ctx, px, py, k);
+    return c;
+  });
+  Object.assign(GUIDE.models, {
+    // húsar de Palacio: lanza con banderín, casco con penacho; al hablar saluda
+    husar: limenoModel('guard', 22, 34, 2, {
+      back: (ctx, px, py) => { R(ctx, '#5d5768', px + 14, py - 8, 1, 32); R(ctx, '#c9a24a', px + 13, py - 10, 3, 3); R(ctx, '#d8432f', px + 15, py - 6, 5, 2); R(ctx, '#ffffff', px + 15, py - 4, 5, 2); R(ctx, '#d8432f', px + 15, py - 2, 5, 2); },
+      front: (ctx, px, py, k) => { R(ctx, '#1d1622', px + 3, py - 4, 6, 4); R(ctx, '#c9a24a', px + 3, py - 1, 6, 1); R(ctx, '#d8432f', px + 5, py - 8, 2, 4); if (k) R(ctx, '#c98e62', px + 9, py - 2, 2, 6); },
+    }),
+    // cambista: calculadora en una mano, fajo de billetes en la otra, fotocheck
+    cambista: limenoModel('cambista', 16, 24, 2, {
+      front: (ctx, px, py, k) => { R(ctx, '#2a1f2d', px + 9, py + 10, 5, 6); R(ctx, '#9be7c4', px + 10, py + 11, 3, 2); R(ctx, '#7ab87a', px - 1, py + 11 - k, 4, 3); R(ctx, '#f6c94a', px + 7, py + 9, 2, 2); },
+    }),
+    // ambulante: la caja de golosinas colgada del cuello
+    ambulante: limenoModel('ambulante', 14, 24, 1, {
+      front: (ctx, px, py) => { R(ctx, '#2a1f2d', px - 1, py + 10, 14, 6); R(ctx, '#c8322a', px, py + 11, 12, 4); R(ctx, '#f6c94a', px + 1, py + 11, 2, 2); R(ctx, '#3f6fb8', px + 4, py + 11, 2, 2); R(ctx, '#9be7c4', px + 7, py + 11, 2, 2); R(ctx, '#ffffff', px + 10, py + 11, 1, 2); },
+    }),
+    // emolientero detrás de su carrito de jarras (emoliente, linaza, alfalfa); humea
+    emoliente: limenoModel('emoliente', 40, 30, 0, {
+      front: (ctx, px, py, k) => {
+        const cx = 15, b = py + 24;
+        R(ctx, '#2a1f2d', cx - 1, b - 14, 24, 2); R(ctx, '#3f6fb8', cx, b - 13, 22, 9); R(ctx, '#fffaf0', cx, b - 13, 22, 1);
+        R(ctx, '#5d5768', cx + 2, b - 4, 2, 4); R(ctx, '#5d5768', cx + 18, b - 4, 2, 4);
+        [['#8a4a1a', 0], ['#c9a24a', 6], ['#5a8a3a', 12], ['#8a4a1a', 17]].forEach(([c, ox]) => { R(ctx, '#dfe3e8', cx + 1 + ox, b - 22, 5, 8); R(ctx, c, cx + 2 + ox, b - 19, 3, 5); });
+        for (const [sx, sy] of k ? [[17, 2], [24, 0], [31, 3]] : [[19, 3], [27, 1]]) R(ctx, 'rgba(255,255,255,0.75)', cx + sx - 15, sy, 2, 3);
+      },
+    }),
+    // mozo del chifa con su secador al brazo
+    mozo: limenoModel('mozo', 14, 24, 1, {
+      front: (ctx, px, py) => { R(ctx, '#fffaf0', px + 10, py + 9, 3, 7); },
+    }),
+  });
 
   // ───────────────────────────────────────────────────────────────────────────
   //  ENTIDADES
@@ -945,60 +986,6 @@
     }
   }
 
-  // LIMEÑO que habla cuando pasas: cambista, emolientero, ambulante, húsar...
-  // TODO-GUIA: cuando exista el sistema `npc` de la rama guia, estos pasan a
-  // ser NPCs reales (hablan por cercanía); se conserva el dibujo y el oficio.
-  class Limeno extends Actor {
-    constructor(def) { super(def.x * TS, ST * TS - 24, 12, 24); this.role = def.role; this.line = def.line; this.face = def.face || -1; this.t = Math.floor(def.x * 7); this.said = false; this.sayT = 0; this.salute = 0; }
-    onRespawn() { this.said = false; }
-    update(g) {
-      this.t++; if (this.sayT > 0) this.sayT--; if (this.salute > 0) this.salute--;
-      const p = g.player, d = Math.abs(p.cx - this.cx);
-      if (this.role !== 'guard') this.face = p.cx < this.cx ? -1 : 1;
-      if (!this.said && d < 80) {
-        this.said = true; this.sayT = 150; g.toast(this.line);
-        g.audio(this.role === 'guard' ? 'clank' : 'shout');
-        if (this.role === 'guard') this.salute = 60;
-      }
-      if (this.role === 'emoliente' && this.t % 14 === 0) g.particles.push({ x: this.x - 20 + Math.random() * 16, y: ST * TS - 22, vx: (Math.random() - 0.5) * 0.2, vy: -0.35, life: 50, max: 50, col: 'rgba(255,255,255,0.7)', size: 2, grav: -0.002 });
-    }
-    draw(ctx) {
-      const x = Math.round(this.x), b = ST * TS, f = this.face, S = LIMENO[this.role];
-      const talking = this.sayT > 0 && Math.floor(this.t / 8) % 2;
-      // lo que cada uno tiene delante o detrás
-      if (this.role === 'emoliente') {
-        // carrito emolientero: mesa con jarras de emoliente, linaza y alfalfa
-        const cx = x - 24;   // el carrito siempre queda delante, del lado por donde llegas
-        R(ctx, '#2a1f2d', cx - 1, b - 14, 24, 2); R(ctx, '#3f6fb8', cx, b - 13, 22, 9); R(ctx, '#fffaf0', cx, b - 13, 22, 1);
-        R(ctx, '#5d5768', cx + 2, b - 4, 2, 4); R(ctx, '#5d5768', cx + 18, b - 4, 2, 4);
-        [['#8a4a1a', 0], ['#c9a24a', 6], ['#5a8a3a', 12], ['#8a4a1a', 17]].forEach(([c, ox]) => { R(ctx, '#dfe3e8', cx + 1 + ox, b - 22, 5, 8); R(ctx, c, cx + 2 + ox, b - 19, 3, 5); });
-      }
-      if (this.role === 'guard') {
-        // garita y lanza con su banderín
-        R(ctx, '#5d5768', x + (f < 0 ? -2 : 13), b - 38, 1, 38); R(ctx, '#c9a24a', x + (f < 0 ? -3 : 12), b - 40, 3, 3);
-        R(ctx, '#d8432f', x + (f < 0 ? -8 : 14), b - 36, 6, 2); R(ctx, '#ffffff', x + (f < 0 ? -8 : 14), b - 34, 6, 2); R(ctx, '#d8432f', x + (f < 0 ? -8 : 14), b - 32, 6, 2);
-      }
-      const img = this.role === 'guard' ? S.idle : talking ? S.talk : S.idle;
-      ctx.drawImage(f > 0 ? img : flipS(img), x, b - 24 - (talking ? 1 : 0));
-      if (this.role === 'guard') {
-        // casco alto con penacho rojo y, al pasar, el saludo
-        R(ctx, '#1d1622', x + 3, b - 28, 6, 4); R(ctx, '#c9a24a', x + 3, b - 25, 6, 1); R(ctx, '#d8432f', x + 5, b - 32, 2, 4);
-        if (this.salute > 0) { R(ctx, '#c98e62', x + (f < 0 ? 1 : 9), b - 26, 2, 6); }
-      } else if (this.role === 'cambista') {
-        // calculadora en la mano y fajo de billetes
-        const hx = f > 0 ? x + 9 : x - 1;
-        R(ctx, '#2a1f2d', hx, b - 14, 5, 6); R(ctx, '#9be7c4', hx + 1, b - 13, 3, 2);
-        R(ctx, '#7ab87a', f > 0 ? x - 1 : x + 9, b - 13 + (this.t >> 4) % 2, 4, 3);
-        R(ctx, '#f6c94a', x + 7, b - 15, 2, 2);   // fotocheck
-      } else if (this.role === 'ambulante') {
-        // la caja de golosinas colgada del cuello
-        R(ctx, '#2a1f2d', x - 1, b - 14, 14, 6); R(ctx, '#c8322a', x, b - 13, 12, 4);
-        R(ctx, '#f6c94a', x + 1, b - 13, 2, 2); R(ctx, '#3f6fb8', x + 4, b - 13, 2, 2); R(ctx, '#9be7c4', x + 7, b - 13, 2, 2); R(ctx, '#ffffff', x + 10, b - 13, 1, 2);
-      }
-      if (this.sayT > 0) bubble(ctx, this.line.replace(/[¡!¿?]/g, '').split(',')[0], x + 6, b - 30);
-    }
-  }
-
   // EL GRASS de la Plaza: si lo pisas, el guardián te pita. No pasa nada más.
   class Grass extends Actor {
     constructor(def) { super(def.x0 * TS, ST * TS - 3, (def.x1 - def.x0) * TS, 3); this.t = 0; this.told = false; this.sayT = 0; }
@@ -1480,6 +1467,7 @@
       ] },
     ],
     spawn: { x: 7, y: 36 },
+    goal: { x: CASONA + 17.5, y: 46 },   // la flecha de "¡POR AQUÍ!" apunta a tu sitio en el concurso
     zones: [
       { x: 0,   name: 'EL DESIERTO',     music: 'desierto' },
       { x: 196, name: 'LA PANAMERICANA', music: 'panamericana' },
@@ -1558,53 +1546,60 @@
       // casonas y balcones primero: se dibujan detrás de todo lo demás
       ...CASONAS.map(c => ({ type: 'casona', x0: c[0], x1: c[1], top: c[2], col: c[3], sign: c[4] })),
       ...BALCONES.map((b, i) => ({ type: 'balcon', x: b[0], w: b[1], y: b[2], col: ['#5a3418', '#2f5a3a', '#6a3a1a'][i % 3] })),
-      { type: 'checkpoint', x: 322, y: 44 },
+      { type: 'checkpoint', x: 322, y: 44, help: 'SALTA LOS HUECOS EN EL BORDE' },
       { type: 'sign', x: 323, y: 46.4, lines: ['BIENVENIDOS', 'A LIMA'], style: 'paint', col: '#f6c94a' },
       { type: 'sign', x: 327, y: 44, lines: ['CENTRO DE LIMA'], style: 'post' },
-      { type: 'limeno', x: 333, role: 'ambulante', line: '¡CHICLE, CARAMELO, CHUPETÍN!' },
-      // TODO-GUIA: hint '¡SALTA EL HUECO!' antes del primer buzón (x 335)
+      { type: 'npc', x: 333.5, y: ST, model: 'ambulante', lines: ['¡CHICLE, CARAMELO, CHUPETÍN!', '¡A SOL NOMÁS, CAUSA!'] },
+      { type: 'hint', x: 337.5, y: ST, text: '¡SALTA EL HUECO!', key: 'jump', arrow: 'down', r: 6, pass: 1 },
       ...BUZONES.map(([x, w]) => ({ type: 'buzon', x, w })),
-      // TODO-GUIA: hint '¡SÚBETE AL BALCÓN!' bajo el primer balcón (x 342), con flecha hacia arriba
+      { type: 'hint', x: 346, y: 43, text: '¡SÚBETE AL BALCÓN!', arrow: 'down', r: 5, pass: 1, dy: 4 },
+      { type: 'help', x0: 330, x1: 410, kind: 'buzon', text: 'SALTA JUSTO EN EL BORDE' },
+      { type: 'help', x0: 330, x1: 470, kind: 'carretilla', text: '¡VE POR LOS BALCONES!' },
       { type: 'carretilla', x0: 340, x1: 408, speed: 1.5, load: 'papa' },
       { type: 'palomas', x0: 392, x1: 402, n: 6 },
       { type: 'vendor', x: 404, y: ST, shout: '¡HELADO, HELADITO!', kind: 'cooler' },
       // ── PLAZA DE ARMAS (respiro: nada te mata aquí) ──
       { type: 'plazaFondo', x0: 410, x1: 470, cat: [411, 435], pal: [446, 470] },
       { type: 'checkpoint', x: 412, y: ST },
-      // TODO-GUIA: prop — el grass (pita el guardián), las palomas y la pileta reaccionan al tocarlos
+      // el grass (pita el guardián), las palomas y la pileta son escenario que reacciona: entidades propias del capítulo
       { type: 'grass', x0: 415, x1: 424 },
       { type: 'palomas', x0: 427, x1: 435, n: 8 },
       { type: 'pileta', x: 436 },
       { type: 'palomas', x0: 446, x1: 455, n: 7 },
-      // TODO-GUIA: npc — los húsares de Palacio (saludo y frase al pasar)
-      { type: 'limeno', x: 456, role: 'guard', line: '¡SIGA, JOVEN, SIGA!' },
-      { type: 'limeno', x: 466, role: 'guard', line: '¡CORRE, QUE LLEGAS TARDE!' },
+      // los húsares de Palacio
+      { type: 'npc', x: 456.5, y: ST, model: 'husar', flip: true, lines: ['¡SIGA, JOVEN, SIGA!', '¡AQUÍ NO SE JUEGA!'] },
+      { type: 'npc', x: 466.5, y: ST, model: 'husar', flip: true, lines: ['¡CORRE, QUE LLEGAS TARDE!', '¡EL CONCURSO ES POR ALLÁ!'] },
       // ── BARRIO CHINO Y MERCADO CENTRAL ──
       { type: 'portadaChina', x0: 476, x1: 487, y: 42 },
-      { type: 'checkpoint', x: 472, y: ST },
-      // TODO-GUIA: hint '¡CAE EN EL TOLDO!' junto al primer toldo (x 488)
+      { type: 'checkpoint', x: 472, y: ST, help: 'LOS TOLDOS TE HACEN REBOTAR' },
+      { type: 'hint', x: 492.5, y: 43, text: '¡CAE EN EL TOLDO!', arrow: 'down', r: 6, pass: 1, dy: 4 },
       { type: 'toldo', x0: 490, x1: 495, y: 43, col: ['#2b6fb8', '#fffaf0'], goods: 'fruta' },
-      { type: 'limeno', x: 499, role: 'emoliente', line: '¡EMOLIENTE, CALIENTITO!' },
-      { type: 'limeno', x: 504, role: 'cambista', line: '¿DÓLARES? ¿CAMBIO?' },
+      { type: 'npc', x: 498.5, y: ST, model: 'emoliente', lines: ['¡EMOLIENTE, CALIENTITO!', '¿CON UÑA DE GATO?', '¡PARA LA GARÚA, CAUSA!'] },
+      { type: 'npc', x: 504.5, y: ST, model: 'cambista', lines: ['¿DÓLARES? ¿CAMBIO?', '¡A BUEN PRECIO, CASERITO!'] },
       { type: 'carretilla', x0: 488, x1: 556, speed: 1.8, load: 'naranja' },
       { type: 'toldo', x0: 512, x1: 517, y: 43, col: ['#c8322a', '#fffaf0'], goods: 'papa' },
-      // TODO-GUIA: prop — los farolitos del chifa se mecen y suenan al tocarlos
+      // los farolitos del chifa se mecen y suenan al tocarlos (escenario propio del capítulo)
       { type: 'farolitos', x0: 518, x1: 532, y: 41 },
-      { type: 'limeno', x: 526, role: 'ambulante', line: '¡A SOL, A SOL, A SOL!' },
-      { type: 'limeno', x: 535, role: 'cambista', line: '¡CAMBIO, DÓLAR, EURO!' },
+      { type: 'npc', x: 521.5, y: ST, model: 'mozo', lines: ['¡PASE, PASE, HAY CHAUFA!', '¡WANTÁN FRITO, CALIENTITO!'] },
+      { type: 'npc', x: 527.5, y: ST, model: 'ambulante', lines: ['¡A SOL, A SOL, A SOL!', '¡LLÉVATE TRES, CAUSA!'] },
+      { type: 'npc', x: 535.5, y: ST, model: 'cambista', lines: ['¡CAMBIO, DÓLAR, EURO!', '¿CUÁNTO CAMBIAS, PATA?'] },
+      { type: 'help', x0: 470, x1: 566, kind: 'carretilla', text: 'SALTA O SÚBETE A UN TOLDO' },
+      { type: 'help', x0: 470, x1: 566, kind: 'buzon', text: 'SALTA JUSTO EN EL BORDE' },
       { type: 'toldo', x0: 544, x1: 549, y: 43, col: ['#2f7a46', '#f6c94a'], goods: 'fruta' },
       { type: 'checkpoint', x: 554, y: ST },
-      { type: 'sign', x: 559, y: ST - 1, lines: ['¡ARRIBA!'], style: 'paper' },
+      { type: 'hint', x: 563, y: ST - 2, text: '¡A LAS AZOTEAS!', arrow: 'right', r: 7, pass: 3 },
       // ── LAS AZOTEAS ──
       ...BLD.map(b => ({ type: 'facade', x0: b[0], x1: b[1], y: b[2] })),
       { type: 'tank', x: 590, y: 35 }, { type: 'tank', x: 639, y: 38 }, { type: 'tank', x: 675, y: 39 },
       { type: 'sign', x: 570, y: 44.6, lines: ['CUIDADO', 'CON EL PERRO'], style: 'paper', col: '#1d1622' },
       { type: 'dog', x0: 566, x1: 572.5, y: 43 },
+      { type: 'help', x0: 566, x1: CASONA, kind: 'dog', text: 'SALTA AL PERRO Y SIGUE' },
+      { type: 'help', x0: 566, x1: CASONA, kind: 'fall', text: 'CAE EN LA ROPA PARA SUBIR' },
       // la ropa tendida llega hasta la pared del edificio alto: si caes encima, rebotas
       { type: 'clothesline', x0: 573, x1: 583, y: 41, base0: 43, base1: 43, hint: '¡SALTA SOBRE LA ROPA TENDIDA!' },
       { type: 'page', x: 578, y: 32 },
       { type: 'cable', x0: 594, y0: 33.5, x1: 604, y1: 36.5, shoes: true },
-      { type: 'checkpoint', x: 600.5, y: 38 },
+      { type: 'checkpoint', x: 600.5, y: 38, help: 'SALTA AL PERRO Y SIGUE' },
       { type: 'dog', x0: 605, x1: 614, y: 38 },
       { type: 'rebar', x: 621, y: 40 },
       { type: 'sign', x: 622, y: 41.6, lines: ['PROHIBIDO', 'ARROJAR BASURA'], style: 'paint', col: '#b8322a' },
@@ -1649,7 +1644,6 @@
     buzon: (d) => new Buzon(d),
     carretilla: (d) => new Carretilla(d),
     palomas: (d) => new Palomas(d),
-    limeno: (d) => new Limeno(d),
     grass: (d) => new Grass(d),
     pileta: (d) => new Pileta(d),
     plazaFondo: (d) => new PlazaFondo(d),
