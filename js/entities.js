@@ -861,7 +861,7 @@ class Puma extends Actor {
     const goat = g.player.riding; if (!(goat instanceof Cabra)) return;
     const f = goat.facing < 0 ? -1 : 1, sx = Math.round(goat.cx - 2 * f), top = Math.round(goat.y + goat.h - 20);
     const jit = this.t % 8 < 4 ? 0 : 1;   // forcejea
-    ctx.save(); ctx.translate(sx, top + jit); ctx.scale(f, 1); ctx.drawImage(img, -26, -6); ctx.restore();
+    ctx.save(); ctx.translate(sx, top + jit); ctx.scale(f, 1); ctx.drawImage(img, -38, -4); ctx.restore();
   }
   // al arrastrarlos, las patas con garras van por delante de la cabra
   drawFront(ctx, g) { if (this.state === 'carry') this.drawGrab(ctx, g, E.puma.grabFront); }
