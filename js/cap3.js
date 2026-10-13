@@ -733,6 +733,7 @@ const ART3 = (() => {
       if (on) this.carry = p.lastMover.dx;
       else if (p.onGround) this.carry = 0;
       else if (this.carry) p.x += this.carry;
+      this.limits(g, p);
       if (!inZone || g.state !== 'play') return;
       // sale cuando te subes o cuando ya estás al borde del andén un rato
       if (this.state === 'wait' && p.cx > this.platEnd - 5 * TS) { this.state = 'ready'; this.readyT = 0; g.audio('whistle'); }
@@ -750,7 +751,31 @@ const ART3 = (() => {
       if (this.warn && r && g.T % 3 === 0) g.particles.push({ x: r.x + r.w + GAP / 2 + (Math.random() * 6 - 3), y: this.roofY + 36, vx: Math.random() * 2 - 1, vy: -1 - Math.random(), life: 18, max: 18, col: '#ffe27a', size: 1, grav: 0.15 });
       if (this.state === 'go' && g.T % 9 === 0) { const fr = this.front(); g.particles.push({ x: fr.x + LOCO_W - 20, y: this.roofY - 2, vx: -this.v * 0.6, vy: -0.6, life: 50, max: 50, col: '#c8c2cc', size: 2, grav: -0.01 }); }
     }
+    // LÍMITES: el cerro de cada túnel es sólido (lo que ves es lo que chocas) y
+    // sobre el tren hay un techo invisible: nunca se salta por encima del monte.
+    // Debajo del cerro (en la boca y bajo sus faldas) te das con la cabeza; si
+    // llegas por el aire, te frena la ladera y caes de vuelta al techo del tren.
+    limits(g, p) {
+      const cy = this.roofY - 17, ceil = this.roofY - 62, prevTop = this.prevTop;
+      this.prevTop = p.y;
+      if (p.riding || p.cx < this.platEnd - 2 * TS || p.cx > this.stopX + 2 * TS) return;
+      if (p.y < ceil) { p.y = ceil; p.vy = Math.max(0, p.vy); }
+      for (const t of this.tunnels) {
+        const a = t.x0 - 64, b = t.x1 + 64;
+        if (p.x + p.w <= a || p.x >= b || p.y >= cy) continue;
+        if (prevTop != null && prevTop >= cy - 1) {
+          // saltaste debajo del cerro: cabezazo contra la roca
+          p.y = cy; if (p.vy < 0) { p.vy = 0.5; g.audio('land'); g.burst(p.cx, cy, 'rock', 4); }
+        } else {
+          // venías por el aire: la ladera te frena (y el tren sigue debajo)
+          const face = a + Math.max(0, cy - Math.min(p.y + p.h, cy)) / 1.1;
+          if (p.x + p.w > face) { p.x = face - p.w; p.vx = Math.min(0, p.vx); }
+        }
+      }
+      this.prevTop = p.y;
+    }
     onRespawn(g) {
+      this.prevTop = null;
       if (this.state === 'stop') return;
       this.carry = 0;
       if (this.cpTaken) {
@@ -816,7 +841,7 @@ const ART3 = (() => {
         // quedan por encima del tren, para no taparlo)
         const a = t.x0 - 64, b = t.x1 + 64;
         for (let x = a; x < b; x += 2) {
-          const edge = Math.min(x - a, b - x), top = cy - Math.min(150, edge * 1.1) - Math.round(hash(x >> 3) * 8);
+          const edge = Math.min(x - a, b - x), top = cy - Math.min(150, edge * 1.1) - Math.round(hash(x >> 3) * 6) - 2;
           R(ctx, '#6a6270', x, top, 2, cy - top);
           for (let y = top + 8; y < cy; y += 6) if (hash((x >> 1) * 13 + (y >> 1) * 7) > 0.72) R(ctx, '#57505e', x, y, 2, 2);
           R(ctx, '#3f7a4c', x, top - 4, 2, 8); R(ctx, '#2f5a3c', x, top + 4, 2, 3);
@@ -885,6 +910,93 @@ const ART3 = (() => {
         R(ctx, '#c9ced6', bx + Math.round(Math.cos(a) * 2), y + 44 + Math.round(Math.sin(a) * 2), 1, 1);
       }
     }
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // CÓNDOR DEL TREN: el águila del Cap. 1 (mismos estados y la misma alerta en
+  // pantalla) con un ataque fijo y fácil de leer. Al pasar por `at` aparece y
+  // planea sobre ti (su sombra cruza el techo); cuando no hay túnel ni vagón
+  // por soltarse cerca, chilla, tiembla con su "!" y baja en vuelo rasante a la
+  // altura de tu cabeza, de adelante hacia atrás. Agachado o saltando, pasa.
+  class TrainCondor extends Eagle {
+    constructor(def) {
+      super({ rowMin: 0, rowMax: 0 });
+      this.at = def.at * TS; this.armed = true; this.w = 22; this.h = 8;
+      // la primera vez, la pista de la guía va pegada al niño
+      if (def.hint) this.tip = EXTRA_ENTITIES.hint({ x: 0, y: 0, text: def.hint, key: 'down', r: 4, pass: 4, vr: 8, dy: 6, when: () => this.state === 'windup' || this.state === 'dive' });
+    }
+    get dangerous() { const p = Game.player; return this.state === 'dive' && !p.crouching && !p.riding; }
+    get hitbox() { return { x: this.x + 3, y: this.y + 1, w: this.w - 6, h: this.h - 2 }; }
+    // ¿hay sitio para el ataque? ni túneles ni enganches que se sueltan en los próximos metros
+    safe(T, p) {
+      if (T.warn || (T.state !== 'go' && T.state !== 'brake')) return false;
+      const d = T.decs[T.nextDec];
+      if (d != null && T.F + 34 * TS > d) return false;   // el ataque entero (~11 casillas) más el aviso del enganche
+      const dp = T.decs[T.nextDec - 1];
+      if (dp != null && T.F < dp + 10 * TS) return false;  // ni justo después de que se suelte uno
+      return !T.tunnels.some(t => t.x1 + 64 > p.x - 2 * TS && t.x0 - 64 < p.x + 16 * TS);
+    }
+    onRespawn(g) { this.state = 'idle'; this.x = this.y = -9999; this.t = 0; this.armed = g.spawn.x < this.at + 2 * TS; }
+    update(g) {
+      const T = currentTrain, p = g.player; this.animT++; this.t++;
+      if (!T) return;
+      const roof = T.roofY, rel = T.v;
+      switch (this.state) {
+        case 'idle':
+          if (this.armed && p.cx > this.at && T.onTrain(p) && (T.state === 'go' || T.state === 'brake')) {
+            this.armed = false; this.state = 'circle'; this.t = 0; this.x = p.cx + VIEW.w * 0.6; this.y = roof - 100; this.face = -1; g.audio('caw');
+          }
+          break;
+        case 'circle': {
+          // planea por encima, un poco adelante: se ve venir
+          this.angle += 0.035;
+          const tx = p.cx + 40 + Math.cos(this.angle) * 50, ty = roof - 84 + Math.sin(this.angle * 2) * 8;
+          const ox = this.x; this.x += rel + (tx - this.x) * 0.05; this.y += (ty - this.y) * 0.05; this.face = this.x - rel >= ox ? 1 : -1;
+          if (this.t > 60 && this.safe(T, p)) { this.state = 'windup'; this.t = 0; g.audio('screech'); }
+          else if (this.t > 900) { this.state = 'leave'; this.t = 0; }   // no hubo hueco: se va
+          break;
+        }
+        case 'windup': {
+          // se coloca adelante, a la altura de tu cabeza, y tiembla
+          const tx = p.cx + 100, ty = roof - 13;
+          this.x += rel + (tx - this.x) * 0.08; this.y += (ty - this.y) * 0.08; this.face = -1;
+          this.aimX = p.cx; this.aimY = roof - 10;
+          if (this.t > 42) { this.state = 'dive'; this.t = 0; g.audio('swoosh'); g.shake(2, 8); }
+          break;
+        }
+        case 'dive':
+          // rasante sobre el techo, hacia atrás
+          this.x += rel - 5; this.y = roof - 13 + Math.sin(this.t * 0.3);
+          if (this.x < p.cx - 70 || this.t > 60) { this.state = 'recover'; this.t = 0; this.dx = rel - 3; }
+          break;
+        case 'recover':
+          this.x += this.dx; this.y -= 1.6;
+          if (this.t > 60) { this.state = 'idle'; this.x = this.y = -9999; }
+          break;
+        case 'leave':
+          this.x += rel + 2; this.y -= 1.4;
+          if (this.t > 120) { this.state = 'idle'; this.x = this.y = -9999; }
+          break;
+      }
+      if (this.tip) { this.tip.x = p.cx; this.tip.y = p.y + p.h; this.tip.update(g); }
+    }
+    draw(ctx, g) {
+      if (this.state === 'idle') return;
+      const T = currentTrain;
+      // su sombra cruza el techo del tren mientras planea
+      if ((this.state === 'circle' || this.state === 'windup') && T) {
+        const k = Math.max(0.15, 0.45 - (T.roofY - this.y) / 260);
+        ctx.fillStyle = 'rgba(20,14,30,' + k.toFixed(2) + ')'; ctx.fillRect(Math.round(this.cx - 9), T.roofY + 1, 18, 2);
+      }
+      if (this.state === 'windup') {
+        const g2 = Game, cy = Math.max(g2.cam.y + 4, Math.min(g2.cam.y + VIEW.h - 20, this.y - 18)), cx = Math.max(g2.cam.x + 10, Math.min(g2.cam.x + VIEW.w - 10, this.cx));
+        if (Math.floor(this.t / 5) % 2 === 0) drawText(ctx, '!', Math.round(cx), Math.round(cy), { scale: 2, color: '#ffffff', align: 'center', shadow: true, shadowColor: '#2a1f2d' });
+      }
+      const img = E.condorBig[this.state === 'dive' ? 1 : Math.floor(this.animT / 9) % 2];
+      const sh = this.state === 'windup' ? (this.t % 4 < 2 ? 1 : -1) : 0;
+      ctx.drawImage(this.face < 0 ? flipS(img) : img, Math.round(this.cx - 14 + sh), Math.round(this.y - 2));
+    }
+    drawFront(ctx) { if (this.tip) this.tip.drawFront(ctx); }
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -1294,7 +1406,8 @@ const ART3 = (() => {
   }
   const ENDING = {
     frames: SC[SC.length - 1], music: 'c3condor',
-    start() { VOICE.play('gana', 700); },
+    // la voz del egreso: un clip 'egreso' de voces/manifest.js; si no hay, la de ganar
+    start() { VOICE.play(VOICE_MANIFEST.egreso && VOICE_MANIFEST.egreso.length ? 'egreso' : 'gana', 700); },
     skip(t) { return SC.find(s => s > t + 1) || SC[SC.length - 1]; },
     draw(ctx, W, H, t, tick) {
       const s = SC.findIndex((v, i) => t >= v && t < (SC[i + 1] || 1e9)), u = t - SC[s], len = SC[s + 1] - SC[s];
@@ -1375,6 +1488,7 @@ const ART3 = (() => {
     awning: (d) => new Awning(d),
     train: (d) => new Train(d),
     wagon: (d) => new Wagon(d),
+    trainCondor: (d) => new TrainCondor(d),
     classPhoto: (d) => new ClassPhoto(d),
   });
   window.CAP3 = { get train() { return currentTrain; }, get balsa() { return currentBalsa; }, ending: ENDING };
@@ -1660,6 +1774,12 @@ const ART3 = (() => {
         tunnels: [[50, 60], [150, 162], [188, 200], [270, 280], [360, 372]].map(([a, b]) => [PE + a, PE + b]),
         decouples: [120, 250, 330].map(d => PE + d), cp: PE + 125 },
       ...[0, 1, 2, 3, 4].map(i => ({ type: 'wagon', i })),
+      // tres cóndores bajan a atacar donde no hay túnel ni enganche por soltarse (el primero trae su pista)
+      { type: 'trainCondor', at: PE + 62, hint: ['¡CÓNDOR!', '¡AGÁCHATE!'] },
+      { type: 'trainCondor', at: PE + 190 },
+      { type: 'trainCondor', at: PE + 372 },
+      { type: 'help', x0: PE, x1: AC, kind: 'tunnel', text: 'EN EL TÚNEL MANTÉN ABAJO' },
+      { type: 'help', x0: PE, x1: AC, kind: 'eagle', text: 'SI BAJA EL CÓNDOR, MANTÉN ABAJO' },
       // ── MACHU PICCHU ──
       { type: 'checkpoint', x: AC + 3, y: ROOF },
       { type: 'tourist', x: AC + 9, y: ROOF, v: 1 },
@@ -1678,6 +1798,8 @@ const ART3 = (() => {
       { type: 'tourist', x: AC + 142, y: 40, v: 1 },
       { type: 'classPhoto', x: AC + 157, y: 40 },
     ],
+    // la flecha «¡POR AQUÍ!» de la guía apunta al final a tu sitio en la foto
+    goal: { x: AC + 160.5, y: 40 },
     renderBack: renderBack3,
     renderScreen: renderScreen3,
   };
@@ -2133,10 +2255,11 @@ const ART3 = (() => {
       tunnel: '¡AGÁCHATE EN EL TÚNEL, PE!',
       get water() { return Game.player && Game.player.cx < SHORE * TILE ? '¡CHAPUZÓN EN EL TITICACA!' : '¡TE BAÑASTE EN EL URUBAMBA!'; },
       rock: '¡PIEDRA SUELTA, CAUSA!',
+      eagle: '¡EL CÓNDOR TE TUMBÓ, CAUSA!',
       fall: '¡TE FUISTE AL BARRANCO!',
       default: '¡ASU MARE!',
     },
-    tips: ['BALSA DE TOTORA: SÚBETE Y TE LLEVA.', 'ALPACA: TÓCALA PARA MONTARLA. SALTA TEJADOS.', 'TREN: EN LOS TÚNELES MANTÉN ABAJO.', 'SI SE SUELTA TU VAGÓN, ¡CORRE ADELANTE!'],
+    tips: ['BALSA DE TOTORA: SÚBETE Y TE LLEVA.', 'ALPACA: TÓCALA PARA MONTARLA. SALTA TEJADOS.', 'TREN: TÚNEL O CÓNDOR, MANTÉN ABAJO.', 'SI SE SUELTA TU VAGÓN, ¡CORRE ADELANTE!'],
     win: {
       title: '¡LLEGASTE A LA FOTO!',
       onTime: ['¡SALISTE EN LA FOTO!', '¡SALISTE EN LA FOTO DE LA PROMO, CAUSA!'],
