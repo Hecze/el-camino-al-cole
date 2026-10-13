@@ -797,10 +797,13 @@ class Puma extends Actor {
     } else if (this.state === 'gone') {
       if (this.t > 200) { this.onRespawn(); this.cool = 90; }
     } else if (this.state === 'carry') {
-      this.vy = Math.min(this.vy + 0.28, 7); this.x += this.vx; this.y += this.vy; this.rot += 0.11 * this.face;
+      // cae con la cabra bien agarrada: sin dar vueltas, solo se inclina hacia
+      // abajo (de cabeza al vacío) y forcejea un poco
+      this.vy = Math.min(this.vy + 0.28, 7); this.x += this.vx; this.y += this.vy;
+      this.rot = this.face * (Math.min(0.45, this.t * 0.03) + (this.t % 8 < 4 ? 0.04 : -0.04));
       if (goat) {
-        // el puma va prendido de la cabra (encima de ella); el niño, montado
-        goat.x = this.cx - goat.w / 2 - this.face * 4; goat.y = this.cy - goat.h / 2 + 2; goat.vx = 0; goat.vy = 0;
+        // la cabra va entre sus patas delanteras (en el pecho del puma); el niño, montado
+        goat.x = this.cx + this.face * 9 - goat.w / 2; goat.y = this.cy - goat.h / 2 - 3; goat.vx = 0; goat.vy = 0; goat.facing = this.face;
         p.x = goat.cx - p.w / 2; p.y = goat.y - p.h + 4; p.vx = 0; p.vy = 0;
       }
       if (this.t % 5 === 0) g.burst(this.cx, this.cy, 'dust', 2);
@@ -842,7 +845,8 @@ class Puma extends Actor {
     ctx.fillStyle = '#5d5768'; ctx.fillRect(rx, ry, rw, 6); ctx.fillRect(rx + 3, ry + 6, rw - 6, 3); ctx.fillRect(rx + 9, ry + 9, rw - 18, 2);
     ctx.fillStyle = '#8a8296'; ctx.fillRect(rx + 1, ry, rw - 2, 2);
     if (this.snowy) { ctx.fillStyle = '#f4f8ff'; ctx.fillRect(rx, ry - 1, rw, 2); }
-    if (this.state === 'gone' || this.state === 'carry') return;
+    if (this.state === 'gone') return;
+    if (this.state === 'carry') { this.drawLeap(ctx); return; }   // detrás de la cabra: se ve que la lleva
     if (this.state === 'windup') this.drawRoute(ctx, 1);
     if (this.state === 'wait' || this.state === 'windup' || this.state === 'hold') {
       const wind = this.state === 'windup', hold = this.state === 'hold';
@@ -860,8 +864,18 @@ class Puma extends Actor {
     ctx.drawImage(this.face < 0 ? flipS(img) : img, -Math.round(img.width / 2), -Math.round(img.height / 2));
     ctx.restore();
   }
-  // al arrastrarlos se dibuja delante de la cabra y del niño: se ve prendido de ellos
-  drawFront(ctx) { if (this.state === 'carry') this.drawLeap(ctx); }
+  // al arrastrarlos, sus patas delanteras (con las garras) van por delante de la
+  // cabra: se ve que la tiene agarrada
+  drawFront(ctx) {
+    if (this.state !== 'carry') return;
+    ctx.save(); ctx.translate(Math.round(this.cx), Math.round(this.cy)); ctx.rotate(this.rot); ctx.scale(this.face, 1);
+    for (const [x, y] of [[5, -6], [12, -3]]) {
+      ctx.fillStyle = '#1e120c'; ctx.fillRect(x - 1, y - 1, 5, 9);
+      ctx.fillStyle = '#b97f42'; ctx.fillRect(x, y, 3, 7);
+      ctx.fillStyle = '#ffffff'; ctx.fillRect(x + 3, y + 5, 1, 1); ctx.fillRect(x + 3, y + 3, 1, 1);
+    }
+    ctx.restore();
+  }
 }
 Puma.WIND_T = 36; Puma.LEAP_T = 24; Puma.HOLD_T = 80; Puma.GR = 0.3;
 
