@@ -144,6 +144,12 @@ const AUDIO = (() => {
     honk:    () => { const t = now(); [0, 0.16].forEach(d => { tone(415, 0.13, 'square', 0.12, t + d); tone(523, 0.13, 'square', 0.1, t + d); }); },
     ouch:    () => { tone(900, 0.18, 'triangle', 0.22, 0, 500); noise(0.08, 0.2, 3000, 0, { type: 'highpass' }); },
     bark:    () => { const t = now(); [0, 0.2].forEach(d => { tone(520, 0.09, 'sawtooth', 0.2, t + d, 260); noise(0.08, 0.25, 900, t + d, { type: 'bandpass', q: 1.5 }); }); },
+    swish:   () => { noise(0.18, 0.12, 2500, 0, { type: 'bandpass', q: 0.8, sweep: 900, attack: 0.04 }); },
+    engine:  () => { const t = now(); for (let i = 0; i < 6; i++) tone(70 + (i % 2) * 18, 0.08, 'sawtooth', 0.1, t + i * 0.07, 60); },
+    shout:   () => { const t = now(); [0, 0.1, 0.2].forEach((d, i) => tone(330 + i * 40, 0.08, 'square', 0.05, t + d, 300)); },
+    brake:   () => { tone(1800, 0.3, 'sawtooth', 0.04, 0, 1500); noise(0.3, 0.1, 3000, 0, { type: 'highpass' }); },
+    flap:    () => { noise(0.12, 0.25, 1200, 0, { type: 'bandpass', q: 0.7 }); },
+    applause: () => { const t = now(); for (let i = 0; i < 26; i++) noise(0.04, 0.12 + Math.random() * 0.1, 2000 + Math.random() * 2000, t + i * 0.045 + Math.random() * 0.03, { type: 'bandpass', q: 1.2 }); },
     nope:    () => { tone(220, 0.12, 'square', 0.12); tone(165, 0.18, 'square', 0.12, now() + 0.1); },
     win:     () => { [523, 659, 784, 1046, 784, 1046, 1318].forEach((f, i) => tone(f, 0.3, 'triangle', 0.24, now() + 0.15 + i * 0.13)); },
   };
@@ -324,6 +330,56 @@ const AUDIO = (() => {
       quena(f, dur - n * g, vol, t + n * g, 0.995, true);
     } else quena(f, dur, vol, t, 0.89);                                                                            // glissando desde abajo
   }
+  // ── instrumentos de la costa (capítulo 2) ─────────────────────────────────
+  // Cada canción elige con banderas: leadInst 'guitar' | 'eguitar', lead2Inst
+  // 'none', strumInst 'guitar', kit 'cajon' | 'chicha', shaker 'guiro'. Sin
+  // banderas suena el conjunto andino de siempre.
+  // guitarra criolla: cuerda de nylon, cálida
+  function guitar(f, dur, vol, t) {
+    const p = pluckBuf(f, 1.2, 0.7, 0.9, 0.35);
+    playBuf(p, vol * 1.6, t); playBuf(p, vol * 0.5, t + 0.004, melBus, 1.002);
+  }
+  // guitarra eléctrica de la chicha: brillante, con su "wah" y algo de trémolo
+  let wahBus = null;
+  function getWahBus() {
+    if (wahBus) return wahBus;
+    const pk = ctx.createBiquadFilter(); pk.type = 'peaking'; pk.frequency.value = 1300; pk.Q.value = 2.2; pk.gain.value = 9;
+    const lfoO = ctx.createOscillator(); lfoO.frequency.value = 0.7; const lg = ctx.createGain(); lg.gain.value = 500;
+    lfoO.connect(lg); lg.connect(pk.frequency); lfoO.start();
+    pk.connect(melBus);
+    return (wahBus = pk);
+  }
+  function eguitar(f, dur, vol, t) {
+    const bus = getWahBus(), p = pluckBuf(f, 0.9, 0.96, 0.6, 0.15);
+    playBuf(p, vol * 1.5, t, bus); playBuf(p, vol * 0.9, t + 0.012, bus, 1.006);   // eco corto y desafinado: el sonido chichero
+  }
+  function guitarStrum(chord, vol, t, up) {
+    const notes = CHORDS[chord]; if (!notes) return;
+    const seq = up ? notes.slice().reverse() : notes;
+    seq.forEach((n, i) => playBuf(pluckBuf(freq(n) / 2, 1.0, 0.55, 0.7, 0.4), vol * 1.7, t + i * 0.012 + Math.random() * 0.003));
+  }
+  // cajón peruano: golpe grave al centro y "slap" agudo en el borde
+  function cajon(slap, vol, t) {
+    if (!slap) {
+      const o = ctx.createOscillator(); o.type = 'sine'; o.frequency.setValueAtTime(150, t); o.frequency.exponentialRampToValueAtTime(55, t + 0.12);
+      const g = ctx.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + 0.004); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.18);
+      o.connect(g); g.connect(musicGain); o.start(t); o.stop(t + 0.2);
+      noise(0.06, vol * 0.4, 400, t, { out: musicGain });
+    } else {
+      noise(0.07, vol * 0.7, 2600, t, { type: 'bandpass', q: 0.9, out: musicGain });
+      noise(0.03, vol * 0.4, 5000, t, { type: 'highpass', out: musicGain });
+    }
+  }
+  // timbal de la cumbia: parche agudo con algo de metal
+  function timbal(vol, t) {
+    const o = ctx.createOscillator(); o.type = 'triangle'; o.frequency.setValueAtTime(420, t); o.frequency.exponentialRampToValueAtTime(330, t + 0.1);
+    const g = ctx.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol * 0.5, t + 0.003); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.14);
+    o.connect(g); g.connect(musicGain); o.start(t); o.stop(t + 0.16);
+    noise(0.05, vol * 0.5, 3200, t, { type: 'bandpass', q: 2, out: musicGain });
+  }
+  // güiro: raspado corto
+  function guiro(vol, t) { noise(0.07, vol, 4200, t, { type: 'bandpass', q: 5, sweep: 2600, attack: 0.02, out: musicGain }); }
+
   function schedule() {
     if (!musicOn || !ctx || !song) return;
     const s = song;
@@ -335,8 +391,12 @@ const AUDIO = (() => {
         const local = st % trk.length;
         for (const ev of trk.events) if (ev.step === local) {
           if (fn === 'bass') bass(freq(ev.note), ev.len * spb * 0.95, 0.32, nextTime);
-          else if (fn === 'lead') quenaOrn(freq(ev.note), ev.len * spb * 0.92, 0.17, nextTime, s.orn || 0);
-          else zampona(freq(ev.note), ev.len * spb * 0.95, s.lead2Vol || 0.11, nextTime);
+          else if (fn === 'lead') {
+            if (s.leadInst === 'guitar') guitar(freq(ev.note), ev.len * spb, 0.17, nextTime);
+            else if (s.leadInst === 'eguitar') eguitar(freq(ev.note), ev.len * spb, 0.15, nextTime);
+            else quenaOrn(freq(ev.note), ev.len * spb * 0.92, 0.17, nextTime, s.orn || 0);
+          }
+          else if (s.lead2Inst !== 'none') zampona(freq(ev.note), ev.len * spb * 0.95, s.lead2Vol || 0.11, nextTime);
         }
       }
       // charango: un acorde por compás de 2/4 (8 semicorcheas)
@@ -344,12 +404,15 @@ const AUDIO = (() => {
       const chord = s.chords[bar % s.chords.length];
       const pat = s.strum || 'D.DU.DU.';
       const c = pat[inBar];
-      if (c === 'D' || c === 'U') charango(chord, c === 'D' ? 0.05 : 0.035, nextTime, c === 'U');
+      if (c === 'D' || c === 'U') (s.strumInst === 'guitar' ? guitarStrum : charango)(chord, c === 'D' ? 0.05 : 0.035, nextTime, c === 'U');
       // bombo + shaker
       const dr = (s.drums || 'B...b.B.')[inBar];
-      if (dr === 'B') bombo(0.5, nextTime); else if (dr === 'b') bombo(0.3, nextTime);
+      if (s.kit === 'cajon') { if (dr === 'B') cajon(false, 0.55, nextTime); else if (dr === 'b') cajon(true, 0.4, nextTime); }
+      else if (s.kit === 'chicha') { if (dr === 'B') bombo(0.45, nextTime); else if (dr === 'b') timbal(0.4, nextTime); }
+      else if (dr === 'B') bombo(0.5, nextTime); else if (dr === 'b') bombo(0.3, nextTime);
       // chajchas en corcheas, acentuando el pulso (no a contratiempo de los demás)
-      if (s.shaker && st % 2 === 0) chajchas(inBar % 4 === 0 ? 0.05 : 0.03, nextTime);
+      if (s.shaker === 'guiro') { if (st % 2 === 1) guiro(inBar % 4 === 3 ? 0.06 : 0.035, nextTime); }
+      else if (s.shaker && st % 2 === 0) chajchas(inBar % 4 === 0 ? 0.05 : 0.03, nextTime);
       nextTime += spb; step++;
     }
   }
