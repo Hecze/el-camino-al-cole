@@ -44,25 +44,32 @@ function liquidAt(level, px, py) {
 //   'X'  la quena toca la parte X, la zampoña sostiene notas largas debajo
 //   'X*' diálogo: la quena pregunta 2 compases y la zampoña responde 2
 //   'X~' respiro: la quena descansa y la zampoña canta notas largas
-const BASS_OF = { Am: ['A2', 'E2'], G: ['G2', 'D2'], F: ['F2', 'C3'], C: ['C3', 'G2'], Em: ['E2', 'B2'], Dm: ['D2', 'A2'], D: ['D2', 'A2'], E: ['E2', 'B2'], Bb: ['Bb2', 'F2'] };
+const BASS_OF = { Am: ['A2', 'E2'], G: ['G2', 'D2'], F: ['F2', 'C3'], C: ['C3', 'G2'], Em: ['E2', 'B2'], Dm: ['D2', 'A2'], D: ['D2', 'A2'], E: ['E2', 'B2'], Bb: ['Bb2', 'F2'],
+  Gm: ['G2', 'D2'], A: ['A2', 'E2'], A7: ['A2', 'E2'], E7: ['E2', 'B2'], G7: ['G2', 'D2'], 'C#7': ['C#3', 'G#2'], 'F#m': ['F#2', 'C#3'], 'F#7': ['F#2', 'C#3'], Bm: ['B2', 'F#2'], B7: ['B2', 'F#2'] };
 // bajo de huayno: fundamental con anticipación + quinta (golpes en 0, 3 y 4)
 function huaynoBass(chords) { return chords.map(c => { const [r, f] = BASS_OF[c]; return `${r}:3 ${r}:1 ${f}:4`; }).join(' '); }
 function slowBass(chords) { return chords.map(c => `${BASS_OF[c][0]}:4 ${BASS_OF[c][1]}:4`).join(' '); }
 function cumbiaBass(chords) { return chords.map(c => { const [r, f] = BASS_OF[c]; return `${r}:3 ${f}:1 ${r}:2 ${f}:2`; }).join(' '); }
+// bajo de vals (3/4): bordón en el tiempo 1, alternando fundamental y quinta; la guitarra hace el 2 y el 3
+function valsBass(chords) { return chords.map((c, i) => `${BASS_OF[c][i % 2]}:4 r:8`).join(' '); }
 // zampoña grave (malta): una nota del acorde por debajo de la quena, con
 // notas comunes entre acordes para que la voz se mueva poco
 const SIKU = { Am: 'E4', G: 'D4', F: 'C4', C: 'E4', Em: 'E4', Dm: 'D4', D: 'D4', E: 'E4', Bb: 'D4' };
+// base.bar: semicorcheas por compás (8 = 2/4, por defecto; 12 = 3/4 del vals)
 function makeSong(base, parts, form, bassFn) {
-  const chords = [], lead = [], lead2 = [];
+  const chords = [], lead = [], lead2 = [], bl = base.bar || 8;
+  const siku = (c) => SIKU[c] ? `${SIKU[c]}:${bl - 2} r:2` : `r:${bl}`;
   for (const k0 of form) {
     const k = k0.replace(/[*~]/g, ''), P = parts[k];
     const bars = P.mel.split('|').map(x => x.trim());
     if (bars.length !== P.ch.length) throw new Error('parte ' + k + ': compases y acordes no coinciden');
     bars.forEach((b, i) => {
+      const len = b.split(/\s+/).reduce((n, t) => n + parseInt(t.split(':')[1] || '1', 10), 0);
+      if (len !== bl) throw new Error(`parte ${k}, compás ${i + 1}: dura ${len} y debe durar ${bl}`);
       chords.push(P.ch[i]);
-      if (k0.endsWith('~')) { lead.push('r:8'); lead2.push(`${SIKU[P.ch[i]]}:6 r:2`); }
-      else if (k0.endsWith('*') && i % 4 >= 2) { lead.push('r:8'); lead2.push(b); }
-      else { lead.push(b); lead2.push(`${SIKU[P.ch[i]]}:6 r:2`); }
+      if (k0.endsWith('~')) { lead.push(`r:${bl}`); lead2.push(siku(P.ch[i])); }
+      else if (k0.endsWith('*') && i % 4 >= 2) { lead.push(`r:${bl}`); lead2.push(b); }
+      else { lead.push(b); lead2.push(siku(P.ch[i])); }
     });
   }
   return Object.assign({}, base, { chords, lead: lead.join(' '), lead2: lead2.join(' '), bass: bassFn(chords) });
@@ -89,6 +96,31 @@ const SONGS = {
           mel: 'A5:1 G5:1 E5:1 G5:1 A5:2 A5:2 | G5:1 E5:1 D5:1 E5:1 G5:2 G5:2 | A5:1 G5:1 E5:1 G5:1 A5:2 C6:2 | A5:2 G5:2 E5:4 | E5:1 D5:1 C5:1 D5:1 E5:2 E5:2 | G5:1 E5:1 D5:1 E5:1 C5:2 C5:2 | D5:1 C5:1 B4:1 C5:1 D5:2 B4:2 | A4:2 A4:2 A4:4' },
   }, ['A', 'B*', 'A2', 'C~', 'B', 'F'], huaynoBass),
 
+  // ADIÓS PUEBLO DE AYACUCHO (huayno ayacuchano anónimo, siglo XIX; dominio
+  // público): transcripción propia en La menor para quena, zampoña y charango.
+  // Cotejada con la melodía que recoge la tablatura de charango del CEMDUC-PUCP
+  // (solo la línea melódica; acordes y arreglo son nuestros). Original en 2/8:
+  // aquí cada compás de 2/4 junta dos de 2/8.
+  //  I  intro "mi re | do. mi | mi re | do. mi | mi re | do si do | re si | la"   confianza alta
+  //  A  "A-diós pue-blo de A-ya-cu-cho, per-las-cha-llay":
+  //     mi la | la sol# la~ | la do | la | la sol mi | sol | la la | sol sol sol~ |
+  //     mi re | do. mi~ | re do | la. do | la sol mi                              confianza alta
+  //  B  igual a A desde el 4.º compás; empieza "do re mi (tresillo) | mi re mi~ | mi la"
+  //     (el tresillo va como 1-1-2 semicorcheas)                                  confianza media-alta
+  //  acordes (Am, C, G, E): propios, en el estilo del huayno                     confianza media
+  ayacucho: makeSong({ bpm: 100, vol: 0.28, strum: 'D.DUD.DU', drums: 'B..bB...', shaker: true, orn: 0.25, lead2Vol: 0.12 }, {
+    I:  { ch: ['C', 'C', 'Am', 'Am', 'Am'],
+          mel: 'E5:2 D5:2 C5:3 E5:1 | E5:2 D5:2 C5:3 E5:1 | E5:2 D5:2 C5:2 B4:1 C5:1 | D5:2 B4:2 A4:4 | r:4 E5:2 A5:2' },
+    // A con la 1.ª casilla: el "A-diós" de la vuelta cae al final del compás anterior
+    A:  { ch: ['Am', 'Am', 'C', 'G', 'C', 'Am'],
+          mel: 'A5:1 G#5:1 A5:3 A5:1 C6:2 | A5:4 A5:1 G5:2 E5:1 | G5:4 A5:2 A5:2 | G5:2 G5:1 G5:2 E5:2 D5:1 | C5:3 E5:2 D5:2 C5:1 | A4:3 C5:1 A4:1 G4:1 E4:2' },
+    // la vuelta de A, con la 2.ª casilla (termina en la)
+    A2: { ch: ['Am', 'Am', 'C', 'G', 'C', 'Am'],
+          mel: 'E5:2 A5:2 A5:1 G#5:1 A5:2 | -:1 A5:1 C6:2 A5:4 | A5:1 G5:2 E5:1 G5:4 | A5:2 A5:2 G5:2 G5:1 G5:1 | -:1 E5:2 D5:1 C5:3 E5:1 | -:1 D5:2 C5:1 A4:4' },
+    B:  { ch: ['C', 'C', 'C', 'G', 'C', 'Am'],
+          mel: 'C5:1 D5:1 E5:2 E5:2 D5:1 E5:1 | -:1 E5:1 A5:2 G5:4 | A5:1 G5:2 E5:1 G5:4 | A5:2 A5:2 G5:2 G5:1 G5:1 | -:1 E5:2 D5:1 C5:3 E5:1 | -:1 D5:2 C5:1 A4:4' },
+  }, ['I', 'A', 'A2', 'B', 'B*'], huaynoBass),
+
   // el Apu: solemne
   apu: makeSong({ bpm: 104, vol: 0.28, strum: 'D...D.U.', drums: 'B...B...', orn: 0.25, lead2Vol: 0.13 }, {
     A: { ch: ['Dm', 'Dm', 'Bb', 'C', 'Dm', 'F', 'C', 'Dm'],
@@ -96,6 +128,14 @@ const SONGS = {
     B: { ch: ['Bb', 'F', 'C', 'Am', 'Bb', 'F', 'C', 'Dm'],
          mel: 'F5:4 D5:2 F5:2 | A5:6 C6:2 | G5:4 E5:2 G5:2 | A5:8 | F5:4 D5:2 F5:2 | C6:4 A5:2 F5:2 | E5:3 G5:1 E5:2 C5:2 | D5:8' },
   }, ['A', 'B', 'A*', 'B~'], slowBass),
+
+  // EL CÓNDOR PASA (Daniel Alomía Robles, 1913; dominio público): la frase
+  // inicial del yaraví, transcrita en la menor para quena y zampoña. Suena una
+  // vez al llegar a la cumbre del Apu; el último compás es silencio.
+  condorPasa: makeSong({ bpm: 84, vol: 0.3, strum: 'D...D.U.', drums: 'B...b...', orn: 0.25, lead2Vol: 0.12 }, {
+    A: { ch: ['Am', 'Am', 'Am', 'C', 'Am', 'E', 'Am', 'Am'],
+         mel: 'r:6 E4:2 | A4:2 G#4:2 A4:2 B4:2 | C5:2 B4:2 C5:2 D5:2 | E5:4 G5:2 E5:2 | D5:2 C5:2 A4:4 | E5:3 D5:1 C5:2 B4:2 | A4:8 | r:8' },
+  }, ['A'], slowBass),
 
   // carnavalito del huaico: rápido y urgente
   huayco: makeSong({ bpm: 152, vol: 0.28, strum: 'D.DUD.DU', drums: 'B..bB..b', shaker: true, orn: 0.2, lead2Vol: 0.13 }, {
@@ -184,6 +224,8 @@ const BIRDS = [];
 // pasto para la cabra: algo apartado del camino (cuesta ir a por él)
 const HERBS = [];
 MTN.up.forEach((l, i) => { if (i % 4 === 2) HERBS.push({ type: 'herb', x: mid(l) + (i % 8 === 2 ? 3 : -3), y: l[1] - 3 }); });
+// hojitas de coca para el soroche: en el centro de las salientes altas, donde rebota la cabra
+const COCA = [20, 24, 28].map(i => ({ type: 'coca', x: mid(MTN.up[i]) - 0.5, y: MTN.up[i][1] - 1 }));
 // puntos de control en la montaña (reapareces montado en la cabra)
 
 // Silueta de la montaña calculada a partir del camino: cada saliente queda
@@ -213,6 +255,54 @@ const SWID = 120;        // ancho de la selva baja
 const SCH = SV + SWID;   // donde empieza el pueblo ribereño del colegio
 const sx = (lx) => SV + lx;
 
+// ── GUÍA (js/guide.js): pistas antes de cada mecánica nueva, gente que habla,
+// escenario que reacciona y ayudas si te caes seguido en el mismo tramo ─────
+const onFoot = (g) => !g.player.riding, onLlama = (g) => g.player.riding instanceof Llama, onGoat = (g) => g.player.riding instanceof Cabra;
+const GUIA = [
+  // EL VALLE
+  { type: 'npc', x: 2.75, y: G, model: 'mama', ghost: true, r: 9, lines: ['¡YA SON LAS SEIS Y VEINTE, HIJITO!', '¡SÚBETE A LA LLAMA, CORRE!', '¡NO TE OLVIDES TU TAREA!'] },
+  { type: 'hint', x: 10.5, y: G, text: '¡SÚBETE A LA LLAMA!', key: 'right', arrow: 'down', r: 10, pass: 1, dy: 22, when: onFoot },
+  { type: 'hint', x: 13.5, y: G, text: 'SALTA', key: 'jump', r: 3, pass: 1.5, when: onLlama },
+  { type: 'prop', kind: 'gallina', x: 18, y: G }, { type: 'prop', kind: 'cuy', x: 22, y: G },
+  { type: 'npc', x: 26, y: G, model: 'pastor', lines: ['¡BUENOS DÍAS, WAWA!', 'SALTA LAS PIRCAS CON LA LLAMA', '¡VAS TARDE, CAUSA!'] },
+  { type: 'prop', kind: 'flor', x: 29, y: G }, { type: 'prop', kind: 'gallina', x: 35, y: G, flip: true },
+  { type: 'npc', x: 41, y: G - 2, model: 'senora', lines: ['¡TU HOJA SE VOLÓ A LA PIRCA!', '¡CHOCLITO CON QUESO, CASERITO!', 'EL PUENTE AGUANTA, CRUZA NOMÁS'] },
+  { type: 'prop', kind: 'olla', x: 44, y: G - 2, bonus: 1 },
+  { type: 'hint', x: 47, y: G - 4, text: '¡TU TAREA!', arrow: 'down', r: 6, pass: 0.5, dy: 4 },
+  { type: 'prop', kind: 'flor', x: 68, y: G - 2 }, { type: 'prop', kind: 'perro', x: 72, y: G },
+  { type: 'prop', kind: 'manta', x: 74.5, y: G, w: 3 },
+  { type: 'hint', x: 76, y: G, text: ['¡CAEN PIEDRAS!', 'SÁLTALAS'], key: 'jump', arrow: 'right', r: 6, pass: 3 },
+  { type: 'help', x0: 48, x1: 66, text: 'CRUZA EL PUENTE SIN PARAR' },
+  { type: 'help', x0: 70, x1: 92, kind: 'rock', text: '¡SALTA CUANDO LLEGUE LA PIEDRA!' },
+  // EL APU: la cabra, el pasto, el soroche y los cóndores
+  { type: 'npc', x: 87.5, y: G, model: 'nino', lines: ['¡LA CABRA SUBE SOLITA!', 'ARRIBA HAY UN PLATANAL', '¡POR AHÍ ES MÁS CORTO, CAUSA!'] },
+  // si te quedas a pie al pie del cerro, la flecha de "¡POR AQUÍ!" señala a la cabra
+  // (solo al pie del cerro: más arriba la cabra queda atrás y la flecha no debe mandarte de vuelta)
+  { type: 'goal', x: 91, y: G, when: (g) => !onGoat(g) && g.player.cx > 70 * TILE && g.player.cx < 96 * TILE, at: (g) => { const c = g.entities.find(e => e instanceof Cabra); return { x: c.cx, y: c.cy }; } },
+  { type: 'hint', x: 91.5, y: G, text: '¡SÚBETE A LA CABRA!', arrow: 'down', r: 7, pass: 1, when: (g) => !onGoat(g) },
+  { type: 'hint', x: 99, y: G, text: ['LA CABRA SALTA SOLA', 'TÚ SOLO GUÍALA'], key: 'right', r: 9, pass: 4, vr: 4, when: onGoat },
+  { type: 'hint', x: HERBS[0].x + 0.5, y: HERBS[0].y + 2.2, text: 'PASTO: ¡SÚPER SALTO!', arrow: 'down', r: 6, pass: 3, vr: 4, when: onGoat },
+  { type: 'hint', x: COCA[0].x + 0.5, y: COCA[0].y + 1.5, text: '¡COCA PARA EL SOROCHE!', arrow: 'down', r: 6, pass: 3, vr: 4 },
+  { type: 'help', x0: 92, x1: 126, kind: 'bird', text: '¡SI VES EL AVISO, ESPERA!' },
+  { type: 'help', x0: 92, x1: 126, text: 'TÚ SOLO GUÍA: LA CABRA SALTA' },
+  { type: 'npc', x: 117, y: SUMMIT, model: 'nina', lines: ['¡QUÉ TAL VISTA, OE!', '¡TÍRATE CON LA HOJA!'] },
+  { type: 'prop', kind: 'campana', x: 119.5, y: SUMMIT },
+  // CEJA DE SELVA: el huaico
+  { type: 'npc', x: 147.5, y: 110, model: 'senora', lines: ['¡AY, EL HUAICO, HIJITO!', '¡DE TRONCO EN TRONCO!', 'SI CAES, ¡SALTA, SALTA!'] },
+  { type: 'hint', x: 155, y: 110, text: ['¡SALTA DE TRONCO', 'EN TRONCO!'], arrow: 'right', r: 6, pass: 3 },
+  { type: 'help', x0: 157, x1: 246, kind: 'mud', text: 'EN EL LODO: ¡SALTA SIN PARAR!' },
+  { type: 'prop', kind: 'olla', x: 253, y: 103, bonus: 1 },
+  // LA SELVA BAJA
+  { type: 'npc', x: 262.5, y: 108, model: 'nino', lines: ['¡CUIDADO CON LOS LAGARTOS!', 'PISA LAS PIEDRAS, PATA', '¡NO TE METAS AL AGUA!'] },
+  { type: 'hint', x: SV - 1, y: 110, text: '¡DE PIEDRA EN PIEDRA!', arrow: 'right', r: 6, pass: 2 },
+  { type: 'hint', x: sx(21), y: 111, text: ['LAS HOJAS SE HUNDEN', '¡NO TE QUEDES!'], arrow: 'right', r: 5, pass: 2 },
+  { type: 'hint', x: sx(41), y: 111, text: '¡A LAS RAMAS!', arrow: 'up', r: 5, pass: 2 },
+  { type: 'help', x0: SV - 4, x1: SCH, kind: 'caiman', text: '¡NO NADES! VE POR ARRIBA' },
+  // EL COLEGIO
+  { type: 'prop', kind: 'campana', x: SCH + 9.5, y: 110 },
+  { type: 'npc', x: SCH + 11.5, y: 110, model: 'profa', flip: true, lines: ['¡APÚRATE, YA EMPIEZA LA CLASE!', 'HOY ES AFUERITA NOMÁS', '¡SIÉNTATE CON TUS AMIGOS!'] },
+];
+
 const LEVEL = {
   name: 'LA MARATÓN DE LOS ANDES', w: SCH + 53, h: 150,
   anchorRow: G,
@@ -235,6 +325,7 @@ const LEVEL = {
     ],
   },
   spawn: { x: 6, y: G },
+  goal: { x: SCH + 22, y: 110 },   // la flecha de "¡POR AQUÍ!" apunta acá al final
   // la gran montaña: silueta de fondo con nieve en lo alto
   mountain: { peakX: 121, peakRow: 10, snowRow: 78, shape: mountainShape(121, 10, 150) },
   // cerro del que baja el huaico (tierra cálida); su ladera nace tras la última roca fija
@@ -248,8 +339,9 @@ const LEVEL = {
   glide: { x0: 119, x1: 155.4 },   // a la derecha no pasa de la orilla: más allá está el precipicio del huaico
   glideLandRow: 100,   // la hoja solo se suelta al aterrizar por debajo de esta fila (el valle)
   altitude: { baseRow: G, baseM: 3650, perRow: 13 },
+  soroche: { minM: 4600 },   // desde aquí arriba te da soroche
   zones: [
-    { x: 0,   name: 'EL VALLE',  music: 'valle' },
+    { x: 0,   name: 'EL VALLE',  music: 'ayacucho' },
     { x: 86,  name: 'EL APU',    music: 'apu', alt: true },
     { x: 145, name: 'CEJA DE SELVA', music: 'huayco' },
     { x: 252, name: 'LA SELVA',  music: 'selva' },
@@ -313,11 +405,11 @@ const LEVEL = {
     { type: 'cabra', x: 91, y: G },
     // puntos de control invisibles: el valle y la subida son cortos, así que el
     // primero está en la cumbre, antes del parapente
-    { type: 'checkpoint', x: 151, y: 110, w: 14, h: 10 },   // toda la orilla donde aterriza el parapente
+    { type: 'checkpoint', x: 151, y: 110, w: 14, h: 10, help: 'SI CAES AL LODO: ¡SALTA, SALTA!' },   // toda la orilla donde aterriza el parapente
     // un solo punto de control en la selva: en la orilla, antes de entrar al agua
-    { type: 'checkpoint', x: SV - 4, y: 110, w: 4 },
+    { type: 'checkpoint', x: SV - 4, y: 110, w: 4, help: 'NO TE QUEDES MUCHO EN LAS HOJAS' },
     { type: 'rockfall', x: 82, y: G - 13, interval: 130 },
-    { type: 'checkpoint', x: 121, y: SUMMIT },
+    { type: 'checkpoint', x: 121, y: SUMMIT, help: '¡APÁRTATE CUANDO SE LANCE EL ÁGUILA!' },
     // en la cumbre crece un platanal: su hoja gigante sirve de parapente
     { type: 'leaf', x: 123, y: SUMMIT },
     ...EAGLES,
@@ -340,13 +432,10 @@ const LEVEL = {
     { type: 'striker', x: SCH + 6.5, y: 110, v: 1, flip: true, sign: ['¡ARREGLEN', 'EL COLE!'] },
     { type: 'school', x: SCH + 14, y: 110 },
     { type: 'outdoorClass', x: SCH + 22, y: 110 },
-    // mototaxis estacionados: el transporte del pueblo
-    // paradero: los mototaxis hacen fila uno detrás de otro, pegaditos (2 px
-    // entre uno y otro); el primero ya tiene el motor prendido
-    ...['azul', 'rojo', 'azul', 'azul', 'amarillo', 'rojo'].map((model, i) => ({ type: 'mototaxi', x: SCH + 37.5 + i * 36 / 16, y: 110, model, run: i === 5 })),
-    { type: 'mototaxi', x: SCH - 4.8, y: 110, model: 'azul' },   // esperando pasajeros en el puerto
     ...BIRDS,
     ...HERBS,
+    ...COCA,
+    ...GUIA,
     // las 3 hojas de tarea que se le volaron al niño, enganchadas en el camino
     { type: 'page', x: 47, y: G - 5 },                                            // sobre la pirca alta
     { type: 'page', x: MTN.up[19][0] - 5, y: MTN.up[19][1] - 6 },                 // en el aire, junto al risco
@@ -364,4 +453,22 @@ const LEVEL = {
   ],
 };
 
-const LEVELS = [buildLevel(LEVEL)];
+// ── Capítulos ───────────────────────────────────────────────────────────────
+// Cada capítulo tiene su título, su objetivo (siempre llegar antes de las 8:00,
+// cada uno con su razón) y su nivel. Los siguientes se agregan en orden con
+// CHAPTERS.push desde su propio archivo (js/cap2.js, js/cap3.js...). Los huecos
+// hasta CHAPTER_SLOTS aparecen en el menú como "PRÓXIMAMENTE".
+// Campos opcionales (si faltan, se usa lo del Capítulo 1): dayStart (minutos),
+// deathTitle, deathMsgs {tipo: texto}, win {...}, tips [...] (ver game.js).
+const CHAPTER_SLOTS = 3;
+const CHAPTERS = [{
+  num: 1, title: 'LA MARATÓN DE LOS ANDES', short: 'LOS ANDES', color: '#8a6fa6',
+  goal: '¡LLEGA AL COLE ANTES DE LAS 8:00!', goalShort: '¡ANTES DE LAS 8:00!',
+  banner: ['LA MARATÓN DE LOS ANDES', '¡LLEGA A TIEMPO A CLASES!'],
+  deathMsgs: {
+    huaico: '¡TE LLEVÓ EL HUAICO, CAUSA!', mud: '¡TE LLEVÓ EL HUAICO, CAUSA!', water: '¡EL RÍO TE JALÓ, COMPADRE!',
+    bird: '¡EL CÓNDOR TE CHOTEÓ!', eagle: '¡EL ÁGUILA TE LLEVÓ DE PIQUEO!', caiman: '¡EL CAIMÁN TE HIZO CEBICHE!',
+    rock: '¡TE CAYÓ UN PEDRONÓN, HERMANITO!', fall: '¡TE FUISTE AL BARRANCO, PE!', default: '¡CUIDADO, PUES!',
+  },
+  level: buildLevel(LEVEL),
+}];

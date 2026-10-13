@@ -106,7 +106,7 @@ class Player extends Actor {
       if (l instanceof Llama) {
         if (l.onGround) l.coyote = PHYS.COYOTE; else if (l.coyote > 0) l.coyote--;
         if (l.coyote > 0 && Input.consumeJump()) { l.vy = PHYS.LLAMA_JUMP; l.onGround = false; l.coyote = 0; g.onPlayerJump(l); }
-      } else Input.clearJump();
+      } else if (!l.ownJump) Input.clearJump();   // la tabla de sandboard lee el salto ella misma
       this.syncRide(); this.animT++;
       return;
     }
@@ -118,7 +118,8 @@ class Player extends Actor {
     else if (right && !left) { ax = accel; this.facing = 1; }
     if (ax !== 0) this.vx += ax; else this.vx *= (this.onGround ? 1 - PHYS.FRICTION : 0.985);
     // planeando no hay límite de carrera: se aplica el del parapente más abajo
-    if (!(this.gliding && !this.onGround)) this.vx = Math.max(-PHYS.RUN_MAX, Math.min(PHYS.RUN_MAX, this.vx));
+    const runMax = PHYS.RUN_MAX * (g.soroche ? 0.72 : 1);   // con soroche caminas más lento
+    if (!(this.gliding && !this.onGround)) this.vx = Math.max(-runMax, Math.min(runMax, this.vx));
     if (Math.abs(this.vx) < 0.05) this.vx = 0;
 
     if (this.onGround) this.coyote = PHYS.COYOTE; else if (this.coyote > 0) this.coyote--;
@@ -188,7 +189,7 @@ class Player extends Actor {
     // una saliente de la montaña la conservas
     if (this.gliding) {
       if (!this.onGround) this.glideAir++;
-      else if (this.glideAir > 40 && this.y > (level.glideLandRow || 0) * TS) { this.gliding = false; g.addEntity(new FallingLeaf(this.cx, this.y - 14, this.facing)); g.audio('land'); }
+      else if (this.glideAir > 40 && this.y > (level.glideLandRow || 0) * TS) { this.gliding = false; g.addEntity(new FallingLeaf(this.cx, this.y - 14, this.facing, this.glideImg)); g.audio('land'); }
       else this.glideAir = 0;
     }
     // caída desde muy alto a pie (sin hoja ni montura): pierdes
@@ -278,7 +279,7 @@ class Player extends Actor {
     if (this.overEdge) {
       // cayendo por el precipicio
       this.vy = Math.min(this.vy + 0.35, 7); this.y += this.vy; this.x -= 0.5;
-      if (this.dragT > 50) g.playerEnvDeath('fall');
+      if (this.dragT > 50) g.playerEnvDeath('huaico');   // suena igual que una caída
       return;
     }
     const s = hu.surfaceAt(this.cx);
@@ -354,6 +355,7 @@ class Player extends Actor {
     else img = P.idle[0];
     const flying = this.gliding && !this.onGround && this.vy > 0;
     if (flying) img = P.jump;
+    if (this.pose) img = this.pose;   // pose fija que pone un capítulo (p. ej. agachado en el tren)
     ctx.drawImage(this.facing < 0 ? flipS(img) : img, Math.round(this.cx - 8), Math.round(this.y + this.h - 22));
     if (this.gliding) {
       // la hoja sobre la cabeza; en vuelo se inclina hacia donde vas
@@ -361,11 +363,12 @@ class Player extends Actor {
       const ly = Math.round(this.y - (flying ? 20 : 12) + (flying ? Math.sin(this.animT * 0.15) : 0));
       ctx.fillStyle = '#3a2a18';
       if (flying) { ctx.fillRect(Math.round(this.cx - 5), ly + 7, 1, Math.round(this.y) - ly - 3); ctx.fillRect(Math.round(this.cx + 4), ly + 7, 1, Math.round(this.y) - ly - 3); }
-      ctx.drawImage(this.facing < 0 ? flipS(OBJ.leaf) : OBJ.leaf, lx, ly);
+      const wing = this.glideImg || OBJ.leaf;   // un capítulo puede cambiar la hoja (el parapente de Miraflores)
+      ctx.drawImage(this.facing < 0 ? flipS(wing) : wing, lx, ly);
     }
   }
   drawRider(ctx) {
-    if (!this.riding) return;
+    if (!this.riding || this.riding.drawsRider) return;   // algunas monturas dibujan al niño ellas mismas
     const img = this.riding.facing < 0 ? flipS(P.sit) : P.sit;
     ctx.drawImage(img, Math.round(this.cx - 8), Math.round(this.y + this.h - 22));
   }
@@ -430,7 +433,8 @@ class Cabra extends Mount {
       if (left && !right) { this.vx -= 0.4; this.facing = -1; }
       else if (right && !left) { this.vx += 0.4; this.facing = 1; }
       else this.vx *= 0.9;
-      this.vx = Math.max(-PHYS.GOAT_MAX, Math.min(PHYS.GOAT_MAX, this.vx));
+      const gm = PHYS.GOAT_MAX * (g.soroche ? 0.9 : 1);   // con soroche la guías algo más lento (rebota igual)
+      this.vx = Math.max(-gm, Math.min(gm, this.vx));
       if (this.onGround) {
         // llegó a la cumbre (no basta con la columna: también hay que estar arriba)
         if (g.level.goatEnd && this.cx > g.level.goatEnd * TS && this.y + this.h <= (g.level.goatEndRow || 999) * TS + 2) {
@@ -729,14 +733,20 @@ class Pickup extends Actor {
   constructor(type, x, y) {
     super(x * TS + 3, y * TS + 5, 10, 11);
     if (type === 'herb') { this.x -= 3; this.y -= 3; this.w = 16; this.h = 16; }
-    this.type = type; this.animT = Math.random() * 10; this.baseY = this.y;
+    // (la coca no gasta números al azar: así el resto del nivel sale igual que antes)
+    this.type = type; this.animT = type === 'coca' ? x : Math.random() * 10; this.baseY = this.y;
   }
   update(g) {
     this.animT += 0.1;
+    if (this.hidden > 0) { this.hidden--; return; }   // la coca vuelve a crecer al rato
     const p = g.player;
     if (this.overlaps(p, 3) || (p.riding && this.overlaps(p.riding, 1))) this.collect(g);
   }
   collect(g) {
+    if (this.type === 'coca') {
+      this.hidden = 900; g.cureSoroche(900); g.audio('checkpoint'); g.burst(this.cx, this.cy, 'leaf', 12);
+      return;
+    }
     if (this.type === 'herb') {
       // solo la cabra come pasto: le da un súper salto
       const goat = g.player.riding; if (!(goat instanceof Cabra)) return;
@@ -747,6 +757,15 @@ class Pickup extends Actor {
     g.audio('page'); g.pages++; g.burst(this.cx, this.cy, 'paper', 16);
   }
   draw(ctx) {
+    if (this.hidden > 0) return;
+    if (this.type === 'coca') {
+      // hojitas de coca con un brillo suave
+      const bob = Math.round(Math.sin(this.animT) * 1.5), cx = Math.round(this.cx), cy = Math.round(this.cy + bob);
+      ctx.fillStyle = 'rgba(200,255,170,' + (0.3 + Math.sin(this.animT * 2) * 0.12).toFixed(2) + ')';
+      ctx.beginPath(); ctx.arc(cx, cy, 9, 0, Math.PI * 2); ctx.fill();
+      ctx.drawImage(OBJ.coca, cx - 6, cy - 5);
+      return;
+    }
     if (this.type === 'herb') {
       // brillo que late + destello que gira: tiene que verse desde lejos
       const bob = Math.sin(this.animT) * 1.5, cx = this.cx, cy = this.cy + bob;
@@ -805,9 +824,9 @@ class Leaf extends Actor {
   }
 }
 class FallingLeaf {
-  constructor(x, y, dir) { this.x = x; this.y = y; this.dir = dir; this.t = 0; }
+  constructor(x, y, dir, img) { this.x = x; this.y = y; this.dir = dir; this.t = 0; this.img = img || OBJ.leaf; }
   update() { this.t++; this.x += Math.sin(this.t * 0.08) * 1.2 + this.dir * 0.4; this.y += 0.5; if (this.t > 120) this.dead = true; }
-  draw(ctx) { ctx.save(); ctx.globalAlpha = Math.min(1, (120 - this.t) / 30); ctx.translate(Math.round(this.x), Math.round(this.y)); ctx.rotate(Math.sin(this.t * 0.08) * 0.5); ctx.drawImage(OBJ.leaf, -16, -4); ctx.restore(); }
+  draw(ctx) { ctx.save(); ctx.globalAlpha = Math.min(1, (120 - this.t) / 30); ctx.translate(Math.round(this.x), Math.round(this.y)); ctx.rotate(Math.sin(this.t * 0.08) * 0.5); ctx.drawImage(this.img, -16, -4); ctx.restore(); }
 }
 
 // ÁGUILA: mientras planeas, te rodea; luego chilla, se prepara y se lanza en
@@ -1368,6 +1387,8 @@ class Bridge extends Actor {
   }
 }
 
+// entidades de otros capítulos: cada archivo de capítulo registra las suyas aquí
+const EXTRA_ENTITIES = {};
 function makeEntity(def, level) {
   switch (def.type) {
     case 'llama': return new Llama(def.x * TS, def.y * TS);
@@ -1377,7 +1398,7 @@ function makeEntity(def, level) {
     case 'collapseHouse': return new CollapseHouse(def.x, def.y);
     case 'striker': return new Striker(def);
     case 'mototaxi': return new Mototaxi(def);
-    case 'checkpoint': return new Checkpoint(def.x, def.y, def.w, def.h);
+    case 'checkpoint': { const c = new Checkpoint(def.x, def.y, def.w, def.h); c.help = def.help || null; return c; }   // help: ver guide.js
     case 'house': return new House(def.x, def.y);
     case 'school': return new School(def.x, def.y);
     case 'lily': return new LilyPad(def.x, level);
@@ -1390,7 +1411,8 @@ function makeEntity(def, level) {
     case 'eagle': return new Eagle(def);
     case 'page': return new Pickup('page', def.x, def.y);
     case 'herb': return new Pickup('herb', def.x, def.y);
+    case 'coca': return new Pickup('coca', def.x, def.y);
     case 'condor': return new Condor(def);
-    default: return null;
+    default: return EXTRA_ENTITIES[def.type] ? EXTRA_ENTITIES[def.type](def, level) : null;
   }
 }

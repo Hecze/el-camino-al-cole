@@ -26,6 +26,7 @@ const Input = (() => {
   function set(src, action, val) { if (!action) return; sources[src][action] = !!val; edge(action); }
 
   window.addEventListener('keydown', (e) => {
+    if (e.target && /^(INPUT|TEXTAREA)$/.test(e.target.tagName)) return;   // escribiendo el nombre del ranking
     const a = KEYMAP[e.code];
     if (!a) return;
     if (['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','Space'].includes(e.code)) e.preventDefault();

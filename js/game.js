@@ -41,7 +41,9 @@
   // ── la hora del día ──────────────────────────────────────────────────────
   // Sales de casa a las 6:20 con el sol saliendo; la clase empieza a las 8:00.
   // Cada segundo de juego son 18 segundos del reloj (≈5 min 30 s para llegar).
-  const DAY_START = 6 * 60 + 20, CLASS_START = 8 * 60, CLOCK_RATE = 0.3;
+  // (cada capítulo puede salir a otra hora con dayStart)
+  const DAY_START_DEFAULT = 6 * 60 + 20, CLASS_START = 8 * 60, CLOCK_RATE = 0.3;
+  let DAY_START = DAY_START_DEFAULT;
   const SKY_DAWN = ['#2e2f63', '#c46f8a', '#ffb877'], SKY_MORNING = ['#4f86c6', '#9cc8e8', '#f6dcb0'];
   function clockMinutes() { return DAY_START + (Game.time / 60) * CLOCK_RATE; }
   function clockText(m) { m = Math.floor(m == null ? clockMinutes() : m); return Math.floor(m / 60) + ':' + String(m % 60).padStart(2, '0'); }
@@ -58,6 +60,8 @@
     const W = 768, H = BASE_H;
     const c = document.createElement('canvas'); c.width = W; c.height = H;
     const g = c.getContext('2d');
+    // capas con dibujo propio (la ciudad de Lima, el oasis...): se dibujan solas
+    if (def.build) { def.build(g, W, H); return c; }
     const s = def.seed || 1;
     function ridge(x) {
       let n = 0, amp = 1, norm = 0, fr = 1;
@@ -126,6 +130,7 @@
     menuSel: 0, pauseSel: 0, stateT: 0, T: 0,
     spawn: { x: 0, y: 0 }, spawnMount: null, zone: -1, zoneName: '',
     banner: 0, deaths: 0, time: 0,
+    chapterIdx: 0, chapter: CHAPTERS[0], menuChapter: 0, winSel: 0,
   };
   window.Game = Game;
 
@@ -145,9 +150,20 @@
   Game.onPlayerJump = (a) => { Game.burst(a.cx, a.y + a.h, 'dust', 6); AUDIO.play('jump'); };
   Game.onPlayerLand = (a) => { Game.burst(a.cx, a.y + a.h, 'dust', 4); };
   Game.onMount = () => {};
-  Game.onGoatDone = () => {};
+  // en la cumbre del Apu suena una frase de El Cóndor Pasa y luego vuelve la música del tramo
+  Game.onGoatDone = () => {
+    const s = SONGS.condorPasa; if (!s) return;
+    AUDIO.playMusic(s);
+    const token = Game.jingle = {}, ms = (s.chords.length - 1) * (s.bar || 8) * 60 / s.bpm / 4 * 1000 + 150;
+    setTimeout(() => {
+      if (Game.jingle !== token) return;
+      Game.jingle = null;
+      const Z = Game.level && Game.level.zones[Game.zone];
+      if (Z && ['play', 'respawn', 'pause'].includes(Game.state)) AUDIO.playMusic(SONGS[Z.music]);
+    }, ms);
+  };
   Game.setCheckpoint = (cp) => {
-    Game.spawn = { x: cp.spawn.x, y: cp.spawn.y };
+    Game.spawn = { x: cp.spawn.x, y: cp.spawn.y }; GUIDE.onCheckpoint(cp);
     const m = Game.player.riding;
     Game.spawnMount = m && !m.retired ? m : null;
   };
@@ -157,16 +173,22 @@
     if (kind === 'water') { AUDIO.play('splash'); Game.burst(a.cx, a.y + a.h, 'splash', 18); }
     else if (kind === 'mud') AUDIO.play('drown');
     else if (kind === 'caiman') { AUDIO.play('snap'); AUDIO.play('splash'); Game.shake(3, 10); Game.burst(a.cx, a.cy, 'swampSplash', 20); }
-    else if (kind === 'bird') { AUDIO.play('crush'); Game.shake(3, 10); Game.burst(a.cx, a.cy, 'feather', 16); }
+    else if (kind === 'bird' || kind === 'eagle') { AUDIO.play('crush'); Game.shake(3, 10); Game.burst(a.cx, a.cy, 'feather', 16); }
     else if (kind === 'rock') { AUDIO.play('crush'); Game.shake(4, 12); Game.burst(a.cx, a.cy, 'rock', 14); }
+    else if (kind === 'combi' || kind === 'buggy' || kind === 'carretilla' || kind === 'bici') { AUDIO.play('crush'); AUDIO.play('honk'); Game.shake(4, 12); Game.burst(a.cx, a.cy, 'dust', 18); }
+    else if (kind === 'cactus' || kind === 'rebar') { AUDIO.play('ouch'); Game.shake(2, 8); Game.burst(a.cx, a.cy, 'spark', 12); }
+    else if (kind === 'dog') { AUDIO.play('bark'); AUDIO.play('crush'); Game.shake(3, 10); Game.burst(a.cx, a.cy, 'dust', 14); }
     else AUDIO.play('fall');
     Game.deaths++; Game.lastDeath = kind; Game.state = 'respawn'; Game.stateT = 0;
+    GUIDE.onDeath(Game); VOICE.play('muerte', 250);
   };
   Game.gameComplete = () => {
     if (Game.state !== 'play') return;
     Game.arrival = clockMinutes();
-    Game.state = 'win'; Game.stateT = 0;
+    Game.runMs = performance.now() - Game.runStart - Game.pausedMs;
+    Game.state = 'win'; Game.stateT = 0; Game.winSel = 0;
     AUDIO.stopMusic(); AUDIO.play('bell'); AUDIO.play('win');
+    VOICE.play(Game.arrival < CLASS_START ? 'gana' : 'tarde', 900);
   };
 
   Game.respawn = function () {
@@ -180,16 +202,24 @@
     if (m) { m.x = p.cx - m.w / 2; m.y = Game.spawn.y - m.h; m.vx = 0; m.vy = 0; p.mount(m, Game, true); }
     Game.floorY = p.cy;
     updateCamera(true);
-    Input.clearJump();
+    Input.clearJump(); GUIDE.onRespawn(Game);
     Game.state = 'play'; Game.fade = 0.8;
   };
 
   // ── cargar ───────────────────────────────────────────────────────────────
-  function startGame() {
-    const lv = LEVELS[0];
+  function startGame(ci) {
+    if (ci == null) ci = Game.chapterIdx;
+    const ch = CHAPTERS[ci], lv = ch.level;
+    Game.chapterIdx = ci; Game.chapter = ch; Game.menuChapter = ci; Game.jingle = null;
+    Game.soroche = false; Game.sorocheK = 0; Game.cocaT = 0; Game.sorocheTold = false;
+    DAY_START = ch.dayStart || DAY_START_DEFAULT;
     Game.level = lv;
-    Game.entities = []; Game.movers = []; Game.particles = [];
+    Game.entities = []; Game.movers = []; Game.particles = []; Game.huaico = null;
     Game.pages = 0; Game.herbs = 0; Game.score = 0; Game.deaths = 0; Game.time = 0;
+    if (ch.onStart) ch.onStart(Game);   // contadores propios del capítulo
+    // cronómetro real para el ranking (las pausas no cuentan) y ticket de la partida
+    Game.runStart = performance.now(); Game.pausedMs = 0; Game.runMs = 0; Game.rankResult = null; Game.shareMsg = null;
+    if (typeof RANKING !== 'undefined') RANKING.start(ch.num);
     for (const def of lv.entities) { const e = makeEntity(def, lv); if (e) { Game.entities.push(e); if (e.isMover) Game.movers.push(e); } }
     for (const e of Game.entities.slice()) if (e instanceof Huaico) { Game.huaico = e; e.prefill(Game); }
     const px = lv.spawn.x * TILE + 4, py = lv.spawn.y * TILE - 15;
@@ -197,7 +227,7 @@
     Game.spawn = { x: px, y: lv.spawn.y * TILE }; Game.spawnMount = null;
     Game.zone = -1; Game.banner = 0; Game.toastMsg = null;
     Game.look = LOOK_X * 0.6; Game.floorY = Game.player.cy;
-    updateCamera(true);
+    updateCamera(true); GUIDE.start(Game); Game.lateTold = false;
     Game.state = 'play'; Game.stateT = 0; Game.fade = 1;
   }
 
@@ -209,7 +239,7 @@
     const lv = Game.level, p = Game.player, cam = Game.cam;
     const body = p.riding || p;
     const own = p.riding ? p.riding.vx : p.vx;
-    const maxV = p.riding instanceof Llama ? PHYS.LLAMA_MAX : PHYS.RUN_MAX;
+    const maxV = p.riding instanceof Llama ? PHYS.LLAMA_MAX : (p.riding && p.riding.camMax) || PHYS.RUN_MAX;
     let want = Game.look;
     if (Math.abs(own) > 0.5) want = Math.sign(own) * LOOK_X * Math.min(1, 0.6 + Math.abs(own) / maxV * 0.4);
     if (p.riding instanceof Cabra) want = clamp(want, -36, 36);
@@ -244,6 +274,46 @@
     cam.y = clamp(cam.y, 0, lv.rows * TILE - BASE_H);
   }
 
+  // ── SOROCHE: el mal de altura del Apu ──────────────────────────────────
+  // Sobre lev.soroche.minM metros te mareas: la vista ondula y vas un poco más
+  // lento (la cabra rebota igual). Las hojitas de coca lo curan por un rato.
+  function altitudeM() {
+    const A = Game.level.altitude, p = Game.player;
+    return A.baseM + (A.baseRow * TILE - (p.y + p.h)) / TILE * A.perRow;
+  }
+  function updateSoroche() {
+    const S = Game.level.soroche, Z = Game.level.zones[Game.zone];
+    if (!S) { Game.soroche = false; Game.sorocheK = 0; return; }
+    if (Game.cocaT > 0) Game.cocaT--;
+    const sick = !!(Z && Z.alt && altitudeM() >= S.minM && Game.cocaT <= 0);
+    if (sick && !Game.soroche) { Game.toast(Game.sorocheTold ? '¡OTRA VEZ EL SOROCHE!' : '¡SOROCHE! BUSCA HOJITAS DE COCA'); Game.sorocheTold = true; AUDIO.play('dizzy'); }
+    Game.soroche = sick;
+    Game.sorocheK += ((sick ? 1 : 0) - Game.sorocheK) * 0.03;
+    // el corazón late fuerte mientras dura el soroche (y la vista se oscurece con cada latido)
+    if (sick && tick % 50 === 0) AUDIO.play('heart');
+  }
+  Game.cureSoroche = (frames) => {
+    Game.cocaT = frames; Game.soroche = false;
+    Game.toast(Game.sorocheTold ? '¡HOJITA DE COCA! SE TE PASÓ EL SOROCHE' : '¡HOJITA DE COCA! PARA EL SOROCHE');
+  };
+  // la vista ondula y se ve doble, con un tinte verdoso
+  let sorocheBuf = null;
+  function renderSoroche(k) {
+    if (!sorocheBuf || sorocheBuf.width !== BASE_W || sorocheBuf.height !== BASE_H) sorocheBuf = PIX.createCanvas(BASE_W, BASE_H);
+    const b = sorocheBuf.getContext('2d'); b.clearRect(0, 0, BASE_W, BASE_H); b.drawImage(canvas, 0, 0);
+    for (let y = 0; y < BASE_H; y += 2) {
+      const off = Math.round(Math.sin(y * 0.045 + tick * 0.06) * 4.5 * k);
+      if (off) ctx.drawImage(sorocheBuf, 0, y, BASE_W, 2, off, y, BASE_W, 2);
+    }
+    ctx.globalAlpha = 0.3 * k; ctx.drawImage(sorocheBuf, Math.round(5 + Math.sin(tick * 0.03) * 4), Math.round(Math.sin(tick * 0.021) * 2)); ctx.globalAlpha = 1;
+    ctx.fillStyle = 'rgba(110,150,80,' + (0.12 * k).toFixed(3) + ')'; ctx.fillRect(0, 0, BASE_W, BASE_H);
+    // bordes oscuros que laten con el corazón
+    const beat = Math.max(0, 1 - (tick % 50) / 14);
+    const vg = ctx.createRadialGradient(BASE_W / 2, BASE_H / 2, BASE_H * 0.15, BASE_W / 2, BASE_H / 2, BASE_W * 0.6);
+    vg.addColorStop(0, 'rgba(20,10,30,0)'); vg.addColorStop(1, 'rgba(20,10,30,' + ((0.6 + 0.3 * beat) * k).toFixed(3) + ')');
+    ctx.fillStyle = vg; ctx.fillRect(0, 0, BASE_W, BASE_H);
+  }
+
   // ── zonas: la música cambia por tramo ─────────────────────────────────────
   function updateZone() {
     const lv = Game.level, x = Game.player.cx / TILE;
@@ -263,6 +333,8 @@
     if (Game.shakeT > 0) { Game.shakeT--; if (Game.shakeT === 0) Game.shakeMag = 0; }
     Game.fade = Math.max(0, Game.fade - 0.05);
 
+    if (Game.rk) { updateRank(); Input.endFrame(); return; }   // panel del ranking encima de todo
+    const before = Game.state;
     switch (Game.state) {
       case 'menu': updateMenu(); break;
       case 'controls': if (Input.pressed('confirm') || Input.pressed('jump') || Input.pressed('pause')) { AUDIO.play('select'); Game.state = 'menu'; } break;
@@ -275,8 +347,14 @@
       case 'win':
         Game.stateT++; updateParticles();
         for (const e of Game.entities) if (e instanceof School) e.update(Game);
-        if (Game.stateT > 90 && (Input.pressed('confirm') || Input.pressed('jump'))) { AUDIO.play('select'); Game.state = 'menu'; AUDIO.playMusic(SONGS.menu); }
+        updateWin();
         break;
+      case 'ending': updateEnding(); break;
+    }
+    // las pausas no cuentan en el tiempo del ranking
+    if (before !== Game.state) {
+      if (Game.state === 'pause') Game.pauseAt = performance.now();
+      else if (before === 'pause' && Game.pauseAt) { Game.pausedMs += performance.now() - Game.pauseAt; Game.pauseAt = 0; }
     }
     let rv = 0, mv = 0, jv = 0;
     if (Game.level && (Game.state === 'play' || Game.state === 'respawn')) [rv, mv, jv] = ambientVolumes();
@@ -296,18 +374,133 @@
     return [clamp(r, 0, 1), clamp(m, 0, 1), clamp(j, 0, 1)];
   }
 
-  const MENU_OPTS = () => ['JUGAR', 'CONTROLES', AUDIO.isEnabled() ? 'SONIDO: SÍ' : 'SONIDO: NO'];
-  const MENU_Y = 142, MENU_DY = 16;
+  // la primera fila del menú es el selector de capítulo (izquierda/derecha elige)
+  // (RANKING solo aparece si la API del ranking está configurada)
+  const rankOn = () => typeof RANKING !== 'undefined' && RANKING.enabled();
+  const MENU_KEYS = () => ['play', 'controls', ...(rankOn() ? ['ranking'] : []), 'sound'];
+  const MENU_LABEL = { play: 'JUGAR', controls: 'CONTROLES', ranking: 'RANKING' };
+  const MENU_OPTS = () => MENU_KEYS().map(k => MENU_LABEL[k] || (AUDIO.isEnabled() ? 'SONIDO: SÍ' : 'SONIDO: NO'));
+  const MENU_Y = 150, MENU_DY = 16, CARDS_Y = 104;
   function menuActivate(i) {
     AUDIO.resume();
-    if (i === 0) { AUDIO.play('start'); startGame(); }
-    else if (i === 1) { AUDIO.play('select'); Game.state = 'controls'; }
+    const k = MENU_KEYS()[i];
+    if (k === 'play') {
+      if (CHAPTERS[Game.menuChapter]) { AUDIO.play('start'); startGame(Game.menuChapter); }
+      else { AUDIO.play('nope'); Game.lockedT = 24; }   // aún no existe: la tarjeta tiembla
+    }
+    else if (k === 'controls') { AUDIO.play('select'); Game.state = 'controls'; }
+    else if (k === 'ranking') {
+      AUDIO.play('select');
+      if (CHAPTERS[Game.menuChapter]) openRank(Game.menuChapter + 1, false); else { AUDIO.play('nope'); Game.lockedT = 24; }
+    }
     else { AUDIO.toggleMute(); AUDIO.play('select'); }
   }
   function updateMenu() {
-    if (Input.pressed('up')) { Game.menuSel = (Game.menuSel + 2) % 3; AUDIO.play('select'); }
-    if (Input.pressed('down')) { Game.menuSel = (Game.menuSel + 1) % 3; AUDIO.play('select'); }
+    if (Game.lockedT > 0) Game.lockedT--;
+    const n = MENU_KEYS().length;
+    if (Input.pressed('up')) { Game.menuSel = (Game.menuSel + n - 1) % n; AUDIO.play('select'); }
+    if (Input.pressed('down')) { Game.menuSel = (Game.menuSel + 1) % n; AUDIO.play('select'); }
+    if (Game.menuSel === 0) {
+      const d = (Input.pressed('right') ? 1 : 0) - (Input.pressed('left') ? 1 : 0);
+      if (d) { Game.menuChapter = mod(Game.menuChapter + d, CHAPTER_SLOTS); Game.lockedT = 0; AUDIO.play('select'); }
+    }
     if (Input.pressed('confirm') || Input.pressed('jump')) menuActivate(Game.menuSel);
+  }
+  // pantalla final: pasar al siguiente capítulo o volver al menú
+  // (con ranking: también entrar al ranking y compartir la hora de llegada)
+  function winOptions() {
+    return [...(CHAPTERS[Game.chapterIdx + 1] ? ['next'] : []), ...(Game.chapter.ending ? ['ending'] : []), ...(rankOn() ? ['ranking', 'share'] : []), 'menu'];
+  }
+  function updateWin() {
+    const opts = winOptions();
+    if (Game.shareMsg && ++Game.shareMsg.t > 120) Game.shareMsg = null;
+    if (Game.stateT <= 90) return;
+    const d = (Input.pressed('right') || Input.pressed('down') ? 1 : 0) - (Input.pressed('left') || Input.pressed('up') ? 1 : 0);
+    if (opts.length > 1 && d) { Game.winSel = mod(Game.winSel + d, opts.length); AUDIO.play('select'); }
+    if (Input.pressed('confirm') || Input.pressed('jump')) {
+      AUDIO.play('select');
+      const o = opts[Math.min(Game.winSel, opts.length - 1)];
+      if (o === 'next') { AUDIO.play('start'); startGame(Game.chapterIdx + 1); }
+      else if (o === 'ending') startEnding();
+      else if (o === 'ranking') openRank(Game.chapter.num, true);
+      else if (o === 'share') shareArrival();
+      else { Game.state = 'menu'; AUDIO.playMusic(SONGS.menu); }
+    }
+  }
+
+  // FINAL DEL JUEGO: el último capítulo trae su secuencia de cierre (ending:
+  // { frames, music, start(g), skip(t), draw(ctx, w, h, t, tick) }). Salto la adelanta.
+  function startEnding() {
+    const E = Game.chapter.ending;
+    Game.state = 'ending'; Game.stateT = 0; Game.fade = 1;
+    if (E.start) E.start(Game);
+    if (E.music && SONGS[E.music]) AUDIO.playMusic(SONGS[E.music]);
+  }
+  function updateEnding() {
+    const E = Game.chapter.ending;
+    Game.stateT++;
+    if (Game.stateT > 20 && (Input.pressed('confirm') || Input.pressed('jump'))) Game.stateT = E.skip(Game.stateT);
+    if (Game.stateT >= E.frames) { Game.state = 'menu'; AUDIO.playMusic(SONGS.menu); }
+  }
+
+  // ── RANKING ──────────────────────────────────────────────────────────────
+  // Panel encima del juego: primero el nombre (formulario HTML de ranking.js),
+  // luego tu puesto y el top 10. Si la API falla, un aviso corto y se sigue jugando.
+  function openRank(chapter, submit) {
+    const rk = Game.rk = { chapter, phase: submit ? 'form' : 'loading', result: null, top: null, error: null, t: 0 };
+    const loadTop = () => {
+      rk.phase = 'loading';
+      RANKING.top(chapter, 10).then(top => { rk.top = top; rk.phase = 'show'; })
+        .catch(() => { rk.error = 'SIN CONEXIÓN CON EL RANKING'; rk.phase = 'show'; });
+    };
+    if (!submit) { loadTop(); return; }
+    // ya enviado en esta partida: solo se vuelve a mirar
+    if (Game.rankResult) { rk.result = Game.rankResult; loadTop(); return; }
+    RANKING.askAndSubmit(Game.runMs, Game.deaths)
+      .then(res => { if (res) { rk.result = Game.rankResult = res; AUDIO.play('page'); } loadTop(); })
+      .catch(() => { rk.error = 'SIN CONEXIÓN CON EL RANKING'; rk.phase = 'show'; });
+  }
+  function updateRank() {
+    const rk = Game.rk; rk.t++;
+    if (rk.phase !== 'show' || rk.t < 10) return;
+    if (Input.pressed('confirm') || Input.pressed('jump') || Input.pressed('pause')) { AUDIO.play('select'); Game.rk = null; }
+  }
+  function shareArrival() {
+    const text = RANKING.shareText(clockText(Game.arrival), Game.chapter.title);
+    Game.shareMsg = { text: '...', t: 0 };
+    RANKING.share(text).then(r => {
+      Game.shareMsg = r === 'cancel' ? null : { text: r === 'shared' ? '¡COMPARTIDO!' : r === 'copied' ? '¡COPIADO!' : 'NO SE PUDO COMPARTIR', t: 0 };
+    });
+  }
+  const fmtTime = (ms) => { const s = ms / 1000, m = Math.floor(s / 60); return m + ':' + (s - m * 60).toFixed(1).padStart(4, '0'); };
+  function renderRank() {
+    const rk = Game.rk;
+    ctx.fillStyle = 'rgba(11,10,18,0.9)'; ctx.fillRect(0, 0, BASE_W, BASE_H);
+    if (rk.phase === 'form') return;   // el formulario HTML va encima
+    drawText(ctx, 'RANKING', BASE_W / 2, 10, { scale: 2, color: '#ffd166', align: 'center', shadow: true, shadowColor: '#5a2a12' });
+    const ch = CHAPTERS[rk.chapter - 1];
+    drawText(ctx, 'CAPÍTULO ' + rk.chapter + (ch && BASE_W >= 300 ? ': ' + ch.title : ''), BASE_W / 2, 30, { color: '#cdbde8', align: 'center' });
+    let y = 44;
+    if (rk.result) {
+      const r = rk.result;
+      drawText(ctx, 'TU PUESTO: #' + r.rank + ' DE ' + r.total, BASE_W / 2, y, { color: '#9be7c4', align: 'center' });
+      if (r.newBest && r.total > 1) drawText(ctx, '¡NUEVO RÉCORD PERSONAL!', BASE_W / 2, y + 10, { color: '#ffd166', align: 'center' });
+      y += 22;
+    } else y += 6;
+    if (rk.phase === 'loading') drawText(ctx, 'CARGANDO...', BASE_W / 2, y + 30, { color: '#fff3d6', align: 'center' });
+    else if (rk.error) drawText(ctx, rk.error, BASE_W / 2, y + 30, { color: '#f2917d', align: 'center' });
+    else if (!rk.top || !rk.top.length) drawText(ctx, '¡NADIE TODAVÍA! SÉ EL PRIMERO', BASE_W / 2, y + 30, { color: '#fff3d6', align: 'center' });
+    else {
+      const half = Math.min(150, BASE_W / 2 - 10), me = (typeof RANKING !== 'undefined' && RANKING.name() || '').toUpperCase();
+      rk.top.forEach((s, i) => {
+        const yy = y + i * 11, mine = me && String(s.name).toUpperCase() === me;
+        const col = mine ? '#9be7c4' : i === 0 ? '#ffd166' : '#fff3d6';
+        drawText(ctx, (i + 1) + '.', BASE_W / 2 - half + 14, yy, { color: col, align: 'right' });
+        drawText(ctx, String(s.name).slice(0, 16), BASE_W / 2 - half + 20, yy, { color: col });
+        drawText(ctx, fmtTime(s.timeMs), BASE_W / 2 + half, yy, { color: col, align: 'right' });
+      });
+    }
+    if (rk.phase === 'show' && Math.floor(tick / 24) % 2 === 0) drawText(ctx, BASE_W < 300 ? 'PULSA A PARA VOLVER' : 'PULSA ESPACIO PARA VOLVER', BASE_W / 2, BASE_H - 16, { color: '#fff3d6', align: 'center' });
   }
   const PAUSE_OPTS = ['CONTINUAR', 'REINICIAR', 'MENÚ'];
   function pauseActivate(i) {
@@ -339,7 +532,11 @@
     collisionPass();
     updateParticles();
     updateZone();
+    updateSoroche();
     updateCamera(false);
+    GUIDE.update(Game);
+    // el reloj pasa las 8:00 sin haber llegado: "¡ya fuiste!"
+    if (!Game.lateTold && clockMinutes() >= CLASS_START) { Game.lateTold = true; VOICE.play('tarde'); }
     // el huaico hace temblar el suelo
     if (Game.zoneName === 'EL HUAICO' && tick % 90 === 0) Game.shake(1, 10);
   }
@@ -356,13 +553,17 @@
         if (p.riding && !(e instanceof Cabra)) continue;
         if (aabb(body, { x: e.x, y: e.y - 6, w: e.w, h: e.h + 6 })) p.mount(e, Game);
       } else if (e instanceof Eagle) {
-        if (e.dangerous && p.invuln <= 0 && aabb(hb, e.hitbox)) { Game.playerEnvDeath('bird'); return; }
+        if (e.dangerous && p.invuln <= 0 && aabb(hb, e.hitbox)) { Game.playerEnvDeath('eagle'); return; }
       } else if (e instanceof Caiman) {
         if (e.dangerous && p.invuln <= 0 && aabb(hb, e.hitbox)) { Game.playerEnvDeath('caiman'); return; }
       } else if (e instanceof Condor) {
         if (p.invuln <= 0 && aabb(hb, e.hitbox)) { Game.playerEnvDeath('bird'); return; }
       } else if (e instanceof Boulder) {
         if (p.invuln <= 0 && aabb(hb, { x: e.x + 1, y: e.y + 1, w: e.w - 2, h: e.h - 2 })) { Game.playerEnvDeath('rock'); return; }
+      } else if (e.hazardBox) {
+        // peligros genéricos de los otros capítulos: dicen su caja y cómo te matan
+        const hz = e.hazardBox(Game);
+        if (hz && p.invuln <= 0 && aabb(hb, hz)) { Game.playerEnvDeath(e.hazardKind || 'hit'); return; }
       }
     }
   }
@@ -378,18 +579,22 @@
 
   // cielo, sol y capas de parallax en el canvas dado (se usa también para el fondo de la selva)
   let bgEastCanvas = null;
-  function drawSkyAndLayers(ctx, layers, anchorRow, day, camx, camy, tag) {
+  // sky (opcional): { dawn, morning, sun: false } para cielos de otros capítulos
+  function drawSkyAndLayers(ctx, layers, anchorRow, day, camx, camy, tag, sky) {
     const gr = ctx.createLinearGradient(0, 0, 0, BASE_H);
-    for (let i = 0; i < 3; i++) gr.addColorStop([0, 0.6, 1][i], lerpColor(SKY_DAWN[i], SKY_MORNING[i], day));
+    const dawn = sky ? sky.dawn : SKY_DAWN, morning = sky ? sky.morning : SKY_MORNING;
+    for (let i = 0; i < 3; i++) gr.addColorStop([0, 0.6, 1][i], lerpColor(dawn[i], morning[i], day));
     ctx.fillStyle = gr; ctx.fillRect(0, 0, BASE_W, BASE_H);
     const anchor = anchorRow * TILE - BASE_H * 0.62;
-    // sol naciente por el este, detrás de los cerros
-    const sunX = 78 + day * 40, sunY = 112 - day * 82 - (camy - anchor) * 0.03;
-    const sunCol = lerpColor('#ffb066', '#fff3cf', day);
-    const glow = ctx.createRadialGradient(sunX, sunY, 4, sunX, sunY, 150 - day * 90);
-    glow.addColorStop(0, 'rgba(255,200,130,' + (0.75 - day * 0.45) + ')'); glow.addColorStop(1, 'rgba(255,170,110,0)');
-    ctx.fillStyle = glow; ctx.fillRect(0, 0, BASE_W, BASE_H);
-    ctx.fillStyle = sunCol; ctx.beginPath(); ctx.arc(sunX, sunY, 15, 0, Math.PI * 2); ctx.fill();
+    if (!sky || sky.sun !== false) {
+      // sol naciente por el este, detrás de los cerros
+      const sunX = 78 + day * 40, sunY = 112 - day * 82 - (camy - anchor) * 0.03;
+      const sunCol = lerpColor('#ffb066', '#fff3cf', day);
+      const glow = ctx.createRadialGradient(sunX, sunY, 4, sunX, sunY, 150 - day * 90);
+      glow.addColorStop(0, 'rgba(255,200,130,' + (0.75 - day * 0.45) + ')'); glow.addColorStop(1, 'rgba(255,170,110,0)');
+      ctx.fillStyle = glow; ctx.fillRect(0, 0, BASE_W, BASE_H);
+      ctx.fillStyle = sunCol; ctx.beginPath(); ctx.arc(sunX, sunY, 15, 0, Math.PI * 2); ctx.fill();
+    }
     for (let i = 0; i < layers.length; i++) {
       const L = layers[i];
       if (L.kind === 'clouds') { drawClouds(L, camx, -(camy - anchor) * 0.05, tag + 'c' + i, ctx); if (tag === 'w') drawSkyCondors(-(camy - anchor) * 0.06); continue; }
@@ -406,8 +611,9 @@
   function render() {
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.imageSmoothingEnabled = false;
-    if (Game.state === 'menu') { renderMenu(); return; }
+    if (Game.state === 'menu') { renderMenu(); if (Game.rk) renderRank(); return; }
     if (Game.state === 'controls') { renderMenu(); renderControls(); return; }
+    if (Game.state === 'ending') { Game.chapter.ending.draw(ctx, BASE_W, BASE_H, Game.stateT, tick); renderOverlay(); return; }
     const lv = Game.level; if (!lv) return;
 
     let sx = 0, sy = 0;
@@ -416,7 +622,7 @@
     // el día avanza con el reloj: amanece al empezar, mañana clara al llegar
     const day = dayProgress();
     const camx = Game.cam.x, camy = Game.cam.y;
-    drawSkyAndLayers(ctx, lv.bgLayers, lv.anchorRow, day, camx, camy, 'w');
+    drawSkyAndLayers(ctx, lv.bgLayers, lv.anchorRow, day, camx, camy, 'w', lv.sky);
     // al bajar a la selva amazónica el fondo andino se funde con lomas de selva brumosas
     const E = lv.bgEast;
     if (E) {
@@ -428,6 +634,16 @@
         ctx.globalAlpha = w; ctx.drawImage(bgEastCanvas, 0, 0); ctx.globalAlpha = 1;
       }
     }
+    // otros capítulos: varios fondos que se funden uno tras otro a lo largo del nivel
+    (lv.bgZones || []).forEach((Z, i) => {
+      const w = clamp((camx / TILE - Z.x0) / (Z.x1 - Z.x0), 0, 1);
+      if (w <= 0) return;
+      if (w >= 1) { drawSkyAndLayers(ctx, Z.layers, Z.anchorRow, day, camx, camy, 'z' + i, Z.sky); return; }
+      if (!bgEastCanvas || bgEastCanvas.width !== BASE_W || bgEastCanvas.height !== BASE_H) bgEastCanvas = PIX.createCanvas(BASE_W, BASE_H);
+      const ec = bgEastCanvas.getContext('2d'); ec.imageSmoothingEnabled = false;
+      drawSkyAndLayers(ec, Z.layers, Z.anchorRow, day, camx, camy, 'z' + i, Z.sky);
+      ctx.globalAlpha = w; ctx.drawImage(bgEastCanvas, 0, 0); ctx.globalAlpha = 1;
+    });
 
     ctx.save();
     ctx.translate(Math.round(-camx + sx), Math.round(-camy + sy));
@@ -437,6 +653,7 @@
     renderCanyon(lv);
     renderJungle(lv);
     renderBackdrop(lv);
+    if (lv.renderBack) lv.renderBack(ctx, Game);   // terreno y decorado propios de otros capítulos
     for (const e of Game.entities) if (e.drawBack) e.drawBack(ctx, Game);
     renderTiles(lv);
     renderInflow(lv);
@@ -446,15 +663,20 @@
     const p = Game.player;
     if (Game.state !== 'respawn' && !p.won) { p.draw(ctx, Game); p.drawRider(ctx); }
     renderFront(lv);
+    for (const e of Game.entities) if (e.drawFront) e.drawFront(ctx, Game);
     renderParticles();
     ctx.restore();
     renderSnowfall(lv, camy);
+    if (lv.renderScreen) lv.renderScreen(ctx, Game);   // efectos de pantalla (garúa...)
     renderAttackAlert();
+    if (Game.sorocheK > 0.01) renderSoroche(Game.sorocheK);
     // luz fría y violácea del amanecer que se va disipando
     if (day < 1) { ctx.fillStyle = 'rgba(70,40,110,' + (0.22 * (1 - day)) + ')'; ctx.fillRect(0, 0, BASE_W, BASE_H); }
 
     renderHUD();
+    if (Game.state === 'play') GUIDE.renderScreen(ctx, Game);
     renderOverlay();
+    if (Game.rk) renderRank();
   }
 
   // pared del risco detrás de las salientes (decorado, no colisiona)
@@ -772,7 +994,7 @@
   function renderLiquids(lv) {
     const t = tick, vx0 = Game.cam.x - 4, vx1 = Game.cam.x + BASE_W + 4, vy1 = Game.cam.y + BASE_H + 4;
     for (const L of lv.liquids) {
-      const Pl = LIQ[L.kind], flow = L.flow;
+      const Pl = L.pal || LIQ[L.kind], flow = L.flow;   // un capítulo puede pintar su agua (L.pal)
       const X0 = L.x * TILE, X1 = (L.x + L.w) * TILE, top = L.y * TILE, bot = (L.y + L.h) * TILE, W = X1 - X0;
       if (X1 < vx0 || X0 > vx1 || top > vy1) continue;
       const wl = top + 4;
@@ -961,8 +1183,10 @@
   }
 
   function panel(x, y, w, h) { ctx.fillStyle = 'rgba(28,18,30,0.55)'; ctx.fillRect(x + 1, y, w - 2, h); ctx.fillRect(x, y + 1, w, h - 2); }
+  let hintBottom = 0;   // el aviso breve se acomoda debajo del cartel de ayuda para no encimarse
   function hintBox(lines) {
     const w = Math.max(...lines.map(l => textWidth(l))) + 16, h = lines.length * 11 + 6;
+    hintBottom = 30 + h + 3;
     const hi = Math.floor(tick / 20) % 2 ? '#ffe68c' : '#ffffff';
     panel(BASE_W / 2 - w / 2, 30, w, h);
     lines.forEach((l, i) => drawText(ctx, l, BASE_W / 2, 34 + i * 11, { color: i === 0 ? hi : '#fff3d6', align: 'center' }));
@@ -976,29 +1200,33 @@
     drawText(ctx, clockText(), BASE_W - 29, 11, { color: late ? '#f2917d' : '#fff3d6', align: 'center' });
     const Z = Game.level.zones[Game.zone], A = Game.level.altitude;
     if (Z && Z.alt && A) {
-      // altímetro: en la montaña, en vez del nombre del tramo
-      const m = Math.max(A.baseM, Math.round((A.baseM + (A.baseRow * TILE - (Game.player.y + Game.player.h)) / TILE * A.perRow) / 10) * 10);
+      // altímetro: en la montaña, en vez del nombre del tramo (en rojo con soroche)
+      const m = Math.max(A.baseM, Math.round(altitudeM() / 10) * 10);
       const txt = String(m).replace(/\B(?=(\d{3})+(?!\d))/g, '.') + ' M';
-      drawText(ctx, txt, BASE_W - 58, 11, { color: '#d9f1ff', align: 'right', shadow: true, shadowColor: '#00000088' });
+      drawText(ctx, txt, BASE_W - 58, 11, { color: Game.soroche ? '#f2917d' : '#d9f1ff', align: 'right', shadow: true, shadowColor: '#00000088' });
     } else if (Game.zoneName) drawText(ctx, Game.zoneName, BASE_W - 58, 11, { color: '#fff3d6', align: 'right', shadow: true, shadowColor: '#00000088' });
 
     // en la cumbre: explicar el parapente
+    hintBottom = 0;
     const lf = Game.entities.find(e => e instanceof Leaf), pl = Game.player;
     if (lf && !lf.taken && Math.abs(pl.cx - lf.cx) < 90 && Math.abs(pl.cy - lf.cy) < 60 && !pl.riding) hintBox(['TOMA LA HOJA DE PLÁTANO']);
     else if (pl.gliding && pl.onGround && pl.y < 100 * TILE) hintBox(['¡SALTA AL VACÍO PARA PLANEAR!']);
+    else if (!Game.toastMsg) for (const e of Game.entities) { const h = e.hint && e.hint(Game); if (h) { hintBox(h); break; } }   // ayudas de otros capítulos
     // aviso breve (p. ej. al tocar un punto de control)
     if (Game.toastMsg) {
       const tm = Game.toastMsg, w = textWidth(tm.text) + 14;
       ctx.globalAlpha = Math.min(1, tm.t / 8, (100 - tm.t) / 20);
-      panel(6, 26, w, 13); drawText(ctx, tm.text, 13, 29, { color: '#9be7c4' });
+      const ty = hintBottom || 26;
+      panel(6, ty, w, 13); drawText(ctx, tm.text, 13, ty + 3, { color: '#9be7c4' });
       ctx.globalAlpha = 1;
     }
     // título al empezar
     if (Game.banner < 170) {
       const a = Math.min(1, (170 - Game.banner) / 40);
       ctx.globalAlpha = a;
-      drawText(ctx, 'LA MARATÓN DE LOS ANDES', BASE_W / 2, 64, { scale: BASE_W < 300 ? 1 : 2, color: '#ffd166', align: 'center', shadow: true, shadowColor: '#5a2a12' });
-      drawText(ctx, '¡LLEGA A TIEMPO A CLASES!', BASE_W / 2, 86, { color: '#ffffff', align: 'center', shadow: true, shadowColor: '#00000099' });
+      const bn = Game.chapter.banner;
+      drawText(ctx, bn[0], BASE_W / 2, 64, { scale: BASE_W < 300 ? 1 : 2, color: '#ffd166', align: 'center', shadow: true, shadowColor: '#5a2a12' });
+      drawText(ctx, bn[1], BASE_W / 2, 86, { color: '#ffffff', align: 'center', shadow: true, shadowColor: '#00000099' });
       ctx.globalAlpha = 1;
     }
   }
@@ -1011,8 +1239,14 @@
     if (Game.state === 'respawn') {
       const a = Math.min(1, Game.stateT / 16);
       ctx.fillStyle = 'rgba(11,10,18,' + (a * 0.85) + ')'; ctx.fillRect(0, 0, BASE_W, BASE_H);
-      drawText(ctx, '¡ACHACHÁU!', BASE_W / 2, BASE_H / 2 - 14, { scale: 2, color: '#ffd166', align: 'center', shadow: true });
-      if (Game.stateT > 30) drawText(ctx, 'PULSA ESPACIO PARA SEGUIR', BASE_W / 2, BASE_H / 2 + 14, { color: '#fff3d6', align: 'center' });
+      const ch = Game.chapter, msg = ch.deathMsgs && (ch.deathMsgs[Game.lastDeath] || ch.deathMsgs.default);
+      drawText(ctx, ch.deathTitle || '¡ACHACHÁU!', BASE_W / 2, BASE_H / 2 - 14, { scale: 2, color: '#ffd166', align: 'center', shadow: true });
+      // la causa, con jerga (solo en los capítulos que la traen)
+      if (msg) drawText(ctx, msg, BASE_W / 2, BASE_H / 2 + 8, { color: '#f2917d', align: 'center', shadow: true });
+      // muchas caídas en el mismo tramo: una pista (guide.js)
+      const help = GUIDE.deathLine();
+      if (help) drawText(ctx, help, BASE_W / 2, BASE_H / 2 - 40, { color: '#9be7c4', align: 'center', shadow: true });
+      if (Game.stateT > 30) drawText(ctx, 'PULSA ESPACIO PARA SEGUIR', BASE_W / 2, BASE_H / 2 + (msg ? 26 : 14), { color: '#fff3d6', align: 'center' });
     }
   }
 
@@ -1032,26 +1266,64 @@
     ctx.globalAlpha = a;
     const bob = Math.sin(tick / 12) * 2;
     const narrow = BASE_W < 300;   // celular en vertical: textos más cortos
-    drawText(ctx, '¡LLEGASTE A CLASES!', BASE_W / 2, 30 + bob, { scale: narrow ? 1 : 2, color: '#ffd166', align: 'center', shadow: true, shadowColor: '#5a2a12' });
+    winLayout();
+    // cada capítulo puede traer sus propios textos, personajes y filas (win)
+    const W = Game.chapter.win || {};
+    drawText(ctx, W.title || '¡LLEGASTE A CLASES!', BASE_W / 2, 30 + bob, { scale: narrow ? 1 : 2, color: '#ffd166', align: 'center', shadow: true, shadowColor: '#5a2a12' });
     const onTime = Game.arrival < CLASS_START;
-    drawText(ctx, onTime ? (narrow ? 'ANTES DE LAS 8:00' : 'AL AIRE LIBRE, ANTES DE LAS 8:00') : (narrow ? 'LLEGASTE TARDE...' : 'LA CLASE YA HABÍA EMPEZADO...'), BASE_W / 2, 54, { color: onTime ? '#f4e9d8' : '#f2917d', align: 'center' });
-    ctx.drawImage(LL.idle[0], BASE_W / 2 - 64, 74);
-    ctx.drawImage(P.run[Math.floor(tick / 7) % 4], BASE_W / 2 - 8, 76);
-    ctx.drawImage(GOAT.stand, BASE_W / 2 + 34, 81);
-    const rows = [
+    const sub = onTime ? (W.onTime || ['ANTES DE LAS 8:00', 'AL AIRE LIBRE, ANTES DE LAS 8:00']) : (W.late || ['LLEGASTE TARDE...', 'LA CLASE YA HABÍA EMPEZADO...']);
+    drawText(ctx, narrow ? sub[0] : sub[1], BASE_W / 2, 54, { color: onTime ? '#f4e9d8' : '#f2917d', align: 'center' });
+    if (W.drawCast) W.drawCast(ctx, BASE_W / 2, tick);
+    else {
+      ctx.drawImage(LL.idle[0], BASE_W / 2 - 64, 74);
+      ctx.drawImage(P.run[Math.floor(tick / 7) % 4], BASE_W / 2 - 8, 76);
+      ctx.drawImage(GOAT.stand, BASE_W / 2 + 34, 81);
+    }
+    const arrival = ['LLEGADA', clockText(Game.arrival) + (onTime ? ' ¡A TIEMPO!' : ' TARDE'), onTime ? '#9be7c4' : '#f2917d'];
+    const rows = W.rows ? W.rows(Game, narrow, arrival) : [
       [narrow ? 'HOJAS' : 'HOJAS DE TAREA', Game.pages + ' / 3', '#ffffff'],
-      ['LLEGADA', clockText(Game.arrival) + (onTime ? ' ¡A TIEMPO!' : ' TARDE'), onTime ? '#9be7c4' : '#f2917d'],
+      arrival,
       [narrow ? 'PASTO' : 'PASTO PARA LA CABRA', '' + Game.herbs, '#8fd062'],
       ['CAÍDAS', '' + Game.deaths, '#f2917d'],
     ];
     rows.forEach((r, i) => {
       const half = Math.min(110, BASE_W / 2 - 8);
-      drawText(ctx, r[0], BASE_W / 2 - half, 112 + i * 13, { color: '#cdbde8' });
-      drawText(ctx, r[1], BASE_W / 2 + half, 112 + i * 13, { color: r[2], align: 'right' });
+      drawText(ctx, r[0], BASE_W / 2 - half, WY.rows + i * 13, { color: '#cdbde8' });
+      drawText(ctx, r[1], BASE_W / 2 + half, WY.rows + i * 13, { color: r[2], align: 'right' });
     });
-    if (Game.pages === 3) drawText(ctx, narrow ? '¡TAREA COMPLETA!' : '¡TAREA COMPLETA! LA PROFE ESTARÁ ORGULLOSA', BASE_W / 2, 170, { color: '#9be7c4', align: 'center' });
-    if (Game.stateT > 90 && Math.floor(tick / 24) % 2 === 0) drawText(ctx, narrow ? 'PULSA A PARA SEGUIR' : 'PULSA ESPACIO PARA VOLVER AL MENÚ', BASE_W / 2, 194, { color: '#fff3d6', align: 'center' });
+    const done = W.allPages || ['¡TAREA COMPLETA!', '¡TAREA COMPLETA! LA PROFE ESTARÁ ORGULLOSA'];
+    if (Game.pages === 3) drawText(ctx, narrow ? done[0] : done[1], BASE_W / 2, WY.done, { color: '#9be7c4', align: 'center' });
+    renderWinOptions(narrow);
     ctx.globalAlpha = 1;
+  }
+  // al pie: ir al siguiente capítulo (si ya existe) o volver al menú
+  // posiciones del pie de la pantalla final; en pantallas bajitas (celular
+  // horizontal) todo sube un poco para que las opciones entren
+  const WY = { rows: 112, done: 170, info: 182, foot: 194 };
+  function winLayout() { Object.assign(WY, BASE_H < 208 ? { rows: 104, done: 157, info: 169, foot: 181 } : { rows: 112, done: 170, info: 182, foot: 194 }); }
+  function renderWinOptions(narrow) {
+    if (Game.stateT <= 90) return;
+    const opts = winOptions();
+    if (opts.length === 1) {
+      if (Game.chapterIdx + 1 < CHAPTER_SLOTS) drawText(ctx, 'CAPÍTULO ' + (Game.chapterIdx + 2) + ': ¡PRÓXIMAMENTE!', BASE_W / 2, WY.info, { color: '#cdbde8', align: 'center' });
+      if (Math.floor(tick / 24) % 2 === 0) drawText(ctx, narrow ? 'PULSA A PARA SEGUIR' : 'PULSA ESPACIO PARA VOLVER AL MENÚ', BASE_W / 2, WY.foot, { color: '#fff3d6', align: 'center' });
+      return;
+    }
+    if (!opts.includes('next') && !Game.shareMsg && Game.chapterIdx + 1 < CHAPTER_SLOTS) drawText(ctx, 'CAPÍTULO ' + (Game.chapterIdx + 2) + ': ¡PRÓXIMAMENTE!', BASE_W / 2, WY.info, { color: '#cdbde8', align: 'center' });
+    if (Game.shareMsg) drawText(ctx, Game.shareMsg.text, BASE_W / 2, WY.info, { color: '#9be7c4', align: 'center', shadow: true, shadowColor: '#000000' });
+    const LONG = { next: 'SIGUIENTE CAPÍTULO', ending: 'SEGUIR', ranking: 'RANKING', share: 'COMPARTIR', menu: 'MENÚ' }, SHORT = { next: 'SIGUIENTE', ending: 'SEGUIR', ranking: 'RANKING', share: 'COMPARTIR', menu: 'MENÚ' };
+    let gap = 26, labels = opts.map(o => (narrow ? SHORT : LONG)[o]);
+    const fits = () => labels.reduce((a, l) => a + textWidth(l), 0) + gap * (labels.length - 1) <= BASE_W - 24;
+    if (!fits()) { labels = opts.map(o => SHORT[o]); gap = 16; }
+    if (!fits()) gap = 12;
+    const ws = labels.map(l => textWidth(l)), total = ws.reduce((a, w) => a + w, 0) + gap * (labels.length - 1);
+    let x = BASE_W / 2 - total / 2;
+    labels.forEach((l, i) => {
+      const sel = i === Game.winSel;
+      drawText(ctx, l, x, WY.foot, { color: sel ? '#ffffff' : '#b9b3d6' });
+      if (sel && Math.floor(tick / 16) % 2 === 0) { drawText(ctx, '>', x - Math.min(10, gap / 2 + 3), WY.foot, { color: '#ffd166' }); drawText(ctx, '<', x + ws[i] + Math.min(4, gap / 2 - 5), WY.foot, { color: '#ffd166' }); }
+      x += ws[i] + gap;
+    });
   }
 
   // ── menú principal: amanecer en los Andes, el niño va con su llama ────────
@@ -1080,14 +1352,54 @@
     const ts = BASE_W < 260 ? 2 : 3;   // en pantallas angostas (celular vertical) el título es más chico
     drawText(ctx, 'LA MARATÓN', BASE_W / 2, 34 + bob, { scale: ts, color: '#ffd166', align: 'center', shadow: true, shadowColor: '#5a2a12' });
     drawText(ctx, 'DE LOS ANDES', BASE_W / 2, (ts === 3 ? 60 : 54) + bob, { scale: ts, color: '#ffd166', align: 'center', shadow: true, shadowColor: '#5a2a12' });
-    drawText(ctx, BASE_W < 260 ? '¡ANTES DE LAS 8:00!' : '¡LLEGA AL COLE ANTES DE LAS 8:00!', BASE_W / 2, (ts === 3 ? 90 : 78) + bob, { color: '#fff3d6', align: 'center', shadow: true, shadowColor: '#00000088' });
+    // el objetivo del capítulo elegido
+    const chSel = CHAPTERS[Game.menuChapter];
+    const goal = chSel ? (BASE_W < 260 ? chSel.goalShort : chSel.goal) : '¡MUY PRONTO!';
+    drawText(ctx, goal, BASE_W / 2, (ts === 3 ? 90 : 78) + bob, { color: '#fff3d6', align: 'center', shadow: true, shadowColor: '#00000088' });
     // en vertical se juega mejor girando el teléfono
-    if (BASE_H > BASE_W) drawText(ctx, '¡GIRA EL TELÉFONO!', BASE_W / 2, MENU_Y + 3 * MENU_DY + 10, { color: '#ffd166', align: 'center', shadow: true, shadowColor: '#000000' });
+    if (BASE_H > BASE_W) drawText(ctx, '¡GIRA EL TELÉFONO!', BASE_W / 2, MENU_Y + (MENU_KEYS().length - 1) * MENU_DY + 10, { color: '#ffd166', align: 'center', shadow: true, shadowColor: '#000000' });
+    renderChapterCards(ts === 3 ? CARDS_Y : CARDS_Y - 10);
     MENU_OPTS().forEach((o, i) => {
-      const sel = i === Game.menuSel, y = MENU_Y + i * MENU_DY;
+      if (i === 0) return;   // "JUGAR" es el selector de capítulos
+      const sel = i === Game.menuSel, y = MENU_Y + (i - 1) * MENU_DY;
       drawText(ctx, o, BASE_W / 2, y, { color: sel ? '#ffffff' : '#e7d3c4', align: 'center', shadow: true, shadowColor: '#00000099' });
       if (sel) { const w = textWidth(o); drawText(ctx, '>', BASE_W / 2 - w / 2 - 12, y, { color: '#ffd166' }); drawText(ctx, '<', BASE_W / 2 + w / 2 + 6, y, { color: '#ffd166' }); }
     });
+  }
+  // SELECTOR DE CAPÍTULO: una tarjeta por capítulo (los que faltan, con candado).
+  // En pantallas angostas se ve solo la elegida, con flechas a los lados.
+  function renderChapterCards(y) {
+    const active = Game.menuSel === 0, narrow = BASE_W < 320;
+    const cw = narrow ? Math.min(130, BASE_W - 44) : 100, chh = 30, gap = 8;
+    const idx = narrow ? [Game.menuChapter] : [...Array(CHAPTER_SLOTS).keys()];
+    let x = Math.round(BASE_W / 2 - (idx.length * cw + (idx.length - 1) * gap) / 2);
+    for (const i of idx) {
+      const ch = CHAPTERS[i], sel = i === Game.menuChapter;
+      const shake = sel && Game.lockedT > 0 ? Math.round(Math.sin(Game.lockedT * 1.6) * 2) : 0;
+      const cy = y - (sel && active ? 2 : 0), cx = x + shake;
+      // borde: dorado si está elegida, tenue si no
+      ctx.fillStyle = sel ? (active && Math.floor(tick / 20) % 2 ? '#fff3d6' : '#ffd166') : 'rgba(255,240,210,0.25)';
+      ctx.fillRect(cx - 1, cy - 1, cw + 2, chh + 2);
+      ctx.fillStyle = ch ? 'rgba(28,18,30,0.86)' : 'rgba(20,16,28,0.9)'; ctx.fillRect(cx, cy, cw, chh);
+      ctx.fillStyle = ch ? ch.color : '#4a4458'; ctx.fillRect(cx, cy, cw, 3);   // franja de color del capítulo
+      drawText(ctx, 'CAPÍTULO ' + (i + 1), cx + cw / 2, cy + 7, { color: ch ? '#ffd166' : '#8a8296', align: 'center' });
+      if (ch) drawText(ctx, ch.short, cx + cw / 2, cy + 18, { color: sel ? '#ffffff' : '#e7d3c4', align: 'center' });
+      else {
+        // candado + PRÓXIMAMENTE
+        const lx = Math.round(cx + cw / 2 - textWidth('PRÓXIMAMENTE') / 2 - 9);
+        ctx.fillStyle = '#8a8296'; ctx.fillRect(lx + 1, cy + 17, 5, 1); ctx.fillRect(lx, cy + 18, 1, 2); ctx.fillRect(lx + 6, cy + 18, 1, 2);
+        ctx.fillStyle = '#b9b1c2'; ctx.fillRect(lx - 1, cy + 20, 9, 6); ctx.fillStyle = '#5d5768'; ctx.fillRect(lx + 3, cy + 22, 1, 2);
+        drawText(ctx, 'PRÓXIMAMENTE', cx + cw / 2 + 5, cy + 19, { color: '#8a8296', align: 'center' });
+      }
+      x += cw + gap;
+    }
+    if (active) {
+      // flechas: izquierda/derecha cambia de capítulo
+      const L = narrow ? Math.round(BASE_W / 2 - cw / 2) : Math.round(BASE_W / 2 - (CHAPTER_SLOTS * cw + (CHAPTER_SLOTS - 1) * gap) / 2);
+      const R = BASE_W - L, ay = y + 11 + (Math.floor(tick / 16) % 2);
+      drawText(ctx, '<', L - 12, ay, { color: '#ffd166', shadow: true, shadowColor: '#00000099' });
+      drawText(ctx, '>', R + 6, ay, { color: '#ffd166', shadow: true, shadowColor: '#00000099' });
+    }
   }
 
   function renderControls() {
@@ -1098,7 +1410,8 @@
       drawText(ctx, r[0], 30, 50 + i * 15, { color: '#9be7c4' });
       drawText(ctx, r[1], BASE_W - 30, 50 + i * 15, { color: '#f4e9d8', align: 'right' });
     });
-    const tips = ['LLAMA: TÓCALA PARA MONTARLA. CORRE Y SALTA MÁS.', 'CABRA: SALTA SOLA. TÚ SOLO LA GUÍAS.', 'EL PASTO LE DA A LA CABRA UN SÚPER SALTO.', 'HUAICO: SI CAES, PULSA SALTO MUY SEGUIDO.'];
+    const chSel = CHAPTERS[Game.menuChapter];
+    const tips = (chSel && chSel.tips) || ['LLAMA: TÓCALA PARA MONTARLA. CORRE Y SALTA MÁS.', 'CABRA: SALTA SOLA. TÚ SOLO LA GUÍAS.', 'EL PASTO LE DA A LA CABRA UN SÚPER SALTO.', 'HUAICO: SI CAES, PULSA SALTO MUY SEGUIDO.'];
     tips.forEach((t, i) => drawText(ctx, t, BASE_W / 2, 132 + i * 12, { color: '#cdbde8', align: 'center' }));
     drawText(ctx, 'PULSA ESPACIO PARA VOLVER', BASE_W / 2, 196, { color: '#fff3d6', align: 'center' });
   }
@@ -1157,8 +1470,24 @@
     // solo teclado (y los botones táctiles en móvil): el ratón no hace nada
     const firstGesture = () => { AUDIO.resume(); if (Game.state === 'menu') AUDIO.playMusic(SONGS.menu); window.removeEventListener('keydown', firstGesture); };
     window.addEventListener('keydown', firstGesture);
+    debugFromURL();
     requestAnimationFrame(frame);
   }
+  // modo de prueba solo por URL: ?cap=2 entra directo al capítulo 2 y
+  // &x=NNN (&y=NN) te deja en esa columna (y fila), con punto de control ahí
+  function debugFromURL() {
+    const q = new URLSearchParams(location.search), cap = parseInt(q.get('cap'), 10);
+    if (!(cap >= 1 && CHAPTERS[cap - 1])) return;
+    startGame(cap - 1);
+    if (q.has('x')) Game.debugTeleport(+q.get('x'), q.has('y') ? +q.get('y') : null);
+  }
+  Game.debugTeleport = (tx, ty) => {
+    const lv = Game.level, p = Game.player;
+    if (ty == null) { ty = 0; while (ty < lv.rows - 1 && !isSolidCode(lv.tile(tx, ty)) && !isOnewayCode(lv.tile(tx, ty))) ty++; }
+    p.riding = null; p.x = tx * TILE + 4; p.y = ty * TILE - p.h; p.vx = 0; p.vy = 0;
+    Game.spawn = { x: p.x, y: ty * TILE }; Game.spawnMount = null;
+    Game.floorY = p.cy; updateCamera(true);
+  };
   Game.debugStep = update;
   Game.debugRender = render;
   Game.startGame = startGame;
