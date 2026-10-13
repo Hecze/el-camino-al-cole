@@ -106,7 +106,7 @@ class Player extends Actor {
       if (l instanceof Llama) {
         if (l.onGround) l.coyote = PHYS.COYOTE; else if (l.coyote > 0) l.coyote--;
         if (l.coyote > 0 && Input.consumeJump()) { l.vy = PHYS.LLAMA_JUMP; l.onGround = false; l.coyote = 0; g.onPlayerJump(l); }
-      } else Input.clearJump();
+      } else if (!l.ownJump) Input.clearJump();   // la tabla de sandboard lee el salto ella misma
       this.syncRide(); this.animT++;
       return;
     }

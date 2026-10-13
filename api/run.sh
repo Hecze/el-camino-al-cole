@@ -4,8 +4,8 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 [ -f .env ] && set -a && . ./.env && set +a
-# token de la cuenta personal (h18m), separado del token de trabajo
-[ -n "${CLOUDFLARE_API_TOKEN_H18M:-}" ] && export CLOUDFLARE_API_TOKEN="$CLOUDFLARE_API_TOKEN_H18M"
+# el token de trabajo del entorno no aplica aquí: se usa el login de wrangler (cuenta Harold18m)
+unset CLOUDFLARE_API_TOKEN CF_API_TOKEN
 : "${D1_DATABASE_ID:=local}" "${ALLOWED_ORIGINS:=http://localhost:8000}" "${MIN_TIME_MS:=30000}"
 sed -e "s|\${D1_DATABASE_ID}|$D1_DATABASE_ID|" -e "s|\${ALLOWED_ORIGINS}|$ALLOWED_ORIGINS|" -e "s|\${MIN_TIME_MS}|$MIN_TIME_MS|" \
   wrangler.template.toml > wrangler.toml
