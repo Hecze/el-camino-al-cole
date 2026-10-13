@@ -974,7 +974,7 @@ class Eagle extends Actor {
         const tx = p.cx + Math.cos(this.angle) * 90 - this.w / 2, ty = p.cy - 55 + Math.sin(this.angle) * 15 - this.h / 2;
         const ox = this.x; this.x += (tx - this.x) * 0.07; this.y += (ty - this.y) * 0.07; this.face = this.x >= ox ? 1 : -1;
         if (!active) { this.state = 'leave'; this.t = 0; }
-        else if (this.t > 110 + this.delay && !busy) { this.state = 'windup'; this.t = 0; g.audio('screech'); }
+        else if (this.t > 110 + this.delay && !busy) { this.state = 'windup'; this.t = 0; this.p0 = undefined; g.audio('screech'); }
         break;
       }
       case 'windup': {
@@ -986,12 +986,17 @@ class Eagle extends Actor {
         // ...pero la mira se FIJA justo antes del picado: la línea deja de moverse y
         // el picado va exactamente por ahí. Si ves la línea quieta, ¡sal de ella!
         if (this.t <= Eagle.LOCK_T) {
-          const T = d / 6.5;
-          this.aimX = p.cx + p.vx * T; this.aimY = p.cy + p.vy * T;
+          // (cuenta también lo que falta para lanzarse: el niño sigue cayendo mientras tanto)
+          // (con lo que de verdad se movió: empujando contra la roca, vx no es 0 pero no avanza)
+          const T = (Eagle.DIVE_T + 1 - this.t) + d / 6.5;
+          // (promedio desde que empezó a apuntar: así no la engaña un cuadro suelto)
+          if (this.p0 === undefined) this.p0 = { x: p.cx, y: p.cy, t: this.t };
+          const n = this.t - this.p0.t, mvx = n > 0 ? (p.cx - this.p0.x) / n : p.vx, mvy = n > 0 ? (p.cy - this.p0.y) / n : p.vy;
+          this.aimX = p.cx + mvx * T; this.aimY = p.cy + mvy * T;
           if (this.t === Eagle.LOCK_T) g.audio('lock');
         }
         const ax = this.aimX, ay = this.aimY;
-        if (this.t > 38) {
+        if (this.t > Eagle.DIVE_T) {
           const wx = ax - this.cx, wy = ay - this.cy, wd = Math.hypot(wx, wy) || 1;
           this.dx = wx / wd * 6.5; this.dy = wy / wd * 6.5; this.state = 'dive'; this.t = 0; g.audio('swoosh'); g.shake(2, 10);
         }
@@ -1043,7 +1048,8 @@ class Eagle extends Actor {
   }
 }
 
-Eagle.LOCK_T = 22;   // a partir de aquí la mira del águila ya no se mueve (el picado sale en el 39)
+Eagle.LOCK_T = 22;   // a partir de aquí la mira del águila ya no se mueve
+Eagle.DIVE_T = 38;   // y después de este cuadro se lanza en picado
 
 // EL COLEGIO: se cae a pedazos. Tablones clausurando la puerta, grietas,
 // planchas de calamina oxidadas y sueltas, y puntales sosteniendo la pared. Aquí no hay clases...
