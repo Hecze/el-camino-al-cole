@@ -126,7 +126,7 @@
   const Game = {
     state: 'menu', level: null, player: null, entities: [], movers: [], particles: [],
     cam: { x: 0, y: 0 }, look: 0, floorY: 0, shakeT: 0, shakeMag: 0, fade: 1,
-    pages: 0, herbs: 0, score: 0, huaico: null,
+    pages: 0, score: 0, huaico: null,
     menuSel: 0, pauseSel: 0, stateT: 0, T: 0,
     spawn: { x: 0, y: 0 }, spawnMount: null, zone: -1, zoneName: '',
     banner: 0, deaths: 0, time: 0,
@@ -211,11 +211,11 @@
     if (ci == null) ci = Game.chapterIdx;
     const ch = CHAPTERS[ci], lv = ch.level;
     Game.chapterIdx = ci; Game.chapter = ch; Game.menuChapter = ci; Game.jingle = null;
-    Game.soroche = false; Game.sorocheK = 0; Game.cocaT = 0; Game.sorocheTold = false;
+    Game.soroche = false; Game.sorocheK = 0; Game.sorocheLvl = 0; Game.cocaFlash = 0;
     DAY_START = ch.dayStart || DAY_START_DEFAULT;
     Game.level = lv;
     Game.entities = []; Game.movers = []; Game.particles = []; Game.huaico = null;
-    Game.pages = 0; Game.herbs = 0; Game.score = 0; Game.deaths = 0; Game.time = 0;
+    Game.pages = 0; Game.score = 0; Game.deaths = 0; Game.time = 0;
     if (ch.onStart) ch.onStart(Game);   // contadores propios del capítulo
     // cronómetro real para el ranking (las pausas no cuentan) y ticket de la partida
     Game.runStart = performance.now(); Game.pausedMs = 0; Game.runMs = 0; Game.rankResult = null; Game.shareMsg = null;
@@ -275,27 +275,45 @@
   }
 
   // ── SOROCHE: el mal de altura del Apu ──────────────────────────────────
-  // Sobre lev.soroche.minM metros te mareas: la vista ondula y vas un poco más
-  // lento (la cabra rebota igual). Las hojitas de coca lo curan por un rato.
+  // Un nivel de 0 a 1 (la barra bajo el altímetro): sube pasando lev.soroche.startM
+  // metros, más rápido cuanto más alto; baja si desciendes. Al llenarse te mareas
+  // (la vista ondula, vas más lento) hasta que baja de nuevo. Cada hojita de coca
+  // lo baja un buen tramo. Nada de texto: la barra lo explica.
   function altitudeM() {
     const A = Game.level.altitude, p = Game.player;
     return A.baseM + (A.baseRow * TILE - (p.y + p.h)) / TILE * A.perRow;
   }
   function updateSoroche() {
     const S = Game.level.soroche, Z = Game.level.zones[Game.zone];
-    if (!S) { Game.soroche = false; Game.sorocheK = 0; return; }
-    if (Game.cocaT > 0) Game.cocaT--;
-    const sick = !!(Z && Z.alt && altitudeM() >= S.minM && Game.cocaT <= 0);
-    if (sick && !Game.soroche) { Game.toast(Game.sorocheTold ? '¡OTRA VEZ EL SOROCHE!' : '¡SOROCHE! BUSCA HOJITAS DE COCA'); Game.sorocheTold = true; AUDIO.play('dizzy'); }
-    Game.soroche = sick;
-    Game.sorocheK += ((sick ? 1 : 0) - Game.sorocheK) * 0.03;
+    if (!S) { Game.soroche = false; Game.sorocheK = 0; Game.sorocheLvl = 0; return; }
+    const start = S.startM || (S.minM - 300), alt = Z && Z.alt ? altitudeM() : 0;
+    if (alt > start) Game.sorocheLvl = Math.min(1, Game.sorocheLvl + 0.0012 * (1 + (alt - start) / 750));
+    else Game.sorocheLvl = Math.max(0, Game.sorocheLvl - 0.003);
+    const was = Game.soroche;
+    Game.soroche = Game.sorocheLvl >= 1 || (was && Game.sorocheLvl > 0.6);
+    if (Game.soroche && !was) AUDIO.play('dizzy');
+    Game.sorocheK += ((Game.soroche ? 1 : 0) - Game.sorocheK) * 0.03;
     // el corazón late fuerte mientras dura el soroche (y la vista se oscurece con cada latido)
-    if (sick && tick % 50 === 0) AUDIO.play('heart');
+    if (Game.soroche && tick % 50 === 0) AUDIO.play('heart');
   }
-  Game.cureSoroche = (frames) => {
-    Game.cocaT = frames; Game.soroche = false;
-    Game.toast(Game.sorocheTold ? '¡HOJITA DE COCA! SE TE PASÓ EL SOROCHE' : '¡HOJITA DE COCA! PARA EL SOROCHE');
-  };
+  Game.cureSoroche = () => { Game.sorocheLvl = Math.max(0, Game.sorocheLvl - 0.7); Game.cocaFlash = 30; };
+  // la barra del soroche: pulmones + barra que se llena (verde → amarillo → rojo)
+  function renderSorocheBar() {
+    const Z = Game.level.zones[Game.zone];
+    if (!Game.level.soroche || !(Z && Z.alt) && Game.sorocheLvl < 0.01) return;
+    const k = Game.sorocheLvl, x = BASE_W - 58, y = 24, w = 52;
+    panel(x - 18, y, w + 22, 13);
+    // pulmones (el soroche es falta de aire): respiran agitados cuanto más llena la barra
+    const beat = Game.soroche ? Math.floor(tick / 10) % 2 : k > 0.8 ? Math.floor(tick / 18) % 2 : 0;
+    const LUNG = ['.....t.....', '.....t.....', '..oo.t.oo..', '.oPPotoPPo.', 'oPPPo.oPPPo', 'oPPPo.oPPPo', 'oPPPo.oPPPo', '.oPPo.oPPo.', '..oo...oo..'];
+    const LC = { t: '#e8dcd0', o: '#a8423e', P: beat ? '#ffa8a0' : '#e07a7a' };
+    LUNG.forEach((r, j) => { for (let i = 0; i < r.length; i++) if (LC[r[i]]) { ctx.fillStyle = LC[r[i]]; ctx.fillRect(x - 15 + i + (beat && r[i] !== 't' ? (i < 5 ? -1 : 1) : 0), y + 2 + j, 1, 1); } });
+    ctx.fillStyle = '#1d1622'; ctx.fillRect(x, y + 3, w, 6);
+    const col = k < 0.5 ? '#9be7c4' : k < 0.8 ? '#ffd166' : '#f2917d';
+    const blink = Game.soroche && Math.floor(tick / 10) % 2;
+    ctx.fillStyle = blink ? '#ffffff' : col; ctx.fillRect(x + 1, y + 4, Math.round((w - 2) * k), 4);
+    if (Game.cocaFlash > 0) { Game.cocaFlash--; ctx.fillStyle = 'rgba(155,231,196,' + (Game.cocaFlash / 30).toFixed(2) + ')'; ctx.fillRect(x - 18, y, w + 22, 12); }
+  }
   // la vista ondula y se ve doble, con un tinte verdoso
   let sorocheBuf = null;
   function renderSoroche(k) {
@@ -1209,6 +1227,7 @@
       const txt = String(m).replace(/\B(?=(\d{3})+(?!\d))/g, '.') + ' M';
       drawText(ctx, txt, BASE_W - 58, 11, { color: Game.soroche ? '#f2917d' : '#d9f1ff', align: 'right', shadow: true, shadowColor: '#00000088' });
     } else if (Game.zoneName) drawText(ctx, Game.zoneName, BASE_W - 58, 11, { color: '#fff3d6', align: 'right', shadow: true, shadowColor: '#00000088' });
+    renderSorocheBar();
 
     // en la cumbre: explicar el parapente
     hintBottom = 0;
@@ -1287,7 +1306,6 @@
     const rows = W.rows ? W.rows(Game, narrow, arrival) : [
       [narrow ? 'HOJAS' : 'HOJAS DE TAREA', Game.pages + ' / 3', '#ffffff'],
       arrival,
-      [narrow ? 'PASTO' : 'PASTO PARA LA CABRA', '' + Game.herbs, '#8fd062'],
       ['CAÍDAS', '' + Game.deaths, '#f2917d'],
     ];
     rows.forEach((r, i) => {

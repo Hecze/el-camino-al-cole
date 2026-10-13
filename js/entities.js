@@ -424,7 +424,7 @@ class Llama extends Mount {
 
 // Cabra montesa: rebota sola sin parar; el jugador solo la dirige.
 class Cabra extends Mount {
-  constructor(x, y) { super(x, y - 15, 20, 15, { dx: 5, dy: -10 }); this.canDismount = false; this.landT = 0; this.idleT = 0; this.boost = 0; }
+  constructor(x, y) { super(x, y - 15, 20, 15, { dx: 5, dy: -10 }); this.canDismount = false; this.landT = 0; this.idleT = 0; }
   update(g) {
     this.animT++;
     if (this.landT > 0) this.landT--;
@@ -442,10 +442,9 @@ class Cabra extends Mount {
           this.retired = true; this.vx = 0; this.rider.dismount(g, -4.2); g.audio('bleat'); g.onGoatDone();
         } else {
           // después de comer pasto, el siguiente salto es un súper salto
-          const big = this.boost > 0;
-          this.vy = PHYS.GOAT_JUMP * (big ? 1.4 : 1); if (big) this.boost--;
-          this.onGround = false; this.landT = 5; g.audio(big ? 'bleat' : 'boing');
-          g.burst(this.cx, this.y + this.h, big ? 'spark' : 'dust', big ? 14 : 5);
+          this.vy = PHYS.GOAT_JUMP;
+          this.onGround = false; this.landT = 5; g.audio('boing');
+          g.burst(this.cx, this.y + this.h, 'dust', 5);
         }
       }
     } else {
@@ -460,7 +459,6 @@ class Cabra extends Mount {
   draw(ctx) {
     const img = !this.onGround ? (this.vy < 0 ? GOAT.jump : GOAT.stand) : (this.landT > 0 ? GOAT.land : GOAT.stand);
     ctx.drawImage(this.facing < 0 ? flipS(img) : img, Math.round(this.cx - 14 + (this.facing < 0 ? 2 : -2)), Math.round(this.y + this.h - 20));
-    if (this.boost > 0 && Math.floor(this.animT / 4) % 2) { ctx.fillStyle = '#ffe27a'; ctx.fillRect(Math.round(this.cx + (this.animT % 16) - 8), Math.round(this.y - 4), 1, 1); }
   }
 }
 
@@ -732,7 +730,6 @@ class Condor extends Actor {
 class Pickup extends Actor {
   constructor(type, x, y) {
     super(x * TS + 3, y * TS + 5, 10, 11);
-    if (type === 'herb') { this.x -= 3; this.y -= 3; this.w = 16; this.h = 16; }
     // (la coca no gasta números al azar: así el resto del nivel sale igual que antes)
     this.type = type; this.animT = type === 'coca' ? x : Math.random() * 10; this.baseY = this.y;
   }
@@ -744,13 +741,7 @@ class Pickup extends Actor {
   }
   collect(g) {
     if (this.type === 'coca') {
-      this.hidden = 900; g.cureSoroche(900); g.audio('checkpoint'); g.burst(this.cx, this.cy, 'leaf', 12);
-      return;
-    }
-    if (this.type === 'herb') {
-      // solo la cabra come pasto: le da un súper salto
-      const goat = g.player.riding; if (!(goat instanceof Cabra)) return;
-      this.dead = true; goat.boost = 1; g.herbs++; g.audio('munch'); g.burst(this.cx, this.cy, 'leaf', 12);
+      this.hidden = 900; g.cureSoroche(); g.audio('checkpoint'); g.burst(this.cx, this.cy, 'leaf', 12);
       return;
     }
     this.dead = true;
@@ -764,22 +755,6 @@ class Pickup extends Actor {
       ctx.fillStyle = 'rgba(200,255,170,' + (0.3 + Math.sin(this.animT * 2) * 0.12).toFixed(2) + ')';
       ctx.beginPath(); ctx.arc(cx, cy, 9, 0, Math.PI * 2); ctx.fill();
       ctx.drawImage(OBJ.coca, cx - 6, cy - 5);
-      return;
-    }
-    if (this.type === 'herb') {
-      // brillo que late + destello que gira: tiene que verse desde lejos
-      const bob = Math.sin(this.animT) * 1.5, cx = this.cx, cy = this.cy + bob;
-      const pulse = 0.35 + Math.sin(this.animT * 2.2) * 0.15;
-      ctx.fillStyle = 'rgba(255,240,140,' + pulse.toFixed(2) + ')';
-      ctx.beginPath(); ctx.arc(Math.round(cx), Math.round(cy), 12, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = 'rgba(255,255,220,' + (pulse + 0.2).toFixed(2) + ')';
-      ctx.beginPath(); ctx.arc(Math.round(cx), Math.round(cy), 8, 0, Math.PI * 2); ctx.fill();
-      ctx.drawImage(OBJ.herb, Math.round(cx - 8), Math.round(cy - 7));
-      for (let k = 0; k < 2; k++) {
-        const a = this.animT * 1.3 + k * Math.PI;
-        const sx = Math.round(cx + Math.cos(a) * 13), sy = Math.round(cy + Math.sin(a) * 9);
-        ctx.fillStyle = '#ffffff'; ctx.fillRect(sx, sy - 1, 1, 3); ctx.fillRect(sx - 1, sy, 3, 1);
-      }
       return;
     }
     // la hoja aletea con el viento, apoyada en el suelo
@@ -1410,7 +1385,6 @@ function makeEntity(def, level) {
     case 'leaf': return new Leaf(def.x, def.y);
     case 'eagle': return new Eagle(def);
     case 'page': return new Pickup('page', def.x, def.y);
-    case 'herb': return new Pickup('herb', def.x, def.y);
     case 'coca': return new Pickup('coca', def.x, def.y);
     case 'condor': return new Condor(def);
     default: return EXTRA_ENTITIES[def.type] ? EXTRA_ENTITIES[def.type](def, level) : null;

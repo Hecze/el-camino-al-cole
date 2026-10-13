@@ -222,8 +222,6 @@ const BIRDS = [];
   BIRDS.push({ type: 'condor', x0: 90, x1: 123, y: row - 1.5, speed: 1.4 + i * 0.12, phase: i * 0.7, dir: i % 2 ? -1 : 1 });
 });
 // pasto para la cabra: algo apartado del camino (cuesta ir a por él)
-const HERBS = [];
-MTN.up.forEach((l, i) => { if (i % 4 === 2) HERBS.push({ type: 'herb', x: mid(l) + (i % 8 === 2 ? 3 : -3), y: l[1] - 3 }); });
 // hojitas de coca para el soroche: en el centro de las salientes altas, donde rebota la cabra
 const COCA = [20, 24, 28].map(i => ({ type: 'coca', x: mid(MTN.up[i]) - 0.5, y: MTN.up[i][1] - 1 }));
 // puntos de control en la montaña (reapareces montado en la cabra)
@@ -273,29 +271,24 @@ const GUIA = [
   { type: 'prop', kind: 'manta', x: 74.5, y: G, w: 3 },
   { type: 'help', x0: 48, x1: 66, text: 'CRUZA EL PUENTE SIN PARAR' },
   { type: 'help', x0: 70, x1: 92, kind: 'rock', text: '¡SALTA CUANDO LLEGUE LA PIEDRA!' },
-  // EL APU: la cabra, el pasto, el soroche y los cóndores
-  { type: 'npc', x: 87.5, y: G, model: 'nino', lines: ['¡ARRIBA HAY UN PLATANAL!', '¡QUÉ TAL CABRA!'] },
+  // EL APU: la cabra, el soroche y los cóndores
+  { type: 'npc', x: 87.5, y: G, model: 'nino', lines: ['¡CUIDADO CON EL SOROCHE!', '¡ARRIBA HAY UN PLATANAL!'] },
   // si te quedas a pie al pie del cerro, la flecha de "¡POR AQUÍ!" señala a la cabra
   // (solo al pie del cerro: más arriba la cabra queda atrás y la flecha no debe mandarte de vuelta)
   { type: 'goal', x: 91, y: G, when: (g) => !onGoat(g) && g.player.cx > 70 * TILE && g.player.cx < 96 * TILE, at: (g) => { const c = g.entities.find(e => e instanceof Cabra); return { x: c.cx, y: c.cy }; } },
   { type: 'hint', x: 91.5, y: G, text: '¡SÚBETE A LA CABRA!', arrow: 'down', r: 7, pass: 1, when: (g) => !onGoat(g) },
-  { type: 'hint', x: 99, y: G, text: ['LA CABRA SALTA SOLA', 'TÚ SOLO GUÍALA'], key: 'right', r: 9, pass: 4, vr: 4, when: onGoat },
-  { type: 'hint', x: HERBS[0].x + 0.5, y: HERBS[0].y + 2.2, text: 'PASTO: ¡SÚPER SALTO!', arrow: 'down', r: 6, pass: 3, vr: 4, item: 'herb', when: onGoat },
-  { type: 'hint', x: COCA[0].x + 0.5, y: COCA[0].y + 1.5, text: '¡COCA PARA EL SOROCHE!', arrow: 'down', r: 6, pass: 3, vr: 4, item: 'coca' },
+  { type: 'hint', x: COCA[0].x + 0.5, y: COCA[0].y + 1.5, text: '¡COCA!', arrow: 'down', r: 6, pass: 3, vr: 4, item: 'coca' },
   { type: 'help', x0: 92, x1: 126, kind: 'bird', text: '¡SI VES EL AVISO, ESPERA!' },
   { type: 'help', x0: 92, x1: 126, text: 'TÚ SOLO GUÍA: LA CABRA SALTA' },
   { type: 'npc', x: 117, y: SUMMIT, model: 'nina', lines: ['¡QUÉ TAL VISTA!'] },
   { type: 'prop', kind: 'campana', x: 119.5, y: SUMMIT },
   // CEJA DE SELVA: el huaico
   { type: 'npc', x: 147.5, y: 110, model: 'senora', lines: ['¡AY, EL HUAICO, HIJITO!', '¡SE LLEVÓ MI CASA!'] },
-  { type: 'hint', x: 155, y: 110, text: ['¡SALTA DE TRONCO', 'EN TRONCO!'], arrow: 'right', r: 6, pass: 3 },
   { type: 'help', x0: 157, x1: 246, kind: 'mud', text: 'EN EL LODO: ¡SALTA SIN PARAR!' },
   { type: 'prop', kind: 'olla', x: 253, y: 103, bonus: 1 },
   // LA SELVA BAJA
   { type: 'npc', x: 262.5, y: 108, model: 'nino', lines: ['¡CUIDADO CON LOS LAGARTOS!'] },
-  { type: 'hint', x: SV - 1, y: 110, text: '¡DE PIEDRA EN PIEDRA!', arrow: 'right', r: 6, pass: 2 },
   { type: 'hint', x: sx(21), y: 111, text: ['LAS HOJAS SE HUNDEN', '¡NO TE QUEDES!'], arrow: 'right', r: 5, pass: 2 },
-  { type: 'hint', x: sx(41), y: 111, text: '¡A LAS RAMAS!', arrow: 'up', r: 5, pass: 2 },
   { type: 'help', x0: SV - 4, x1: SCH, kind: 'caiman', text: '¡NO NADES! VE POR ARRIBA' },
   // EL COLEGIO
   { type: 'prop', kind: 'campana', x: SCH + 9.5, y: 110 },
@@ -431,7 +424,6 @@ const LEVEL = {
     { type: 'school', x: SCH + 14, y: 110 },
     { type: 'outdoorClass', x: SCH + 22, y: 110 },
     ...BIRDS,
-    ...HERBS,
     ...COCA,
     ...GUIA,
     // las 3 hojas de tarea que se le volaron al niño, enganchadas en el camino

@@ -570,7 +570,8 @@
         if (next) {
           const d = next.x - this.cx, brake = this.v * this.v / (2 * 0.06) + 2;
           if (d <= 0.8) { this.x = next.x - this.w / 2; this.v = 0; this.state = 'stop'; this.stopT = next.wait; g.audio('brake');
-            this.shout(g, aboard ? '¡BAJA, BAJA!' : next.peaje ? '¡PAGA EL PEAJE, CHOFER!' : STOP_SHOUTS[(this.t >> 3) % STOP_SHOUTS.length]); }
+            // (si vas en el techo no grita nada: un '¡BAJA!' confundía al jugador)
+            if (!aboard) this.shout(g, next.peaje ? '¡PAGA EL PEAJE, CHOFER!' : STOP_SHOUTS[(this.t >> 3) % STOP_SHOUTS.length]); }
           else if (d < brake) this.v = Math.max(0.35, this.v - 0.06);
           else this.v = Math.min(this.vmax, this.v + 0.05);
         } else this.v = Math.min(this.vmax + 0.4, this.v + 0.05);

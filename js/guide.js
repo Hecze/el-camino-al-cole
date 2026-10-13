@@ -109,8 +109,13 @@ const GUIDE = (() => {
       const p = g.player, dx = p.cx - this.x;
       // nada encima del título del capítulo
       // item: el cartel acompaña a un objeto y se va cuando ya lo tomaste
-      const item = !this.d.item || g.entities.some(e => !e.dead && e.type === this.d.item && Math.abs(e.cx - this.x) < 3 * TS && Math.abs(e.cy - this.y) < 4 * TS);
-      const on = item && g.banner > 140 && dx > -this.r && dx < this.pass && Math.abs(p.cy - this.y) < this.vr && (!this.d.when || this.d.when(g));
+      const item = !this.d.item || g.entities.some(e => !e.dead && !(e.hidden > 0) && e.type === this.d.item && Math.abs(e.cx - this.x) < 3 * TS && Math.abs(e.cy - this.y) < 4 * TS);
+      const cond = item && g.banner > 140 && (!this.d.when || this.d.when(g));
+      const inZone = dx > -this.r && dx < this.pass && Math.abs(p.cy - this.y) < this.vr;
+      // aguante: si el niño sale un instante de la zona (p. ej. rebotando en la cabra)
+      // el cartel no parpadea; solo se va si sigue fuera ~0,7 s
+      if (cond && inZone) this.hold = 40; else if (this.hold > 0) this.hold--;
+      const on = cond && (inZone || this.hold > 0);
       this.a = Math.max(0, Math.min(1, this.a + (on ? 0.12 : -0.08)));
       if (this.a > 0) {
         this.t++;
@@ -222,14 +227,20 @@ const GUIDE = (() => {
         if (!this.talking) { this.talking = true; this.line = 0; this.lt = 0; g.audio('click'); }
         // cada frase dura según lo larga que es; luego pasa a la siguiente
         if (++this.lt > 80 + this.lines[this.line].length * 3) { this.lt = 0; this.line = (this.line + 1) % this.lines.length; }
-      } else if (this.talking && Math.abs(dx) > this.r + 3 * TS) this.talking = false;
-      // si una pista ocupa el sitio del globo, el globo espera: la pista manda
-      let blocked = false;
+      } else if (this.talking && Math.abs(dx) > this.r + 3 * TS) {
+        // la frase que ya empezó termina de mostrarse aunque te alejes (mientras se vea)
+        const onScreen = this.x + this.w > g.cam.x && this.x < g.cam.x + VIEW.w;
+        if (onScreen && ++this.lt <= 80 + this.lines[this.line].length * 3) {} else this.talking = false;
+      }
+      // si una pista ocupa el sitio del globo, el globo se sube encima de ella
+      // (antes se escondía y la frase casi no se alcanzaba a leer)
+      let lift = 0;
       if (this.talking) {
         const m = this.bubble(g);
-        for (const h of shown) { const b = h.box; if (b.x < m.x + m.w + 2 && b.x + b.w + 2 > m.x && b.y < m.y + m.h + 1 && b.y + b.h + 1 > m.y) { blocked = true; break; } }
+        for (const h of shown) { const b = h.box; if (b.x < m.x + m.w + 2 && b.x + b.w + 2 > m.x && b.y < m.y + m.h + 1 && b.y + b.h + 1 > m.y) lift = Math.max(lift, m.y + m.h + 4 - b.y); }
       }
-      this.a = Math.max(0, Math.min(1, this.a + (this.talking && !blocked ? 0.15 : -0.15)));
+      this.lift = (this.lift || 0) + (lift - (this.lift || 0)) * 0.3;
+      this.a = Math.max(0, Math.min(1, this.a + (this.talking ? 0.15 : -0.15)));
     }
     draw(ctx) {
       if (this.d.ghost) return;
@@ -246,8 +257,10 @@ const GUIDE = (() => {
     }
     drawFront(ctx, g) {
       if (this.a <= 0 || !this.lines.length) return;
-      const { rows, w, h, x } = this.bubble(g), hx = Math.round(this.cx), y = Math.round(this.y - h - 8 - (1 - this.a) * 3);
+      const lift = Math.round(this.lift || 0);
+      const { rows, w, h, x } = this.bubble(g), hx = Math.round(this.cx), y = Math.round(this.y - h - 8 - (1 - this.a) * 3) - lift;
       ctx.globalAlpha = this.a;
+      if (lift > 0) R(ctx, '#2a1f2d', hx, y + h + 3, 1, lift);   // la colita se alarga hasta la boca
       panel(ctx, x, y, w, h, '#fffaf0', '#2a1f2d');
       // colita del globo hacia la boca
       R(ctx, '#2a1f2d', hx - 2, y + h + 1, 5, 1); R(ctx, '#fffaf0', hx - 1, y + h, 3, 1);
