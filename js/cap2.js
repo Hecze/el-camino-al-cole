@@ -1,5 +1,5 @@
-// cap2.js — CAPÍTULO 2 · EL CONCURSO EN LIMA. El niño viaja a Lima para un
-// concurso escolar, pero el bus se malogra en pleno desierto de Ica. El viaje
+// cap2.js — CAPÍTULO 2 · LA HACKATÓN DE LOS ANDES. El niño viaja a Lima para la
+// hackatón, pero el bus se malogra en pleno desierto de Ica. El viaje
 // es la entrada; el capítulo pasa sobre todo en el Centro de Lima:
 //   x 0–195    EL DESIERTO      · baja las dunas en tabla de sandboard; cactus y tubulares
 //   x 196–315  LA PANAMERICANA  · combis que pasan: súbete a su techo para cruzar el aniego
@@ -11,7 +11,7 @@
 //   x 674–733  PLAZA DE ARMAS   · Catedral, pileta, palomas, el grass y los húsares de Palacio
 //   x 734–829  BARRIO CHINO     · portada china, toldos, farolitos, emolientero y cambistas
 //   x 830–945  LAS AZOTEAS      · garúa, ladrillo, fierros, tanques, ropa tendida y perros chuscos
-//   x 946–     LA CASONA        · el concurso es en una casona colonial del Centro
+//   x 946–     LA CASONA        · la hackatón es en una casona colonial del Centro
 // Todo lo propio del capítulo vive aquí: tiles, sprites, entidades, música y nivel.
 
 (() => {
@@ -1808,7 +1808,7 @@
       }
       // banderola del concurso
       R(ctx, '#1d1622', x + 59, b - 151, 222, 22); R(ctx, '#d8432f', x + 60, b - 150, 220, 20); R(ctx, '#ffffff', x + 60, b - 140, 220, 1);
-      drawText(ctx, 'CONCURSO ESCOLAR DE CIENCIAS', x + 170, b - 147, { color: '#ffffff', align: 'center' });
+      drawText(ctx, 'HACKATÓN DE LOS ANDES', x + 170, b - 147, { color: '#ffffff', align: 'center' });
       drawText(ctx, '¡BIENVENIDOS!', x + 170, b - 138, { color: '#f6c94a', align: 'center' });
       R(ctx, '#5d5768', x + 60, b - 129, 2, 9); R(ctx, '#5d5768', x + 278, b - 129, 2, 9);
     }
@@ -1841,7 +1841,7 @@
         ctx.save(); ctx.beginPath(); ctx.rect(jx + ox - 2, b - 50, 20, 32); ctx.clip();
         ctx.drawImage(flipS(img), jx + ox, b - 44 + (clap && i % 2 ? -1 : 0)); ctx.restore();
       });
-      if (!this.done && Math.abs(g.player.cx - this.spot) < 180) bubble(ctx, '¿Y EL CONCURSANTE?', jx + 37, b - 48);
+      if (!this.done && Math.abs(g.player.cx - this.spot) < 180) bubble(ctx, '¿Y EL PARTICIPANTE?', jx + 37, b - 48);
       if (this.done) bubble(ctx, '¡BRAVO!', jx + 37, b - 48, '#d8432f');
     }
   }
@@ -2053,7 +2053,7 @@
   // balcones de cajón que se pisan (Jr. de la Unión): [x, ancho, fila]
   const BALCONES = [[608, 5, 43], [615, 5, 41], [622, 5, 43], [634, 5, 43], [641, 5, 41], [647, 6, 43]];
   const L2 = {
-    name: 'EL CONCURSO EN LIMA', w: CASONA + 54, h: H, anchorRow: 46,
+    name: 'LA HACKATÓN DE LOS ANDES', w: CASONA + 54, h: H, anchorRow: 46,
     dunes: DUNES,
     // amanecer despejado en el desierto
     sky: { dawn: ['#3a3466', '#d9826a', '#ffc68a'], morning: ['#5a9ad6', '#a9d4ee', '#f8e6bf'] },
@@ -2263,7 +2263,7 @@
       { type: 'palomas', x0: 710, x1: 719, n: 7 },
       // los húsares de Palacio
       { type: 'npc', x: 720.5, y: ST, model: 'husar', flip: true, lines: ['¡SIGA, JOVEN, SIGA!', '¡AQUÍ NO SE JUEGA!'] },
-      { type: 'npc', x: 730.5, y: ST, model: 'husar', flip: true, lines: ['¡CORRE, QUE LLEGAS TARDE!', '¡EL CONCURSO ES POR ALLÁ!'] },
+      { type: 'npc', x: 730.5, y: ST, model: 'husar', flip: true, lines: ['¡CORRE, QUE LLEGAS TARDE!', '¡LA HACKATÓN ES POR ALLÁ!'] },
       // ── BARRIO CHINO Y MERCADO CENTRAL ──
       { type: 'portadaChina', x0: 740, x1: 751, y: 42 },
       // el perro chusco del barrio duerme bajo la portada: sáltalo o pasa por el tejado
@@ -2373,9 +2373,9 @@
   //  EL CAPÍTULO
   // ───────────────────────────────────────────────────────────────────────────
   CHAPTERS.push({
-    num: 2, title: 'EL CONCURSO EN LIMA', short: 'LIMA', color: '#e0b47c',
-    goal: '¡LLEGA AL CONCURSO ANTES DE LAS 8:00!', goalShort: '¡ANTES DE LAS 8:00!',
-    banner: ['EL CONCURSO EN LIMA', '¡EL CONCURSO EMPIEZA A LAS 8:00!'],
+    num: 2, title: 'LA HACKATÓN DE LOS ANDES', short: 'LIMA', color: '#e0b47c',
+    goal: '¡LLEGA A LA HACKATÓN ANTES DE LAS 8:00!', goalShort: '¡ANTES DE LAS 8:00!',
+    banner: ['LA HACKATÓN DE LOS ANDES', '¡LA HACKATÓN EMPIEZA A LAS 8:00!'],
     dayStart: 6 * 60 + 30,   // el bus se malogró a las 6:30: Miraflores, Barranco y el Centro hasta las 8:00
     deathTitle: '¡ASU MARE!',
     deathMsgs: {
@@ -2387,7 +2387,7 @@
     tips: ['TABLA: TÓCALA, BAJA LAS DUNAS Y SALTA EN LAS CRESTAS.', 'COMBI: SÚBETE AL TECHO. MOTOTAXI: ¡MANÉJALO!', 'BALCONES, TOLDOS Y ROPA: SÚBETE ENCIMA.', 'BUZÓN, CARRETILLA Y PERRO: SÁLTALOS.'],
     onStart: (g) => { g.combiRides = 0; },
     win: {
-      title: '¡LLEGASTE AL CONCURSO!',
+      title: '¡LLEGASTE A LA HACKATÓN!',
       onTime: ['¡ANTES DE LAS 8:00!', '¡ANTES DE LAS 8:00 Y ANTES QUE EL JURADO!'],
       late: ['¡HORA PERUANA!', 'LLEGASTE CON HORA PERUANA... EL JURADO ESPERÓ'],
       allPages: ['¡EXPOSICIÓN COMPLETA!', '¡EXPOSICIÓN COMPLETA! EL JURADO TE APLAUDE'],
