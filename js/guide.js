@@ -419,11 +419,14 @@ const GUIDE = (() => {
     if (helpT > 0) helpT--;
     const p = g.player;
     // el siguiente objetivo: el primer punto de control apagado o la primera meta por delante
-    const t = targets.find(o => (o.cp ? !o.cp.on : o.when ? o.when(g) : p.cx < o.x - 16)) || null;
+    // (un punto de control que quedó atrás sin tocar ya no cuenta: la flecha nunca manda de vuelta)
+    const t = targets.find(o => (o.cp ? !o.cp.on && o.x > p.cx - 6 * TS : o.when ? o.when(g) : p.cx < o.x - 16)) || null;
     if (t !== target) { target = t; best = Infinity; idle = 0; }
     if (!t) { arrowA = Math.max(0, arrowA - 0.1); return; }
     const T = t.at ? t.at(g) : t, d = Math.hypot(T.x - p.cx, T.y - p.cy);
-    if (d < best - 24) { best = d; idle = 0; } else idle++;
+    // si algo te lleva (montura, tren, balsa) o hay una pista a la vista, no hace falta la flecha
+    const carried = p.riding || (p.lastMover && Math.abs(p.lastMover.dx || 0) > 0.2);
+    if (d < best - 24 || carried || shown.size) { best = Math.min(best, d); idle = 0; } else idle++;
     arrowA = Math.max(0, Math.min(1, arrowA + (idle > G.IDLE_FRAMES ? 0.06 : -0.15)));
   };
 
