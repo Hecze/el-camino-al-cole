@@ -1702,7 +1702,7 @@
 
   // AMBULANTE que cruza la pista con su carrito: al oír el mototaxi se aparta
   class Cruce extends Actor {
-    constructor(def) { super(def.x * TS, ST * TS - 24, 34, 24); this.line = def.line; this.onRespawn(); }
+    constructor(def) { super(def.x * TS, ST * TS - 24, 34, 24); this.onRespawn(); }
     onRespawn() { this.go = 0; this.dy = 0; }
     update(g) {
       const p = g.player;
@@ -1735,7 +1735,6 @@
         R(ctx, '#3a2414', x + wx - 1, b - 6, 2, 2);
       }
       ctx.drawImage(run ? LIMENO.ambulante.step : LIMENO.ambulante.idle, x + cw + 2, b - 24);
-      if (this.go && this.go < 90) { this.go++; bubble(ctx, '¡OE, CUIDADO!', x + cw + 8, b - 28, '#d8432f'); }
     }
     draw() {}
   }
@@ -2232,13 +2231,13 @@
       { type: 'parkedCombi', x: 521, n: 1, line: '¡SUBE, SUBE, HAY SITIO!' },
       { type: 'hint', x: 518, y: ST, text: 'SALTA', key: 'jump', r: 3, pass: 1, when: (g) => g.player.riding instanceof MotoRide },
       { type: 'tambo', x: 525.5 },
-      { type: 'cruce', x: 532, line: '¡OE, CUIDADO, CAUSA!' },
+      { type: 'cruce', x: 532 },
       { type: 'bache', x: 538 }, { type: 'bache', x: 540.5 }, { type: 'bache', x: 543 },
       { type: 'sign', x: 547, y: ST, lines: ['¡VUELA,', 'CAUSA!'], style: 'board', col: '#f6c94a' },
       { type: 'rampa', x: 549, big: true, power: 10.5 },
       { type: 'parkedCombi', x: 554, n: 2, line: '¡LIMA, LIMA, LIMA!' }, { type: 'parkedCombi', x: 559, n: 3, line: '¡PIII! ¡QUÉ TRÁFICO!' },
       { type: 'bache', x: 568 }, { type: 'bache', x: 571 },
-      { type: 'cruce', x: 574, line: '¡MAÑOSO, MÁS DESPACIO!' },
+      { type: 'cruce', x: 574 },
       { type: 'sign', x: 583, y: ST, lines: ['AL CENTRO NO', 'ENTRAN MOTOTAXIS'], style: 'board' },
       { type: 'checkpoint', x: 590, y: ST, help: 'SALTA LOS HUECOS EN EL BORDE' },
       { type: 'sign', x: 497, y: 46.4, lines: ['AL CENTRO'], style: 'paint', col: '#f6c94a' },

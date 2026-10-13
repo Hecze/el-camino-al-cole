@@ -274,7 +274,7 @@ const GUIA = [
   { type: 'help', x0: 48, x1: 66, text: 'CRUZA EL PUENTE SIN PARAR' },
   { type: 'help', x0: 70, x1: 92, kind: 'rock', text: '¡SALTA CUANDO LLEGUE LA PIEDRA!' },
   // EL APU: la cabra, el pasto, el soroche y los cóndores
-  { type: 'npc', x: 87.5, y: G, model: 'nino', lines: ['¡ARRIBA HAY UN PLATANAL!', '¡QUÉ TAL CABRA, OE!'] },
+  { type: 'npc', x: 87.5, y: G, model: 'nino', lines: ['¡ARRIBA HAY UN PLATANAL!', '¡QUÉ TAL CABRA!'] },
   // si te quedas a pie al pie del cerro, la flecha de "¡POR AQUÍ!" señala a la cabra
   // (solo al pie del cerro: más arriba la cabra queda atrás y la flecha no debe mandarte de vuelta)
   { type: 'goal', x: 91, y: G, when: (g) => !onGoat(g) && g.player.cx > 70 * TILE && g.player.cx < 96 * TILE, at: (g) => { const c = g.entities.find(e => e instanceof Cabra); return { x: c.cx, y: c.cy }; } },
@@ -284,7 +284,7 @@ const GUIA = [
   { type: 'hint', x: COCA[0].x + 0.5, y: COCA[0].y + 1.5, text: '¡COCA PARA EL SOROCHE!', arrow: 'down', r: 6, pass: 3, vr: 4, item: 'coca' },
   { type: 'help', x0: 92, x1: 126, kind: 'bird', text: '¡SI VES EL AVISO, ESPERA!' },
   { type: 'help', x0: 92, x1: 126, text: 'TÚ SOLO GUÍA: LA CABRA SALTA' },
-  { type: 'npc', x: 117, y: SUMMIT, model: 'nina', lines: ['¡QUÉ TAL VISTA, OE!'] },
+  { type: 'npc', x: 117, y: SUMMIT, model: 'nina', lines: ['¡QUÉ TAL VISTA!'] },
   { type: 'prop', kind: 'campana', x: 119.5, y: SUMMIT },
   // CEJA DE SELVA: el huaico
   { type: 'npc', x: 147.5, y: 110, model: 'senora', lines: ['¡AY, EL HUAICO, HIJITO!', '¡SE LLEVÓ MI CASA!'] },

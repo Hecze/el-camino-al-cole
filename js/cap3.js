@@ -1181,7 +1181,7 @@ const ART3 = (() => {
       const p = g.player, on = p.lastMover === this, nx = this.next();
       // la remera va con la balsa (un npc de la guía no se mueve): su globo lo dibuja la balsa
       if (this.i === 0 && this.state === 'wait' && !on && Math.abs(p.cx - this.x) < 9 * TS) bubble(ctx, this.x + 12, this.y - 26, ['¡SUBE, HIJITO!', '¡TU PROMO YA ZARPÓ!'], this.x + 12);
-      else if (on && this.state === 'sail' && this.offT === 0 && this.x - this.stops[this.i].x < 80) bubble(ctx, this.x + 12, this.y - 26, ['¡AGÁRRATE, OE!'], this.x + 12);
+      else if (on && this.state === 'sail' && this.offT === 0 && this.x - this.stops[this.i].x < 80) bubble(ctx, this.x + 12, this.y - 26, ['¡AGÁRRATE!'], this.x + 12);
     }
     // rodeando la isla: se ve por detrás, tapada por la totora
     drawBack(ctx, g) { if (this.state === 'behind' && onScreen(this.x, this.w)) this.paint(ctx, g); }
@@ -1576,7 +1576,7 @@ const ART3 = (() => {
         if (Math.floor(e.go / 8) % 2) R(ctx, '#c4855c', x + 6, y + 5, 2, 2); else R(ctx, '#c4855c', x + 6, y + 7, 2, 2);
       }
       for (let k = 0; k < 6; k++) if (k * 2 >= up) R(ctx, M[k % 3], x + 1, y + 1 + k * 2 - Math.min(up, k * 2), 6, 2);
-      if (e.go > 20 && e.go < 170) drawText(ctx, e.d.c ? '¡HOLA, OE!' : '¡KAMISARAKI!', x + 4, y - 12 - (e.go < 30 ? 30 - e.go : 0) / 3, { color: '#fff3d6', align: 'center', shadow: true, shadowColor: '#2a1f2d' });
+      if (e.go > 20 && e.go < 170) drawText(ctx, e.d.c ? '¡HOLA!' : '¡KAMISARAKI!', x + 4, y - 12 - (e.go < 30 ? 30 - e.go : 0) / 3, { color: '#fff3d6', align: 'center', shadow: true, shadowColor: '#2a1f2d' });
     },
     reset(e) { e.go = 0; },
   };
@@ -1746,7 +1746,7 @@ const ART3 = (() => {
       { type: 'hint', x: 46.5, y: GC, text: 'SALTA', key: 'jump', arrow: 'right', r: 6, pass: 1, when: balsaAt(1, true) },
       { type: 'checkpoint', x: 48, y: GC },
       { type: 'npc', x: 51.5, y: GC, model: 'uro', r: 4, lines: ['¡KAMISARAKI, HIJITO!', 'ACÁ TODO ES DE TOTORA', 'LA ISLA FLOTA, NO TE ASUSTES'] },
-      { type: 'npc', x: 58.5, y: GC, model: 'nina', r: 3, lines: ['¡MI ISLA SE MUEVE, OE!'] },
+      { type: 'npc', x: 58.5, y: GC, model: 'nina', r: 3, lines: ['¡MI ISLA SE MUEVE!'] },
       // las casitas de totora: al pasar se corre la manta y asoma un niño uro
       { type: 'prop', kind: 'cortina', x: 47.31, y: GC }, { type: 'prop', kind: 'cortina', x: 49.56, y: GC, c: 1 },
       { type: 'hint', x: 62, y: GC, text: '¡A LA BALSA!', key: 'right', arrow: 'down', r: 8, pass: 1, dy: 20, when: balsaAt(2, false) },
