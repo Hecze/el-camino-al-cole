@@ -340,6 +340,7 @@
         for (const e of Game.entities) if (e instanceof School) e.update(Game);
         updateWin();
         break;
+      case 'ending': updateEnding(); break;
     }
     // las pausas no cuentan en el tiempo del ranking
     if (before !== Game.state) {
@@ -399,7 +400,7 @@
   // pantalla final: pasar al siguiente capítulo o volver al menú
   // (con ranking: también entrar al ranking y compartir la hora de llegada)
   function winOptions() {
-    return [...(CHAPTERS[Game.chapterIdx + 1] ? ['next'] : []), ...(rankOn() ? ['ranking', 'share'] : []), 'menu'];
+    return [...(CHAPTERS[Game.chapterIdx + 1] ? ['next'] : []), ...(Game.chapter.ending ? ['ending'] : []), ...(rankOn() ? ['ranking', 'share'] : []), 'menu'];
   }
   function updateWin() {
     const opts = winOptions();
@@ -411,10 +412,26 @@
       AUDIO.play('select');
       const o = opts[Math.min(Game.winSel, opts.length - 1)];
       if (o === 'next') { AUDIO.play('start'); startGame(Game.chapterIdx + 1); }
+      else if (o === 'ending') startEnding();
       else if (o === 'ranking') openRank(Game.chapter.num, true);
       else if (o === 'share') shareArrival();
       else { Game.state = 'menu'; AUDIO.playMusic(SONGS.menu); }
     }
+  }
+
+  // FINAL DEL JUEGO: el último capítulo trae su secuencia de cierre (ending:
+  // { frames, music, start(g), skip(t), draw(ctx, w, h, t, tick) }). Salto la adelanta.
+  function startEnding() {
+    const E = Game.chapter.ending;
+    Game.state = 'ending'; Game.stateT = 0; Game.fade = 1;
+    if (E.start) E.start(Game);
+    if (E.music && SONGS[E.music]) AUDIO.playMusic(SONGS[E.music]);
+  }
+  function updateEnding() {
+    const E = Game.chapter.ending;
+    Game.stateT++;
+    if (Game.stateT > 20 && (Input.pressed('confirm') || Input.pressed('jump'))) Game.stateT = E.skip(Game.stateT);
+    if (Game.stateT >= E.frames) { Game.state = 'menu'; AUDIO.playMusic(SONGS.menu); }
   }
 
   // ── RANKING ──────────────────────────────────────────────────────────────
@@ -584,6 +601,7 @@
     ctx.imageSmoothingEnabled = false;
     if (Game.state === 'menu') { renderMenu(); if (Game.rk) renderRank(); return; }
     if (Game.state === 'controls') { renderMenu(); renderControls(); return; }
+    if (Game.state === 'ending') { Game.chapter.ending.draw(ctx, BASE_W, BASE_H, Game.stateT, tick); renderOverlay(); return; }
     const lv = Game.level; if (!lv) return;
 
     let sx = 0, sy = 0;
@@ -963,7 +981,7 @@
   function renderLiquids(lv) {
     const t = tick, vx0 = Game.cam.x - 4, vx1 = Game.cam.x + BASE_W + 4, vy1 = Game.cam.y + BASE_H + 4;
     for (const L of lv.liquids) {
-      const Pl = LIQ[L.kind], flow = L.flow;
+      const Pl = L.pal || LIQ[L.kind], flow = L.flow;   // un capítulo puede pintar su agua (L.pal)
       const X0 = L.x * TILE, X1 = (L.x + L.w) * TILE, top = L.y * TILE, bot = (L.y + L.h) * TILE, W = X1 - X0;
       if (X1 < vx0 || X0 > vx1 || top > vy1) continue;
       const wl = top + 4;
@@ -1273,7 +1291,7 @@
     }
     if (!opts.includes('next') && !Game.shareMsg && Game.chapterIdx + 1 < CHAPTER_SLOTS) drawText(ctx, 'CAPÍTULO ' + (Game.chapterIdx + 2) + ': ¡PRÓXIMAMENTE!', BASE_W / 2, WY.info, { color: '#cdbde8', align: 'center' });
     if (Game.shareMsg) drawText(ctx, Game.shareMsg.text, BASE_W / 2, WY.info, { color: '#9be7c4', align: 'center', shadow: true, shadowColor: '#000000' });
-    const LONG = { next: 'SIGUIENTE CAPÍTULO', ranking: 'RANKING', share: 'COMPARTIR', menu: 'MENÚ' }, SHORT = { next: 'SIGUIENTE', ranking: 'RANKING', share: 'COMPARTIR', menu: 'MENÚ' };
+    const LONG = { next: 'SIGUIENTE CAPÍTULO', ending: 'SEGUIR', ranking: 'RANKING', share: 'COMPARTIR', menu: 'MENÚ' }, SHORT = { next: 'SIGUIENTE', ending: 'SEGUIR', ranking: 'RANKING', share: 'COMPARTIR', menu: 'MENÚ' };
     let gap = 26, labels = opts.map(o => (narrow ? SHORT : LONG)[o]);
     const fits = () => labels.reduce((a, l) => a + textWidth(l), 0) + gap * (labels.length - 1) <= BASE_W - 24;
     if (!fits()) { labels = opts.map(o => SHORT[o]); gap = 16; }
