@@ -1064,10 +1064,11 @@
   // EL GRASS de la Plaza: si lo pisas, el guardián te pita. No pasa nada más.
   // el megáfono del ambulante: suena más fuerte mientras más cerca pasas (VOICE.ambient)
   class Megafono extends Actor {
-    constructor(def) { super(0, 0, 0, 0); this.xs = def.xs.map(x => x * TS); this.r = (def.r || 18) * TS; }
+    // r: hasta dónde se oye; full: a esta distancia suena a todo volumen
+    constructor(def) { super(0, 0, 0, 0); this.xs = def.xs.map(x => x * TS); this.r = (def.r || 45) * TS; this.full = (def.full || 15) * TS; }
     update(g) {
       const px = g.player.cx, d = Math.min(...this.xs.map(x => Math.abs(px - x)));
-      const v = Math.max(0, Math.min(1, (this.r - d) / (this.r - 4 * TS)));
+      const v = Math.max(0, Math.min(1, (this.r - d) / (this.r - this.full)));
       if (v > 0) VOICE.ambient('ambulante', v * 0.7);
     }
     draw() {}
