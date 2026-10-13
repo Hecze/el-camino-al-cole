@@ -124,7 +124,7 @@
     crate:      { solid: true, top: T2.crate, body: T2.crate },
     playa:      { solid: true, top: T2.playa, body: T2.cliff },
     malecon:    { solid: true, top: T2.malecon, body: T2.cliff },
-    bajada:     { solid: true, top: T2.paving, body: T2.cliff },
+    bajada:     { solid: true, top: T2.paving, body: T2.brick },
   });
 
   // ───────────────────────────────────────────────────────────────────────────
@@ -1504,18 +1504,59 @@
     draw() {}
   }
 
-  // LA BAJADA DE BAÑOS: muros de piedra, árboles y faroles a los lados de la escalera
+  // LA BAJADA DE BAÑOS: la quebrada empedrada que baja al mar entre casonas
+  // republicanas de colores, ficus enormes, buganvillas que cuelgan y faroles.
+  const BAJ_WALLS = [['#e3c06a', '#c9a24e'], ['#f08a7a', '#d06a5a'], ['#9cc3d0', '#7aa4b4'], ['#b8d4a8', '#94b486'], ['#e8e0cc', '#c9bfa8'], ['#d98a6a', '#b86a4e']];
   class Bajada extends Actor {
-    constructor(def) { super(def.x0 * TS, def.top * TS, (def.x1 - def.x0) * TS, (def.bottom - def.top) * TS); }
+    constructor(def) { super(def.x0 * TS, def.top * TS, (def.x1 - def.x0) * TS, (def.bottom - def.top) * TS); this.def = def; }
     update() {}
+    // fila del escalón a la altura de la columna tx (los escalones: 3 casillas, 2 filas)
+    stepRow(tx) { const k = Math.max(0, Math.min(8, Math.floor((tx - 410) / 3))); return tx < 410 ? 64 : 62 - 2 * k; }
     drawBack(ctx) {
-      const x = Math.round(this.x), y = Math.round(this.y), w = this.w, h = this.h;
-      R(ctx, '#9a8f80', x, y, w, h); for (let yy = y; yy < y + h; yy += 8) for (let xx = x + ((yy >> 3) % 2) * 6; xx < x + w; xx += 12) R(ctx, '#857a6c', xx, yy, 11, 1);
-      // árboles que asoman y faroles de fierro
-      for (let k = 0; k < w; k += 70) {
-        const tx = x + k + 20, ty = y + 20 + ((k / 70) % 3) * 30;
-        R(ctx, '#3f6a32', tx - 14, ty - 10, 30, 18); R(ctx, '#5c8a3a', tx - 8, ty - 14, 20, 10); R(ctx, '#5a3a22', tx, ty + 8, 3, 20);
-        R(ctx, '#2a2530', tx + 30, ty + 6, 2, 24); R(ctx, '#2a2530', tx + 27, ty + 2, 8, 5); R(ctx, '#ffe9a8', tx + 29, ty + 3, 4, 3);
+      const d = this.def, bottom = d.bottom * TS;
+      // las casonas: suben escalonadas con la bajada, de 2 o 3 pisos
+      let n = 0;
+      for (let tx = d.x0; tx < d.x1; n++) {
+        const w = 4 + (h2(n * 7 + 1) > 0.5 ? 1 : 0), floors = 2 + (h2(n * 11 + 3) > 0.55 ? 1 : 0);
+        const base = this.stepRow(tx) * TS, top = base - floors * 44 - 10, x = tx * TS, W = w * TS - 2;
+        const [wall, shade] = BAJ_WALLS[n % BAJ_WALLS.length];
+        R(ctx, '#2a1f2d', x - 1, top - 1, W + 2, bottom - top + 1);
+        R(ctx, wall, x, top, W, bottom - top); R(ctx, shade, x + W - 4, top, 4, bottom - top);
+        R(ctx, '#f4efe4', x - 2, top, W + 4, 4); R(ctx, shade, x - 2, top + 4, W + 4, 2);   // cornisa
+        for (let f = 0; f < floors; f++) {
+          const fy = top + 12 + f * 44;
+          for (let wx = x + 8; wx + 14 < x + W - 4; wx += 24) {
+            R(ctx, '#2a1f2d', wx - 1, fy - 1, 14, 24); R(ctx, '#4f3a2a', wx, fy, 12, 22); R(ctx, '#9fd3f0', wx + 2, fy + 2, 8, 9); R(ctx, '#7a5a3a', wx + 2, fy + 13, 8, 7);
+            R(ctx, '#f4efe4', wx - 2, fy - 3, 16, 2);
+          }
+          // balcón de madera en el piso de arriba
+          if (f === 0 && floors === 3) { R(ctx, '#5a3418', x + 4, fy + 24, W - 8, 3); for (let bx = x + 5; bx < x + W - 5; bx += 4) R(ctx, '#7a4a24', bx, fy + 14, 2, 10); R(ctx, '#5a3418', x + 4, fy + 12, W - 8, 2); }
+        }
+        // buganvilla cayendo desde la cornisa
+        if (h2(n * 13 + 5) > 0.35) {
+          const bx = x + Math.floor(h2(n * 17) * (W - 30));
+          for (let k = 0; k < 40; k++) {
+            const px = bx + Math.floor(h2(n * 31 + k) * 30), py = top + 4 + Math.floor(Math.pow(h2(n * 37 + k), 1.8) * 50);
+            R(ctx, k % 4 ? '#c8287a' : '#e85aa0', px, py, 3, 3);
+          }
+          for (let k = 0; k < 10; k++) R(ctx, '#3f6a32', bx + Math.floor(h2(n * 41 + k) * 30), top + 2 + Math.floor(h2(n * 43 + k) * 20), 3, 2);
+        }
+        tx += w;
+      }
+      // ficus enormes que dan sombra a la bajada
+      for (const tx of [415, 427]) {
+        const base = this.stepRow(tx) * TS, cx = tx * TS;
+        R(ctx, '#4a3424', cx - 3, base - 70, 7, 70); R(ctx, '#5a4030', cx - 1, base - 70, 2, 70);
+        for (let k = 0; k < 60; k++) {
+          const a = h2(tx * 7 + k) * Math.PI * 2, r = Math.sqrt(h2(tx * 11 + k)) * 34;
+          R(ctx, k % 3 ? '#2f5a2a' : '#4a7a36', cx + Math.cos(a) * r * 1.4 - 4, base - 92 + Math.sin(a) * r * 0.8 - 3, 9, 7);
+        }
+      }
+      // faroles de fierro, uno cada dos escalones
+      for (let k = 0; k <= 8; k += 2) {
+        const lx = (410 + 3 * k + 2.5) * TS, base = (62 - 2 * k) * TS;
+        R(ctx, '#2a2530', lx, base - 30, 2, 30); R(ctx, '#2a2530', lx - 3, base - 36, 8, 6); R(ctx, '#ffe9a8', lx - 2, base - 35, 6, 4);
+        R(ctx, 'rgba(255,233,168,0.18)', lx - 7, base - 40, 16, 14);
       }
     }
     draw() {}
@@ -1603,7 +1644,7 @@
       this.img = OBJ.torito[def.model] || OBJ.torito.rojo; this.end = def.end * TS;
       this.canDismount = false; this.drawsRider = true; this.ownJump = true; this.camMax = 3.6; this.taken = false; this.air = 0; this.blockT = 0;
     }
-    reset() { super.reset(); this.air = 0; }
+    reset() { super.reset(); this.air = 0; this.hop = false; }
     update(g) {
       this.animT++;
       if (this.rider) {
@@ -1614,7 +1655,10 @@
         if (this.launched) want = Math.max(want, this.vx);   // volando por una rampa no pierde impulso
         this.vx += Math.max(-0.12, Math.min(0.1, want - this.vx));
         if (this.vx > 0.1) this.facing = 1; else if (this.vx < -0.1) this.facing = -1;
-        if (this.onGround && Input.consumeJump()) { this.vy = -7.8; this.onGround = false; g.onPlayerJump(this); g.audio('honk'); }
+        // se puede saltar en el suelo, un instante después de dejarlo (coyote) o en el saltito de un bache:
+        // antes el salto se perdía si lo apretabas justo al pasar un bache, y chocabas con la combi
+        if (this.onGround) this.coyote = PHYS.COYOTE; else if (this.coyote > 0) this.coyote--;
+        if ((this.onGround || this.coyote > 0 || this.hop) && Input.consumeJump()) { this.vy = -7.8; this.onGround = false; this.coyote = 0; this.hop = false; g.onPlayerJump(this); g.audio('honk'); }
         const held = Input.held('jump') || Input.held('up');
         if (!held && this.vy < -PHYS.JUMP_CUT && !this.launched) this.vy = -PHYS.JUMP_CUT;
         // el humito del escape
@@ -1623,10 +1667,10 @@
       this.vy = Math.min(this.vy + PHYS.GRAV, PHYS.MAX_FALL);
       const was = this.onGround;
       moveX(this, g.level); moveY(this, g.level);
-      if (this.onGround) { this.launched = false; if (!was && this.rider) { g.onPlayerLand(this); g.audio('land'); if (this.air > 30) { g.shake(2, 8); g.burst(this.cx, this.y + this.h, 'dust', 12); } } this.air = 0; }
+      if (this.onGround) { this.launched = false; this.hop = false; if (!was && this.rider) { g.onPlayerLand(this); g.audio('land'); if (this.air > 30) { g.shake(2, 8); g.burst(this.cx, this.y + this.h, 'dust', 12); } } this.air = 0; }
       else this.air++;
       // se chocó con algo (una combi parada): toca bocina y, si no saltas tú, brinca solo
-      if (this.wall && this.rider && this.onGround) { if (++this.blockT === 12) { this.vy = -7.8; this.onGround = false; this.launched = true; g.audio('honk'); g.onPlayerJump(this); } }
+      if (this.wall && this.rider && this.onGround) { if (++this.blockT === 4) { this.vy = -7.8; this.onGround = false; this.launched = true; g.audio('honk'); g.onPlayerJump(this); } }
       else this.blockT = 0;
       // llegó al Centro: se estaciona y te bajas
       if (this.rider && this.onGround && this.cx > this.end) {
@@ -1683,7 +1727,7 @@
       const p = g.player, b = p.riding || p;
       if (this.cd === 0 && b.onGround && b.cx > this.x && b.cx < this.x + this.w && Math.abs(b.vx) > 0.8) {
         this.cd = 30; g.audio('splash'); g.burst(b.cx, ST * TS - 2, 'splash', 10);
-        if (p.riding instanceof MotoRide) { b.vy = -3.4; b.onGround = false; g.shake(1, 6); }
+        if (p.riding instanceof MotoRide) { b.vy = -2.4; b.onGround = false; b.hop = true; g.shake(1, 6); }
       }
     }
     drawBack(ctx) {
