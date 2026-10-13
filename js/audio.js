@@ -163,13 +163,15 @@ const AUDIO = (() => {
   function play(name) { if (!enabled) return; resume(); const f = SFX[name]; if (f) f(); }
 
   // ── música: secuenciador de huayno ─────────────────────────────────────
-  // Notación: "E5:2 D5:1 C5:1 r:4"  (nota:duración en semicorcheas, r = silencio)
+  // Notación: "E5:2 D5:1 C5:1 r:4"  (nota:duración en semicorcheas, r = silencio,
+  // - = ligadura: alarga la nota anterior, para notas que cruzan la barra de compás)
   function parseSeq(str) {
     const out = []; let pos = 0;
     for (const tok of str.trim().split(/\s+/)) {
       if (tok === '|') continue;
       const [n, d] = tok.split(':'); const len = parseInt(d || '1', 10);
-      if (n !== 'r') out.push({ step: pos, note: n, len });
+      if (n === '-') { if (out.length) out[out.length - 1].len += len; }
+      else if (n !== 'r') out.push({ step: pos, note: n, len });
       pos += len;
     }
     return { events: out, length: pos };
@@ -178,6 +180,9 @@ const AUDIO = (() => {
     Am: ['A4', 'C5', 'E5', 'A5'], C: ['G4', 'C5', 'E5', 'G5'], G: ['G4', 'B4', 'D5', 'G5'],
     Em: ['G4', 'B4', 'E5', 'G5'], Dm: ['A4', 'D5', 'F5', 'A5'], F: ['A4', 'C5', 'F5', 'A5'],
     E: ['G#4', 'B4', 'E5', 'G#5'], D: ['A4', 'D5', 'F#5', 'A5'], Bb: ['Bb4', 'D5', 'F5', 'Bb5'],
+    Gm: ['G4', 'Bb4', 'D5', 'G5'], A: ['A4', 'C#5', 'E5', 'A5'], A7: ['G4', 'C#5', 'E5', 'A5'],
+    E7: ['G#4', 'B4', 'D5', 'E5'], G7: ['G4', 'B4', 'D5', 'F5'], 'C#7': ['G#4', 'B4', 'C#5', 'E#5'],
+    'F#m': ['A4', 'C#5', 'F#5', 'A5'], 'F#7': ['A#4', 'C#5', 'E5', 'F#5'], Bm: ['B4', 'D5', 'F#5', 'B5'], B7: ['A4', 'B4', 'D#5', 'F#5'],
   };
   let song = null, musicOn = false, musicTimer = null, step = 0, nextTime = 0;
 
@@ -404,8 +409,8 @@ const AUDIO = (() => {
           else if (s.lead2Inst !== 'none') zampona(freq(ev.note), ev.len * spb * 0.95, s.lead2Vol || 0.11, nextTime);
         }
       }
-      // charango: un acorde por compás de 2/4 (8 semicorcheas)
-      const bar = Math.floor(st / 8), inBar = st % 8;
+      // charango: un acorde por compás (2/4 = 8 semicorcheas; el vals usa bar: 12, 3/4)
+      const bl = s.bar || 8, bar = Math.floor(st / bl), inBar = st % bl;
       const chord = s.chords[bar % s.chords.length];
       const pat = s.strum || 'D.DU.DU.';
       const c = pat[inBar];

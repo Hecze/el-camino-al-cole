@@ -44,25 +44,32 @@ function liquidAt(level, px, py) {
 //   'X'  la quena toca la parte X, la zampoña sostiene notas largas debajo
 //   'X*' diálogo: la quena pregunta 2 compases y la zampoña responde 2
 //   'X~' respiro: la quena descansa y la zampoña canta notas largas
-const BASS_OF = { Am: ['A2', 'E2'], G: ['G2', 'D2'], F: ['F2', 'C3'], C: ['C3', 'G2'], Em: ['E2', 'B2'], Dm: ['D2', 'A2'], D: ['D2', 'A2'], E: ['E2', 'B2'], Bb: ['Bb2', 'F2'] };
+const BASS_OF = { Am: ['A2', 'E2'], G: ['G2', 'D2'], F: ['F2', 'C3'], C: ['C3', 'G2'], Em: ['E2', 'B2'], Dm: ['D2', 'A2'], D: ['D2', 'A2'], E: ['E2', 'B2'], Bb: ['Bb2', 'F2'],
+  Gm: ['G2', 'D2'], A: ['A2', 'E2'], A7: ['A2', 'E2'], E7: ['E2', 'B2'], G7: ['G2', 'D2'], 'C#7': ['C#3', 'G#2'], 'F#m': ['F#2', 'C#3'], 'F#7': ['F#2', 'C#3'], Bm: ['B2', 'F#2'], B7: ['B2', 'F#2'] };
 // bajo de huayno: fundamental con anticipación + quinta (golpes en 0, 3 y 4)
 function huaynoBass(chords) { return chords.map(c => { const [r, f] = BASS_OF[c]; return `${r}:3 ${r}:1 ${f}:4`; }).join(' '); }
 function slowBass(chords) { return chords.map(c => `${BASS_OF[c][0]}:4 ${BASS_OF[c][1]}:4`).join(' '); }
 function cumbiaBass(chords) { return chords.map(c => { const [r, f] = BASS_OF[c]; return `${r}:3 ${f}:1 ${r}:2 ${f}:2`; }).join(' '); }
+// bajo de vals (3/4): bordón en el tiempo 1, alternando fundamental y quinta; la guitarra hace el 2 y el 3
+function valsBass(chords) { return chords.map((c, i) => `${BASS_OF[c][i % 2]}:4 r:8`).join(' '); }
 // zampoña grave (malta): una nota del acorde por debajo de la quena, con
 // notas comunes entre acordes para que la voz se mueva poco
 const SIKU = { Am: 'E4', G: 'D4', F: 'C4', C: 'E4', Em: 'E4', Dm: 'D4', D: 'D4', E: 'E4', Bb: 'D4' };
+// base.bar: semicorcheas por compás (8 = 2/4, por defecto; 12 = 3/4 del vals)
 function makeSong(base, parts, form, bassFn) {
-  const chords = [], lead = [], lead2 = [];
+  const chords = [], lead = [], lead2 = [], bl = base.bar || 8;
+  const siku = (c) => SIKU[c] ? `${SIKU[c]}:${bl - 2} r:2` : `r:${bl}`;
   for (const k0 of form) {
     const k = k0.replace(/[*~]/g, ''), P = parts[k];
     const bars = P.mel.split('|').map(x => x.trim());
     if (bars.length !== P.ch.length) throw new Error('parte ' + k + ': compases y acordes no coinciden');
     bars.forEach((b, i) => {
+      const len = b.split(/\s+/).reduce((n, t) => n + parseInt(t.split(':')[1] || '1', 10), 0);
+      if (len !== bl) throw new Error(`parte ${k}, compás ${i + 1}: dura ${len} y debe durar ${bl}`);
       chords.push(P.ch[i]);
-      if (k0.endsWith('~')) { lead.push('r:8'); lead2.push(`${SIKU[P.ch[i]]}:6 r:2`); }
-      else if (k0.endsWith('*') && i % 4 >= 2) { lead.push('r:8'); lead2.push(b); }
-      else { lead.push(b); lead2.push(`${SIKU[P.ch[i]]}:6 r:2`); }
+      if (k0.endsWith('~')) { lead.push(`r:${bl}`); lead2.push(siku(P.ch[i])); }
+      else if (k0.endsWith('*') && i % 4 >= 2) { lead.push(`r:${bl}`); lead2.push(b); }
+      else { lead.push(b); lead2.push(siku(P.ch[i])); }
     });
   }
   return Object.assign({}, base, { chords, lead: lead.join(' '), lead2: lead2.join(' '), bass: bassFn(chords) });

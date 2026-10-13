@@ -154,7 +154,7 @@
   Game.onGoatDone = () => {
     const s = SONGS.condorPasa; if (!s) return;
     AUDIO.playMusic(s);
-    const token = Game.jingle = {}, ms = (s.chords.length - 1) * 8 * 60 / s.bpm / 4 * 1000 + 150;
+    const token = Game.jingle = {}, ms = (s.chords.length - 1) * (s.bar || 8) * 60 / s.bpm / 4 * 1000 + 150;
     setTimeout(() => {
       if (Game.jingle !== token) return;
       Game.jingle = null;
