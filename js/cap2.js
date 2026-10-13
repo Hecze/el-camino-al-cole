@@ -2,7 +2,7 @@
 // hackatón, pero el bus se malogra en pleno desierto de Ica. El viaje
 // es la entrada; el capítulo pasa sobre todo en el Centro de Lima:
 //   x 0–195    EL DESIERTO      · baja las dunas en tabla de sandboard; cactus y tubulares
-//   x 196–315  LA PANAMERICANA  · combis que pasan: súbete a su techo para cruzar el aniego
+//   x 196–315  LA PANAMERICANA  · el bus Ica–Lima por la costa: pueblos, playas del sur y el peaje
 //   x 316–351  MIRAFLORES       · el malecón, el Parque del Amor y Larcomar; agarra el parapente
 //   x 352–409  LA COSTA VERDE   · bajas planeando sobre el mar hasta la playa de piedritas
 //   x 410–489  BARRANCO         · la Bajada de Baños, el Puente de los Suspiros y los murales
@@ -124,7 +124,8 @@
     crate:      { solid: true, top: T2.crate, body: T2.crate },
     playa:      { solid: true, top: T2.playa, body: T2.cliff },
     malecon:    { solid: true, top: T2.malecon, body: T2.cliff },
-    bajada:     { solid: true, top: T2.paving, body: T2.cliff },
+    bajada:     { solid: true, top: T2.paving, body: T2.brick },
+    avenida:    { solid: true, top: T2.asphalt, body: T2.conc },
   });
 
   // ───────────────────────────────────────────────────────────────────────────
@@ -684,7 +685,8 @@
   class Peaje extends Actor {
     constructor(def) { super(def.x0 * TS, def.y * TS, (def.x1 - def.x0) * TS, 8); this.base = GR * TS; this.arm = 0; this.price = def.price; }
     update(g) {
-      const open = g.entities.some(e => e instanceof Combi && e.stoppedAtPeaje && e.stopT < 70);
+      const bus = g.player.riding, near = bus && Math.abs(bus.x + bus.w / 2 - (this.x + this.w / 2)) < 160;   // al bus Ica–Lima también le abren
+      const open = near || g.entities.some(e => e instanceof Combi && e.stoppedAtPeaje && e.stopT < 70);
       this.arm += ((open ? 1 : 0) - this.arm) * 0.12;
     }
     drawBack(ctx) {
@@ -874,25 +876,6 @@
       if (this.state === 'sleep') { const z = Math.floor(this.t / 30) % 3; drawText(ctx, 'Z', x + 12 + z * 2, y - 6 - z * 3, { color: '#fffaf0', shadow: true, shadowColor: '#2a1f2d' }); }
       else if (this.state === 'alert' || (this.state === 'chase' && Math.floor(this.t / 30) % 2 === 0)) bubble(ctx, '¡GUAU!', x + 9, y - 2, '#d8432f');
     }
-  }
-  // CABLES de luz entre edificios, con zapatillas colgadas
-  class Cable extends Actor {
-    constructor(def) { super(def.x0 * TS, def.y0 * TS, (def.x1 - def.x0) * TS, 8); this.y1 = def.y1 * TS; this.shoes = def.shoes; }
-    update() {}
-    drawBack(ctx) {
-      const x0 = this.x, x1 = this.x + this.w, y0 = this.y, y1 = this.y1;
-      for (let c = 0; c < 2; c++) for (let x = x0; x < x1; x++) {
-        const t = (x - x0) / (x1 - x0), y = y0 + (y1 - y0) * t + Math.sin(Math.PI * t) * (10 + c * 5) + c * 3;
-        R(ctx, '#1d1a22', x, y, 1, 1);
-        if (this.shoes && c === 0 && Math.abs(t - 0.45) < 0.005) {
-          // un par de zapatillas colgando de los pasadores
-          R(ctx, '#efe2c8', x, y, 1, 9); R(ctx, '#efe2c8', x + 3, y, 1, 7);
-          R(ctx, '#fffaf0', x - 3, y + 9, 6, 3); R(ctx, '#d8432f', x - 3, y + 11, 6, 1);
-          R(ctx, '#fffaf0', x + 1, y + 7, 6, 3); R(ctx, '#2b6fb8', x + 1, y + 9, 6, 1);
-        }
-      }
-    }
-    draw() {}
   }
   // ventanas en las fachadas
   class Facade extends Actor {
@@ -1503,18 +1486,59 @@
     draw() {}
   }
 
-  // LA BAJADA DE BAÑOS: muros de piedra, árboles y faroles a los lados de la escalera
+  // LA BAJADA DE BAÑOS: la quebrada empedrada que baja al mar entre casonas
+  // republicanas de colores, ficus enormes, buganvillas que cuelgan y faroles.
+  const BAJ_WALLS = [['#e3c06a', '#c9a24e'], ['#f08a7a', '#d06a5a'], ['#9cc3d0', '#7aa4b4'], ['#b8d4a8', '#94b486'], ['#e8e0cc', '#c9bfa8'], ['#d98a6a', '#b86a4e']];
   class Bajada extends Actor {
-    constructor(def) { super(def.x0 * TS, def.top * TS, (def.x1 - def.x0) * TS, (def.bottom - def.top) * TS); }
+    constructor(def) { super(def.x0 * TS, def.top * TS, (def.x1 - def.x0) * TS, (def.bottom - def.top) * TS); this.def = def; }
     update() {}
+    // fila del escalón a la altura de la columna tx (los escalones: 3 casillas, 2 filas)
+    stepRow(tx) { const k = Math.max(0, Math.min(8, Math.floor((tx - 410) / 3))); return tx < 410 ? 64 : 62 - 2 * k; }
     drawBack(ctx) {
-      const x = Math.round(this.x), y = Math.round(this.y), w = this.w, h = this.h;
-      R(ctx, '#9a8f80', x, y, w, h); for (let yy = y; yy < y + h; yy += 8) for (let xx = x + ((yy >> 3) % 2) * 6; xx < x + w; xx += 12) R(ctx, '#857a6c', xx, yy, 11, 1);
-      // árboles que asoman y faroles de fierro
-      for (let k = 0; k < w; k += 70) {
-        const tx = x + k + 20, ty = y + 20 + ((k / 70) % 3) * 30;
-        R(ctx, '#3f6a32', tx - 14, ty - 10, 30, 18); R(ctx, '#5c8a3a', tx - 8, ty - 14, 20, 10); R(ctx, '#5a3a22', tx, ty + 8, 3, 20);
-        R(ctx, '#2a2530', tx + 30, ty + 6, 2, 24); R(ctx, '#2a2530', tx + 27, ty + 2, 8, 5); R(ctx, '#ffe9a8', tx + 29, ty + 3, 4, 3);
+      const d = this.def, bottom = d.bottom * TS;
+      // las casonas: suben escalonadas con la bajada, de 2 o 3 pisos
+      let n = 0;
+      for (let tx = d.x0; tx < d.x1; n++) {
+        const w = 4 + (h2(n * 7 + 1) > 0.5 ? 1 : 0), floors = 2 + (h2(n * 11 + 3) > 0.55 ? 1 : 0);
+        const base = this.stepRow(tx) * TS, top = base - floors * 44 - 10, x = tx * TS, W = w * TS - 2;
+        const [wall, shade] = BAJ_WALLS[n % BAJ_WALLS.length];
+        R(ctx, '#2a1f2d', x - 1, top - 1, W + 2, bottom - top + 1);
+        R(ctx, wall, x, top, W, bottom - top); R(ctx, shade, x + W - 4, top, 4, bottom - top);
+        R(ctx, '#f4efe4', x - 2, top, W + 4, 4); R(ctx, shade, x - 2, top + 4, W + 4, 2);   // cornisa
+        for (let f = 0; f < floors; f++) {
+          const fy = top + 12 + f * 44;
+          for (let wx = x + 8; wx + 14 < x + W - 4; wx += 24) {
+            R(ctx, '#2a1f2d', wx - 1, fy - 1, 14, 24); R(ctx, '#4f3a2a', wx, fy, 12, 22); R(ctx, '#9fd3f0', wx + 2, fy + 2, 8, 9); R(ctx, '#7a5a3a', wx + 2, fy + 13, 8, 7);
+            R(ctx, '#f4efe4', wx - 2, fy - 3, 16, 2);
+          }
+          // balcón de madera en el piso de arriba
+          if (f === 0 && floors === 3) { R(ctx, '#5a3418', x + 4, fy + 24, W - 8, 3); for (let bx = x + 5; bx < x + W - 5; bx += 4) R(ctx, '#7a4a24', bx, fy + 14, 2, 10); R(ctx, '#5a3418', x + 4, fy + 12, W - 8, 2); }
+        }
+        // buganvilla cayendo desde la cornisa
+        if (h2(n * 13 + 5) > 0.35) {
+          const bx = x + Math.floor(h2(n * 17) * (W - 30));
+          for (let k = 0; k < 40; k++) {
+            const px = bx + Math.floor(h2(n * 31 + k) * 30), py = top + 4 + Math.floor(Math.pow(h2(n * 37 + k), 1.8) * 50);
+            R(ctx, k % 4 ? '#c8287a' : '#e85aa0', px, py, 3, 3);
+          }
+          for (let k = 0; k < 10; k++) R(ctx, '#3f6a32', bx + Math.floor(h2(n * 41 + k) * 30), top + 2 + Math.floor(h2(n * 43 + k) * 20), 3, 2);
+        }
+        tx += w;
+      }
+      // ficus enormes que dan sombra a la bajada
+      for (const tx of [415, 427]) {
+        const base = this.stepRow(tx) * TS, cx = tx * TS;
+        R(ctx, '#4a3424', cx - 3, base - 70, 7, 70); R(ctx, '#5a4030', cx - 1, base - 70, 2, 70);
+        for (let k = 0; k < 60; k++) {
+          const a = h2(tx * 7 + k) * Math.PI * 2, r = Math.sqrt(h2(tx * 11 + k)) * 34;
+          R(ctx, k % 3 ? '#2f5a2a' : '#4a7a36', cx + Math.cos(a) * r * 1.4 - 4, base - 92 + Math.sin(a) * r * 0.8 - 3, 9, 7);
+        }
+      }
+      // faroles de fierro, uno cada dos escalones
+      for (let k = 0; k <= 8; k += 2) {
+        const lx = (410 + 3 * k + 2.5) * TS, base = (62 - 2 * k) * TS;
+        R(ctx, '#2a2530', lx, base - 30, 2, 30); R(ctx, '#2a2530', lx - 3, base - 36, 8, 6); R(ctx, '#ffe9a8', lx - 2, base - 35, 6, 4);
+        R(ctx, 'rgba(255,233,168,0.18)', lx - 7, base - 40, 16, 14);
       }
     }
     draw() {}
@@ -1602,7 +1626,7 @@
       this.img = OBJ.torito[def.model] || OBJ.torito.rojo; this.end = def.end * TS;
       this.canDismount = false; this.drawsRider = true; this.ownJump = true; this.camMax = 3.6; this.taken = false; this.air = 0; this.blockT = 0;
     }
-    reset() { super.reset(); this.air = 0; }
+    reset() { super.reset(); this.air = 0; this.hop = false; }
     update(g) {
       this.animT++;
       if (this.rider) {
@@ -1613,7 +1637,10 @@
         if (this.launched) want = Math.max(want, this.vx);   // volando por una rampa no pierde impulso
         this.vx += Math.max(-0.12, Math.min(0.1, want - this.vx));
         if (this.vx > 0.1) this.facing = 1; else if (this.vx < -0.1) this.facing = -1;
-        if (this.onGround && Input.consumeJump()) { this.vy = -7.8; this.onGround = false; g.onPlayerJump(this); g.audio('honk'); }
+        // se puede saltar en el suelo, un instante después de dejarlo (coyote) o en el saltito de un bache:
+        // antes el salto se perdía si lo apretabas justo al pasar un bache, y chocabas con la combi
+        if (this.onGround) this.coyote = PHYS.COYOTE; else if (this.coyote > 0) this.coyote--;
+        if ((this.onGround || this.coyote > 0 || this.hop) && Input.consumeJump()) { this.vy = -7.8; this.onGround = false; this.coyote = 0; this.hop = false; g.onPlayerJump(this); g.audio('honk'); }
         const held = Input.held('jump') || Input.held('up');
         if (!held && this.vy < -PHYS.JUMP_CUT && !this.launched) this.vy = -PHYS.JUMP_CUT;
         // el humito del escape
@@ -1622,10 +1649,10 @@
       this.vy = Math.min(this.vy + PHYS.GRAV, PHYS.MAX_FALL);
       const was = this.onGround;
       moveX(this, g.level); moveY(this, g.level);
-      if (this.onGround) { this.launched = false; if (!was && this.rider) { g.onPlayerLand(this); g.audio('land'); if (this.air > 30) { g.shake(2, 8); g.burst(this.cx, this.y + this.h, 'dust', 12); } } this.air = 0; }
+      if (this.onGround) { this.launched = false; this.hop = false; if (!was && this.rider) { g.onPlayerLand(this); g.audio('land'); if (this.air > 30) { g.shake(2, 8); g.burst(this.cx, this.y + this.h, 'dust', 12); } } this.air = 0; }
       else this.air++;
       // se chocó con algo (una combi parada): toca bocina y, si no saltas tú, brinca solo
-      if (this.wall && this.rider && this.onGround) { if (++this.blockT === 12) { this.vy = -7.8; this.onGround = false; this.launched = true; g.audio('honk'); g.onPlayerJump(this); } }
+      if (this.wall && this.rider && this.onGround) { if (++this.blockT === 4) { this.vy = -7.8; this.onGround = false; this.launched = true; g.audio('honk'); g.onPlayerJump(this); } }
       else this.blockT = 0;
       // llegó al Centro: se estaciona y te bajas
       if (this.rider && this.onGround && this.cx > this.end) {
@@ -1649,6 +1676,55 @@
       ctx.restore();
       if (!this.rider && !this.retired && Math.floor(this.animT / 20) % 2) drawText(ctx, '¡SUBE!', this.cx, this.y - 14, { color: '#ffd166', align: 'center', shadow: true, shadowColor: '#2a1f2d' });
     }
+  }
+
+  // LA AVENIDA hacia el Centro: casas a medio terminar con fierros y tanques en el
+  // techo, tiendas con letrero pintado y un panel publicitario.
+  const AV_SHOPS = ['POLLERÍA', 'CHIFA', 'BODEGA', 'LAVANDERÍA', 'FERRETERÍA', 'MENÚ S/ 12', 'CABINAS', 'SE ALQUILA', 'BOTICA', 'JUGUERÍA'];
+  const AV_WALLS = ['#b8644a', '#e3c06a', '#9cc3d0', '#e8e0cc', '#b8644a', '#d0aea4', '#b8d4a8', '#b8644a'];
+  class Avenida extends Actor {
+    constructor(def) {
+      super(def.x0 * TS, ST * TS - 160, (def.x1 - def.x0) * TS, 160);
+      this.houses = []; let tx = def.x0, n = 0;
+      while (tx < def.x1) {
+        const w = 5 + Math.floor(h2(n * 3 + 7) * 3), skip = (def.skip || []).some(([a, b]) => tx + w > a && tx < b);
+        if (!skip) this.houses.push({ x: tx * TS, w: w * TS - 4, floors: 2 + (h2(n * 5 + 1) > 0.5 ? 1 : 0), wall: AV_WALLS[n % AV_WALLS.length], shop: AV_SHOPS[n % AV_SHOPS.length], n });
+        tx += skip ? 1 : w; n++;
+      }
+      this.panel = def.panel * TS;
+    }
+    update() {}
+    drawBack(ctx) {
+      const b = ST * TS, c0 = Game.cam.x - 40, c1 = Game.cam.x + VIEW.w + 40;
+      for (const h of this.houses) {
+        if (h.x > c1 || h.x + h.w < c0) continue;
+        const x = h.x, w = h.w, top = b - h.floors * 34 - 4, brick = h.wall === '#b8644a';
+        R(ctx, '#2a1f2d', x - 1, top - 1, w + 2, b - top + 1); R(ctx, h.wall, x, top, w, b - top);
+        if (brick) for (let yy = top + 2; yy < b - 30; yy += 4) for (let xx = x + ((yy >> 2) % 2) * 4; xx < x + w; xx += 8) R(ctx, '#9a5038', xx, yy, 7, 1);
+        else R(ctx, 'rgba(0,0,0,0.12)', x + w - 4, top, 4, b - top);
+        // pisos de arriba: ventanas con rejas
+        for (let f = 1; f < h.floors; f++) {
+          const fy = b - 34 * (f + 1) + 6;
+          for (let wx = x + 6; wx + 14 < x + w; wx += 22) { R(ctx, '#2a1f2d', wx - 1, fy - 1, 16, 16); R(ctx, '#9fb3c4', wx, fy, 14, 14); for (let k = 2; k < 14; k += 4) R(ctx, '#3a3440', wx + k, fy, 1, 14); }
+        }
+        // el techo sin terminar: fierros de columna y, a veces, el tanque negro
+        for (let k = 3; k < w; k += Math.max(10, w - 6)) R(ctx, '#5d5768', x + k, top - 12, 1, 12), R(ctx, '#5d5768', x + k + 2, top - 10, 1, 10);
+        if (h2(h.n * 9 + 2) > 0.4) { const tx = x + w - 22; R(ctx, '#1d1a20', tx, top - 16, 14, 16); R(ctx, '#2e2a32', tx + 2, top - 16, 10, 2); R(ctx, '#1d1a20', tx + 4, top - 19, 6, 3); }
+        if (h2(h.n * 4 + 8) > 0.5) for (let k = 0; k < 4; k++) R(ctx, ['#d8432f', '#3f6fb8', '#f6c94a', '#f4efe4'][k], x + 6 + k * 7, top - 4 + (k % 2), 5, 6);   // ropa tendida
+        // primer piso: la tienda con su letrero pintado y la reja enrollable
+        R(ctx, '#2a1f2d', x + 2, b - 30, w - 4, 30); R(ctx, '#f4efe4', x + 3, b - 29, w - 6, 9);
+        drawText(ctx, h.shop, x + w / 2, b - 27, { color: h.n % 2 ? '#d8432f' : '#2b4f86', align: 'center' });
+        if (h2(h.n * 7) > 0.45) { R(ctx, '#3a3440', x + 4, b - 20, w - 8, 20); R(ctx, '#f6c94a', x + 6, b - 18, w - 12, 9); R(ctx, '#d9d2c4', x + 6, b - 9, w - 12, 9); }
+        else { R(ctx, '#7f8890', x + 4, b - 20, w - 8, 20); for (let yy = b - 19; yy < b; yy += 2) R(ctx, '#626a72', x + 4, yy, w - 8, 1); }
+      }
+      // panel publicitario en su poste
+      if (this.panel > c0 - 120 && this.panel < c1) {
+        const px = this.panel, t = b - 150; R(ctx, '#3a3440', px + 40, t + 46, 4, b - t - 46);
+        R(ctx, '#1d1622', px - 2, t - 2, 88, 50); R(ctx, '#f6c94a', px, t, 84, 46); R(ctx, '#d8432f', px, t, 84, 6);
+        drawText(ctx, '¡CEBICHE!', px + 42, t + 10, { color: '#2a1f2d', align: 'center' }); drawText(ctx, 'EL PEJE', px + 42, t + 22, { color: '#d8432f', align: 'center' }); drawText(ctx, 'S/ 15', px + 42, t + 34, { color: '#2b4f86', align: 'center' });
+      }
+    }
+    draw() {}
   }
 
   // RAMPA de tablas en la pista: el mototaxi sale volando (a pie no pasa nada)
@@ -1682,7 +1758,7 @@
       const p = g.player, b = p.riding || p;
       if (this.cd === 0 && b.onGround && b.cx > this.x && b.cx < this.x + this.w && Math.abs(b.vx) > 0.8) {
         this.cd = 30; g.audio('splash'); g.burst(b.cx, ST * TS - 2, 'splash', 10);
-        if (p.riding instanceof MotoRide) { b.vy = -3.4; b.onGround = false; g.shake(1, 6); }
+        if (p.riding instanceof MotoRide) { b.vy = -2.4; b.onGround = false; b.hop = true; g.shake(1, 6); }
       }
     }
     drawBack(ctx) {
@@ -2032,7 +2108,6 @@
   const CASONA = 946;   // donde empieza el patio de la casona del concurso
   // escalones del puente peatonal: macizos (te frenan), de 3 casillas y 2 filas de alto
   const FB_STEPS = [[283, GR - 2], [286, GR - 4], [289, GR - 6], [292, GR - 8], [295, GR - 10], [298, GR - 12]];
-  const STOPS = [{ x: 213.5 }, { x: 240.5 }, { x: 266.5, peaje: true, wait: 120 }];
   // la calle del Centro (fila ST) con sus buzones sin tapa: [x, ancho]
   const BUZONES = [[601, 2], [616, 3], [630, 3], [648, 3], [662, 3], [772, 3], [802, 3]];
   const STREET = [594, 830];
@@ -2069,6 +2144,12 @@
         { kind: 'mountains', color: '#c4a486', color2: '#b0906f', y: GR - 5, parallax: 0.08, vpar: 0.10, amp: 6, seed: 4 },
         { kind: 'mountains', color: '#a8866a', color2: '#94735a', y: GR - 2.6, parallax: 0.18, vpar: 0.24, amp: 4, seed: 9 },
         { kind: 'hills', color: '#d2ad7e', color2: '#bf9a6c', y: GR - 0.6, parallax: 0.32, vpar: 0.40, amp: 1.8, seed: 6 },
+      ] },
+      // las playas del sur: el mar aparece junto a la carretera (Asia, Punta Hermosa)
+      { x0: 230, x1: 244, anchorRow: GR, sky: { dawn: ['#3a3466', '#d9826a', '#ffc68a'], morning: ['#6aa6dc', '#b4dcf0', '#f6ead0'] }, layers: [
+        { kind: 'mountains', color: '#b89a7c', color2: '#a68a6c', y: GR - 6, parallax: 0.06, vpar: 0.08, amp: 5, seed: 12 },
+        { kind: 'hills', color: '#4f86a8', color2: '#4f86a8', y: GR - 2, parallax: 0.12, vpar: 0.16, amp: 1, build: seaLayer(5, '#4f86a8', '#e8f4f6', false) },
+        { kind: 'hills', color: '#e2c08e', color2: '#cfac7a', y: GR - 0.4, parallax: 0.3, vpar: 0.38, amp: 1.2, seed: 21 },
       ] },
       // el Centro de Lima: cielo "panza de burro", el San Cristóbal con su cruz,
       // torres de iglesia y casonas con balcones
@@ -2120,7 +2201,7 @@
       // ── EL CENTRO: sobre el túnel de la Vía Expresa y la calle de lajas ──
       [490, 44, 14, 10, 'conc'], [496, 54, 8, H - 54, 'conc'],
       // la avenida del mototaxi, hasta la entrada del Jr. de la Unión
-      [504, ST, 90, H - ST, 'asphalt'],
+      [504, ST, 90, H - ST, 'avenida'],
       // el tráfico: combis paradas que se pueden pisar
       [521, ST - 2, 4, 2, 'blockInvis'], [554, ST - 2, 4, 2, 'blockInvis'], [559, ST - 2, 4, 2, 'blockInvis'],
       ...streetRects(),
@@ -2136,8 +2217,6 @@
       [CASONA, 46, 54, H - 46, 'paving'],
     ],
     platforms: [
-      // techos de los paraderos
-      [212, GR - 4, 4, 'steel'], [239, GR - 4, 4, 'steel'],
       // techo del peaje
       [262, GR - 6, 10, 'canopy'],
       // escaleras y tablero del puente peatonal
@@ -2165,11 +2244,14 @@
       // ── LA PANAMERICANA (corta: un aniego, el peaje y el puente) ──
       // apenas dejas la tabla (así nunca reapareces a pie en las dunas)
       { type: 'checkpoint', x: 180, y: GR },
-      { type: 'roadHint', x0: 214.5, x1: 222, text: '¡SÚBETE AL TECHO DE LA COMBI!' },
+      // el bus Ica–Lima (el mismo del capítulo 3): te lleva por la costa hasta el puente peatonal
+      { type: 'bus', x: 197, y: GR, stop: 273, label: 'ICA - LIMA', shout: '¡LIMA, LIMA, LIMA!', arrive: '¡LLEGASTE A LIMA!' },
+      { type: 'roadHint', x0: 186, x1: 198, text: '¡SÚBETE AL BUS!' },
       { type: 'sign', x: 202, y: GR, lines: ['PANAMERICANA SUR', 'LIMA 299 KM'], style: 'post' },
-      { type: 'combiSpawner', x0: 196, x1: 296, stops: STOPS, end: 316.5 },
+      { type: 'sign', x: 213.5, y: GR, lines: ['CHINCHA', 'CAÑETE'], style: 'post' },
+      { type: 'sign', x: 230, y: GR, lines: ['ASIA', 'PLAYAS DEL SUR'], style: 'board', col: '#9cd3f0' },
+      { type: 'sign', x: 240, y: GR, lines: ['PUNTA HERMOSA'], style: 'post' },
       { type: 'vendor', x: 207, y: GR, shout: '¡CHICHA MORADA, CHICHA!', kind: 'chicha' },
-      { type: 'paradero', x: 212, y: GR - 4 }, { type: 'paradero', x: 239, y: GR - 4 },
       { type: 'sign', x: 219.5, y: GR, lines: ['¡CUIDADO!', 'ANIEGO'], style: 'board', col: '#f6c94a' },
       { type: 'geyser', x: 226.5 },
       { type: 'sign', x: 248, y: GR, lines: ['LIMA 12 KM'], style: 'post' },
@@ -2222,6 +2304,7 @@
       ...BALCONES.map((b, i) => ({ type: 'balcon', x: b[0], w: b[1], y: b[2], col: ['#5a3418', '#2f5a3a', '#6a3a1a'][i % 3] })),
       { type: 'checkpoint', x: 494, y: 44, help: 'SÚBETE AL MOTOTAXI Y ACELERA' },
       // ── EN MOTOTAXI ──
+      { type: 'avenida', x0: 504, x1: 594, skip: [[521, 532]], panel: 562 },
       { type: 'contramano', x0: 504, x1: 594 },
       { type: 'npc', x: 497.5, y: 44, model: 'mototaxista', lines: ['¡TE PRESTO MI MOTO, CAUSA!', '¡AL CENTRO, VOLANDO!'] },
       { type: 'motoRide', x: 499, y: 44, model: 'rojo', end: 586 },
@@ -2297,7 +2380,6 @@
       // la ropa tendida llega hasta la pared del edificio alto: si caes encima, rebotas
       { type: 'clothesline', x0: 837, x1: 847, y: 41, base0: 43, base1: 43, hint: '¡SALTA SOBRE LA ROPA TENDIDA!' },
       { type: 'page', x: 842, y: 32 },
-      { type: 'cable', x0: 858, y0: 33.5, x1: 868, y1: 36.5, shoes: true },
       { type: 'checkpoint', x: 864.5, y: 38, help: 'SALTA AL PERRO Y SIGUE' },
       { type: 'dog', x0: 869, x1: 878, y: 38 },
       { type: 'rebar', x: 885, y: 40 },
@@ -2306,7 +2388,6 @@
       { type: 'dog', x0: 905, x1: 914, y: 38 },
       { type: 'rebar', x: 922, y: 41 },
       { type: 'sign', x: 924, y: 42.6, lines: ['HAY MAZAMORRA', 'MORADA'], style: 'paper' },
-      { type: 'cable', x0: 928, y0: 40, x1: 936, y1: 38 },
       { type: 'sign', x: 942, y: 40.6, lines: ['SE HACEN', 'TAREAS'], style: 'paper', col: '#2b4f86' },
       // ── LA CASONA ──
       { type: 'checkpoint', x: CASONA + 3, y: 46 },
@@ -2335,7 +2416,6 @@
     tank: (d) => new WaterTank(d),
     clothesline: (d) => new Clothesline(d),
     dog: (d) => new Dog(d),
-    cable: (d) => new Cable(d),
     facade: (d) => new Facade(d),
     contest: (d) => new Contest(d),
     motoRide: (d) => new MotoRide(d),
@@ -2346,6 +2426,7 @@
     larcomar: (d) => new Larcomar(d),
     mar: (d) => new Mar(d),
     bajada: (d) => new Bajada(d),
+    avenida: (d) => new Avenida(d),
     suspiros: (d) => new Suspiros(d),
     murales: (d) => new Murales(d),
     balde: (d) => new Balde(d),

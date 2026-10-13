@@ -1330,12 +1330,14 @@ const ART3 = (() => {
     }
   }
 
-  // EL BUS PUNO–CUSCO: tócalo y te subes; te deja en el terminal del Cusco
+  // EL BUS INTERPROVINCIAL: tócalo y te subes; te deja en el paradero final.
+  // Por defecto es el Puno–Cusco; el capítulo 2 lo usa como Ica–Lima (label, shout, arrive).
   class Bus extends Mount {
     constructor(def) {
       super(def.x * TS, def.y * TS - 40, 112, 40, { dx: 78, dy: 14 });
       this.stopX = def.stop * TS; this.canDismount = false; this.drawsRider = true; this.camMax = 5.2;
       this.go = 0; this.dist = 0; this.onGround = true;
+      this.label = def.label || 'PUNO - CUSCO'; this.shout = def.shout || '¡CUSCO, CUSCO, CUSCO!'; this.arrive = def.arrive || '¡LLEGASTE AL CUSCO!';
     }
     reset() { super.reset(); this.go = 0; this.onGround = true; }
     update(g) {
@@ -1348,7 +1350,7 @@ const ART3 = (() => {
         if (left <= this.vx) {
           this.x = this.stopX; this.vx = 0; this.retired = true;
           const p = this.rider; this.rider.syncRide(); p.dismount(g, -3.2); p.x = this.x + this.w + 4;
-          g.audio('brake'); g.toast('¡LLEGASTE AL CUSCO!');
+          g.audio('brake'); g.toast(this.arrive);
           return;
         }
         this.x += this.vx; this.dist += this.vx;
@@ -1375,14 +1377,14 @@ const ART3 = (() => {
       // parabrisas y puerta adelante
       R(ctx, '#1d1a24', x + w - 10, by + 3, 9, 15); R(ctx, '#9fd3f0', x + w - 9, by + 4, 7, 13); R(ctx, '#d9f1ff', x + w - 8, by + 4, 2, 4);
       R(ctx, '#fff6b0', x + w - 3, by + 22, 3, 3); R(ctx, '#d8432f', x, by + 22, 2, 3);
-      drawText(ctx, 'PUNO - CUSCO', x + 44, by + 19, { color: '#ffffff', align: 'center' });
+      drawText(ctx, this.label, x + 44, by + 19, { color: '#ffffff', align: 'center' });
       // ruedas que giran
       for (const wx of [x + 18, x + w - 22]) {
         R(ctx, '#1d1622', wx - 7, y + h - 12, 15, 12); R(ctx, '#5d5768', wx - 4, y + h - 9, 9, 6);
         const a = this.dist / 6;
         R(ctx, '#c9ced6', wx + Math.round(Math.cos(a) * 3), y + h - 6 + Math.round(Math.sin(a) * 2), 2, 2);
       }
-      if (!this.rider && !this.retired && Math.abs(g.player.cx - x) < 10 * TS) bubble(ctx, x + w - 20, by - 2, ['¡CUSCO, CUSCO, CUSCO!'], x + w - 14);
+      if (!this.rider && !this.retired && Math.abs(g.player.cx - x) < 10 * TS) bubble(ctx, x + w - 20, by - 2, [this.shout], x + w - 14);
     }
   }
 
