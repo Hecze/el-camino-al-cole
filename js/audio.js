@@ -148,6 +148,8 @@ const AUDIO = (() => {
     win:     () => { [523, 659, 784, 1046, 784, 1046, 1318].forEach((f, i) => tone(f, 0.3, 'triangle', 0.24, now() + 0.15 + i * 0.13)); },
   };
   function play(name) { if (!enabled) return; resume(); const f = SFX[name]; if (f) f(); }
+  // sonidos de otros capítulos: cada archivo registra los suyos con las mismas herramientas
+  function addSfx(name, fn) { SFX[name] = () => fn({ tone, noise, now }); }
 
   // ── música: secuenciador de huayno ─────────────────────────────────────
   // Notación: "E5:2 D5:1 C5:1 r:4"  (nota:duración en semicorcheas, r = silencio)
@@ -410,5 +412,5 @@ const AUDIO = (() => {
   function toggleMute() { init(); enabled = !enabled; if (master) master.gain.value = enabled ? 0.9 : 0; return enabled; }
   function isEnabled() { return enabled; }
 
-  return { play, playMusic, stopMusic, resume, toggleMute, isEnabled, freq, updateAmbient };
+  return { play, playMusic, stopMusic, resume, toggleMute, isEnabled, freq, updateAmbient, addSfx };
 })();

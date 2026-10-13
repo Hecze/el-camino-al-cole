@@ -354,6 +354,7 @@ class Player extends Actor {
     else img = P.idle[0];
     const flying = this.gliding && !this.onGround && this.vy > 0;
     if (flying) img = P.jump;
+    if (this.pose) img = this.pose;   // pose fija que pone un capítulo (p. ej. agachado en el tren)
     ctx.drawImage(this.facing < 0 ? flipS(img) : img, Math.round(this.cx - 8), Math.round(this.y + this.h - 22));
     if (this.gliding) {
       // la hoja sobre la cabeza; en vuelo se inclina hacia donde vas
