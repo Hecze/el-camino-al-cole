@@ -3,7 +3,7 @@
 //   pulsada (Karplus-Strong), bombo de cuero, chajchas y eco de quebrada.
 // · Ambiente: rumor del río (con burbujeo) y el retumbar del huaico.
 const AUDIO = (() => {
-  let ctx = null, master = null, musicGain = null, melBus = null, sfxGain = null, ambGain = null;
+  let ctx = null, master = null, musicGain = null, melBus = null, sfxGain = null, ambGain = null, duckGain = null, voiceGain = null;
   let whiteBuf = null;
   let enabled = true;
 
@@ -46,7 +46,10 @@ const AUDIO = (() => {
     const comp = ctx.createDynamicsCompressor(); comp.threshold.value = -14; comp.ratio.value = 4;
     comp.connect(master);
     sfxGain = ctx.createGain(); sfxGain.gain.value = 0.5; sfxGain.connect(comp);
-    musicGain = ctx.createGain(); musicGain.gain.value = 0.0001; musicGain.connect(comp);
+    // la música pasa por duckGain: baja mientras habla una voz (VOICE)
+    duckGain = ctx.createGain(); duckGain.connect(comp);
+    musicGain = ctx.createGain(); musicGain.gain.value = 0.0001; musicGain.connect(duckGain);
+    voiceGain = ctx.createGain(); voiceGain.gain.value = 1.1; voiceGain.connect(master);
     melBus = ctx.createGain(); melBus.connect(musicGain);
     // eco de quebrada: reverberación natural para los instrumentos acústicos
     try {
@@ -484,6 +487,16 @@ const AUDIO = (() => {
 
   function toggleMute() { init(); enabled = !enabled; if (master) master.gain.value = enabled ? 0.9 : 0; return enabled; }
   function isEnabled() { return enabled; }
+  // voces (js/voice.js): su contexto, su salida (respeta el mute de master) y
+  // bajar la música 'sec' segundos mientras suenan
+  function context() { init(); return ctx; }
+  function voiceOut() { init(); return voiceGain; }
+  function duck(sec) {
+    if (!duckGain) return;
+    const g = duckGain.gain, t = now();
+    g.cancelScheduledValues(t); g.setValueAtTime(g.value, t);
+    g.linearRampToValueAtTime(0.25, t + 0.08); g.setValueAtTime(0.25, t + sec); g.linearRampToValueAtTime(1, t + sec + 0.4);
+  }
 
-  return { play, playMusic, stopMusic, resume, toggleMute, isEnabled, freq, updateAmbient };
+  return { play, playMusic, stopMusic, resume, toggleMute, isEnabled, freq, updateAmbient, context, voiceOut, duck };
 })();
