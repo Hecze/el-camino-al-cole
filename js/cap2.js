@@ -917,19 +917,26 @@
   // CARRETILLA del mercado: un cargador la empuja a toda velocidad por la
   // calle. Antes de entrar grita y aparece un "!" en el borde. Sáltala.
   class Carretilla extends Actor {
-    constructor(def) { super(-9999, ST * TS - 24, 40, 24); this.x0 = def.x0 * TS; this.x1 = def.x1 * TS; this.speed = def.speed || 1.6; this.load = def.load || 'papa'; this.hazardKind = 'carretilla'; this.onRespawn(); }
-    onRespawn() { this.state = 'wait'; this.t = 0; this.cd = 70; this.x = -9999; }
+    constructor(def) { super(-9999, ST * TS - 24, 40, 24); this.x0 = def.x0 * TS; this.x1 = def.x1 * TS; this.speed = def.speed || 1.6; this.load = def.load || 'papa'; this.gap = def.gap || 240; this.delay = def.delay || 0; this.hazardKind = 'carretilla'; this.onRespawn(); }
+    // al reaparecer cambia un poco cuándo salen (igual para la pareja), así no te pilla siempre en el mismo sitio
+    onRespawn(g) {
+      this.state = 'wait'; this.t = 0; this.cd = 70 + this.delay + (g ? (g.deaths * 37) % 60 : 0); this.x = -9999;
+      // si te atropellan seguido aquí, el tramo se afloja: va más lento y sale uno solo
+      if (g && g.lastDeath === 'carretilla' && g.player.cx > this.x0 - 80 && g.player.cx < this.x1) this.fails = (this.fails || 0) + 1;
+      this.easy = (this.fails || 0) >= 3;
+    }
     update(g) {
       this.t++;
       const p = g.player, inZone = p.cx > this.x0 && p.cx < this.x1;
       if (this.state === 'wait') {
+        if (this.easy && this.delay) return;
         if (inZone && --this.cd <= 0 && g.cam.x + VIEW.w < this.x1 + 60) { this.state = 'warn'; this.t = 0; g.audio('shout'); g.toast('¡CUIDADO, CARRETILLA!'); }
         return;
       }
       if (this.state === 'warn') { if (this.t > 60) { this.state = 'drive'; this.t = 0; this.x = g.cam.x + VIEW.w + 6; } return; }
-      this.x -= this.speed;
+      this.x -= this.speed * (this.easy ? 0.75 : 1);
       if (this.t % 6 === 0) g.particles.push({ x: this.x + 36, y: ST * TS - 1, vx: 0.4, vy: -0.3, life: 14, max: 14, col: '#b8aea2', size: 1, grav: 0 });
-      if (this.x + this.w < g.cam.x - 40 || this.x < this.x0 - 200) { this.state = 'wait'; this.cd = 200 + Math.floor(Math.random() * 120); this.x = -9999; }
+      if (this.x + this.w < g.cam.x - 40 || this.x < this.x0 - 200) { this.state = 'wait'; this.cd = this.gap; this.x = -9999; }
     }
     hazardBox() { return this.state === 'drive' ? { x: this.x + 2, y: this.y + 9, w: this.w - 4, h: this.h - 9 } : null; }
     draw(ctx, g) {
@@ -1603,7 +1610,7 @@
   const FB_STEPS = [[283, GR - 2], [286, GR - 4], [289, GR - 6], [292, GR - 8], [295, GR - 10], [298, GR - 12]];
   const STOPS = [{ x: 213.5 }, { x: 240.5 }, { x: 266.5, peaje: true, wait: 120 }];
   // la calle del Centro (fila ST) con sus buzones sin tapa: [x, ancho]
-  const BUZONES = [[427, 2], [442, 3], [456, 2], [474, 3], [598, 2], [628, 3]];
+  const BUZONES = [[427, 2], [442, 3], [456, 3], [474, 3], [488, 3], [598, 3], [628, 3]];
   const STREET = [420, 656];
   function streetRects() {
     const out = []; let x = STREET[0];
@@ -1734,7 +1741,7 @@
       { type: 'checkpoint', x: 320, y: 44, help: 'SÚBETE AL MOTOTAXI Y ACELERA' },
       // ── EN MOTOTAXI ──
       { type: 'contramano', x0: 330, x1: 420 },
-      { type: 'npc', x: 323.5, y: 44, model: 'mototaxista', lines: ['¡SUBE, CAUSA!', '¡MANÉJALO TÚ NOMÁS!', '¡TE LLEVA AL CENTRO!'] },
+      { type: 'npc', x: 323.5, y: 44, model: 'mototaxista', lines: ['¡SUBE, CAUSA, TE LLEVO!', '¡MANÉJALO TÚ NOMÁS!', '¡AL CENTRO, VOLANDO!'] },
       { type: 'motoRide', x: 325, y: 44, model: 'rojo', end: 412 },
       { type: 'hint', x: 326, y: 44, text: '¡SÚBETE AL MOTOTAXI!', arrow: 'down', r: 6, pass: 2, dy: 16, when: (g) => !g.player.riding },
       { type: 'hint', x: 334, y: ST, text: '¡ACELERA!', key: 'right', r: 4, pass: 4, when: (g) => g.player.riding instanceof MotoRide },
@@ -1760,7 +1767,7 @@
       { type: 'hint', x: 436, y: 43, text: '¡SÚBETE AL BALCÓN!', arrow: 'down', r: 5, pass: 1, dy: 4 },
       { type: 'help', x0: 420, x1: 500, kind: 'buzon', text: 'SALTA JUSTO EN EL BORDE' },
       { type: 'help', x0: 420, x1: 560, kind: 'carretilla', text: '¡VE POR LOS BALCONES!' },
-      { type: 'carretilla', x0: 430, x1: 498, speed: 1.5, load: 'papa' },
+      { type: 'carretilla', x0: 430, x1: 498, speed: 1.9, gap: 150, load: 'papa' },
       { type: 'palomas', x0: 482, x1: 492, n: 6 },
       { type: 'vendor', x: 494, y: ST, shout: '¡HELADO, HELADITO!', kind: 'cooler' },
       // ── PLAZA DE ARMAS (respiro: nada te mata aquí) ──
@@ -1776,12 +1783,16 @@
       { type: 'npc', x: 556.5, y: ST, model: 'husar', flip: true, lines: ['¡CORRE, QUE LLEGAS TARDE!', '¡EL CONCURSO ES POR ALLÁ!'] },
       // ── BARRIO CHINO Y MERCADO CENTRAL ──
       { type: 'portadaChina', x0: 566, x1: 577, y: 42 },
-      { type: 'checkpoint', x: 562, y: ST, help: 'LOS TOLDOS TE HACEN REBOTAR' },
+      // el perro chusco del barrio duerme bajo la portada: sáltalo o pasa por el tejado
+      { type: 'dog', x0: 568, x1: 577, y: ST },
+      { type: 'checkpoint', x: 553, y: ST, help: 'LOS TOLDOS TE HACEN REBOTAR' },
       { type: 'hint', x: 582.5, y: 43, text: '¡CAE EN EL TOLDO!', arrow: 'down', r: 6, pass: 1, dy: 4 },
       { type: 'toldo', x0: 580, x1: 585, y: 43, col: ['#2b6fb8', '#fffaf0'], goods: 'fruta' },
       { type: 'npc', x: 588.5, y: ST, model: 'emoliente', lines: ['¡EMOLIENTE, CALIENTITO!', '¿CON UÑA DE GATO?', '¡PARA LA GARÚA, CAUSA!'] },
       { type: 'npc', x: 594.5, y: ST, model: 'cambista', lines: ['¿DÓLARES? ¿CAMBIO?', '¡A BUEN PRECIO, CASERITO!'] },
-      { type: 'carretilla', x0: 578, x1: 646, speed: 1.8, load: 'naranja' },
+      { type: 'carretilla', x0: 578, x1: 646, speed: 2.1, gap: 160, load: 'naranja' },
+      { type: 'carretilla', x0: 578, x1: 646, speed: 2.1, gap: 160, delay: 50, load: 'papa' },   // van de dos en dos
+      { type: 'help', x0: 562, x1: 580, kind: 'dog', text: '¡VE POR EL TEJADO!' },
       { type: 'toldo', x0: 602, x1: 607, y: 43, col: ['#c8322a', '#fffaf0'], goods: 'papa' },
       // los farolitos del chifa se mecen y suenan al tocarlos (escenario propio del capítulo)
       { type: 'farolitos', x0: 608, x1: 622, y: 41 },
