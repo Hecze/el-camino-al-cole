@@ -175,7 +175,7 @@
     else if (kind === 'caiman') { AUDIO.play('snap'); AUDIO.play('splash'); Game.shake(3, 10); Game.burst(a.cx, a.cy, 'swampSplash', 20); }
     else if (kind === 'bird' || kind === 'eagle') { AUDIO.play('crush'); Game.shake(3, 10); Game.burst(a.cx, a.cy, 'feather', 16); }
     else if (kind === 'rock') { AUDIO.play('crush'); Game.shake(4, 12); Game.burst(a.cx, a.cy, 'rock', 14); }
-    else if (kind === 'combi' || kind === 'buggy') { AUDIO.play('crush'); AUDIO.play('honk'); Game.shake(4, 12); Game.burst(a.cx, a.cy, 'dust', 18); }
+    else if (kind === 'combi' || kind === 'buggy' || kind === 'carretilla') { AUDIO.play('crush'); AUDIO.play('honk'); Game.shake(4, 12); Game.burst(a.cx, a.cy, 'dust', 18); }
     else if (kind === 'cactus' || kind === 'rebar') { AUDIO.play('ouch'); Game.shake(2, 8); Game.burst(a.cx, a.cy, 'spark', 12); }
     else if (kind === 'dog') { AUDIO.play('bark'); AUDIO.play('crush'); Game.shake(3, 10); Game.burst(a.cx, a.cy, 'dust', 14); }
     else AUDIO.play('fall');
