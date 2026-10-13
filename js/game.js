@@ -150,16 +150,20 @@
   Game.onPlayerJump = (a) => { Game.burst(a.cx, a.y + a.h, 'dust', 6); AUDIO.play('jump'); };
   Game.onPlayerLand = (a) => { Game.burst(a.cx, a.y + a.h, 'dust', 4); };
   Game.onMount = () => {};
-  // en la cumbre del Apu suena una frase de El Cóndor Pasa y luego vuelve la música del tramo
+  function resumeZoneMusic() {
+    const Z = Game.level && Game.level.zones[Game.zone];
+    if (Z && ['play', 'respawn', 'pause'].includes(Game.state)) AUDIO.playMusic(SONGS[Z.music]);
+  }
+  // en la cumbre del Apu suena una frase de El Cóndor Pasa (o su corto) y luego vuelve la música del tramo
   Game.onGoatDone = () => {
     const s = SONGS.condorPasa; if (!s) return;
     AUDIO.playMusic(s);
+    CORTO.play('CUMBRE DEL APU', resumeZoneMusic);
     const token = Game.jingle = {}, ms = (s.chords.length - 1) * (s.bar || 8) * 60 / s.bpm / 4 * 1000 + 150;
     setTimeout(() => {
-      if (Game.jingle !== token) return;
+      if (Game.jingle !== token || CORTO.playing()) return;
       Game.jingle = null;
-      const Z = Game.level && Game.level.zones[Game.zone];
-      if (Z && ['play', 'respawn', 'pause'].includes(Game.state)) AUDIO.playMusic(SONGS[Z.music]);
+      resumeZoneMusic();
     }, ms);
   };
   Game.setCheckpoint = (cp) => {
@@ -214,6 +218,7 @@
     if (ci == null) ci = Game.chapterIdx;
     const ch = CHAPTERS[ci], lv = ch.level;
     Game.chapterIdx = ci; Game.chapter = ch; Game.menuChapter = ci; Game.jingle = null;
+    CORTO.reset();
     Game.soroche = false; Game.sorocheK = 0; Game.sorocheLvl = 0; Game.cocaFlash = 0; Game.faint = null;
     DAY_START = ch.dayStart || DAY_START_DEFAULT;
     Game.level = lv;
@@ -363,7 +368,9 @@
     if (z > Game.zone) {
       Game.zone = z; const Z = lv.zones[z];
       Game.zoneName = Z.name;
-      AUDIO.playMusic(SONGS[Z.music]);
+      // un corto sigue sonando aunque cambies de tramo; al terminar vuelve la música del tramo en que estés
+      if (!CORTO.playing()) AUDIO.playMusic(SONGS[Z.music]);
+      CORTO.play(Z.name, resumeZoneMusic);
     }
   }
 
@@ -465,7 +472,7 @@
       else if (o === 'ending') startEnding();
       else if (o === 'ranking') openRank(Game.chapter.num, true);
       else if (o === 'share') shareArrival();
-      else { Game.state = 'menu'; AUDIO.playMusic(SONGS.menu); }
+      else { Game.state = 'menu'; CORTO.stop(); AUDIO.playMusic(SONGS.menu); }
     }
   }
 
@@ -476,12 +483,13 @@
     Game.state = 'ending'; Game.stateT = 0; Game.fade = 1;
     if (E.start) E.start(Game);
     if (E.music && SONGS[E.music]) AUDIO.playMusic(SONGS[E.music]);
+    CORTO.play('FINAL', () => { if (Game.state === 'ending' && E.music && SONGS[E.music]) AUDIO.playMusic(SONGS[E.music]); });
   }
   function updateEnding() {
     const E = Game.chapter.ending;
     Game.stateT++;
     if (Game.stateT > 20 && (Input.pressed('confirm') || Input.pressed('jump'))) Game.stateT = E.skip(Game.stateT);
-    if (Game.stateT >= E.frames) { Game.state = 'menu'; AUDIO.playMusic(SONGS.menu); }
+    if (Game.stateT >= E.frames) { Game.state = 'menu'; CORTO.stop(); AUDIO.playMusic(SONGS.menu); }
   }
 
   // ── RANKING ──────────────────────────────────────────────────────────────
@@ -548,7 +556,7 @@
     AUDIO.play('select');
     if (i === 0) Game.state = 'play';
     else if (i === 1) startGame();
-    else { Game.state = 'menu'; AUDIO.playMusic(SONGS.menu); }
+    else { Game.state = 'menu'; CORTO.stop(); AUDIO.playMusic(SONGS.menu); }
   }
   function updatePause() {
     if (Input.pressed('up')) { Game.pauseSel = (Game.pauseSel + 2) % 3; AUDIO.play('select'); }
