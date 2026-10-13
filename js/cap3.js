@@ -927,7 +927,7 @@ const ART3 = (() => {
   // pantalla) con un ataque fijo y fácil de leer. Al pasar por `at` aparece y
   // planea sobre ti (su sombra cruza el techo); cuando no hay túnel ni vagón
   // por soltarse cerca, chilla, tiembla con su "!" y baja en vuelo rasante a la
-  // altura de tu cabeza, de adelante hacia atrás. Agachado o saltando, pasa.
+  // altura de tus pies, de adelante hacia atrás. Agacharse no sirve: hay que saltarlo.
   // el cóndor grande, de alas bien abiertas: negro con la franja blanca de las
   // alas, collar blanco y cabeza rosada. flap: -1..1 (aleteo) o 'dive' (alas atrás)
   function paintCondor(ctx, cx, cy, f, flap) {
@@ -965,9 +965,9 @@ const ART3 = (() => {
       super({ rowMin: 0, rowMax: 0 });
       this.at = def.at * TS; this.armed = true; this.w = 22; this.h = 8;
       // la primera vez, la pista de la guía va pegada al niño
-      if (def.hint) this.tip = EXTRA_ENTITIES.hint({ x: 0, y: 0, text: def.hint, key: 'down', r: 4, pass: 4, vr: 8, dy: 6, when: () => this.state === 'windup' || this.state === 'dive' });
+      if (def.hint) this.tip = EXTRA_ENTITIES.hint({ x: 0, y: 0, text: def.hint, key: 'jump', r: 4, pass: 4, vr: 8, dy: 6, when: () => this.state === 'windup' || this.state === 'dive' });
     }
-    get dangerous() { const p = Game.player; return this.state === 'dive' && !p.crouching && !p.riding; }
+    get dangerous() { const p = Game.player; return this.state === 'dive' && !p.riding; }
     get hitbox() { return { x: this.x + 3, y: this.y + 1, w: this.w - 6, h: this.h - 2 }; }
     // ¿hay sitio para el ataque? ni túneles ni enganches que se sueltan en los próximos metros
     safe(T, p) {
@@ -999,16 +999,16 @@ const ART3 = (() => {
           break;
         }
         case 'windup': {
-          // se coloca adelante, a la altura de tu cabeza, y tiembla
-          const tx = p.cx + 100, ty = roof - 13;
+          // se coloca adelante, a ras del techo (a la altura de tus pies), y tiembla
+          const tx = p.cx + 100, ty = roof - 8;
           this.x += rel + (tx - this.x) * 0.08; this.y += (ty - this.y) * 0.08; this.face = -1;
-          this.aimX = p.cx; this.aimY = roof - 10;
+          this.aimX = p.cx; this.aimY = roof - 4;
           if (this.t > 42) { this.state = 'dive'; this.t = 0; g.audio('swoosh'); g.shake(2, 8); }
           break;
         }
         case 'dive':
           // rasante sobre el techo, hacia atrás
-          this.x += rel - 5; this.y = roof - 13 + Math.sin(this.t * 0.3);
+          this.x += rel - 5; this.y = roof - 8 + Math.sin(this.t * 0.3);
           if (this.x < p.cx - 70 || this.t > 60) { this.state = 'recover'; this.t = 0; this.dx = rel - 3; }
           break;
         case 'recover':
@@ -1816,11 +1816,11 @@ const ART3 = (() => {
         decouples: [120, 250, 330].map(d => PE + d), cp: PE + 125 },
       ...[0, 1, 2, 3, 4].map(i => ({ type: 'wagon', i })),
       // tres cóndores bajan a atacar donde no hay túnel ni enganche por soltarse (el primero trae su pista)
-      { type: 'trainCondor', at: PE + 62, hint: ['¡CÓNDOR!', '¡AGÁCHATE!'] },
+      { type: 'trainCondor', at: PE + 62, hint: ['¡CÓNDOR!', '¡SALTA!'] },
       { type: 'trainCondor', at: PE + 190 },
       { type: 'trainCondor', at: PE + 372 },
       { type: 'help', x0: PE, x1: AC, kind: 'tunnel', text: 'EN EL TÚNEL MANTÉN ABAJO' },
-      { type: 'help', x0: PE, x1: AC, kind: 'eagle', text: 'SI BAJA EL CÓNDOR, MANTÉN ABAJO' },
+      { type: 'help', x0: PE, x1: AC, kind: 'eagle', text: 'SI BAJA EL CÓNDOR, ¡SALTA!' },
       // ── MACHU PICCHU ──
       { type: 'checkpoint', x: AC + 3, y: ROOF },
       { type: 'tourist', x: AC + 9, y: ROOF, v: 1 },
@@ -2328,7 +2328,7 @@ const ART3 = (() => {
       fall: '¡TE FUISTE AL BARRANCO!',
       default: '¡ASU MARE!',
     },
-    tips: ['BALSA DE TOTORA: SÚBETE Y TE LLEVA.', 'ALPACA: TÓCALA PARA MONTARLA. SALTA TEJADOS.', 'TREN: TÚNEL O CÓNDOR, MANTÉN ABAJO.', 'SI SE SUELTA TU VAGÓN, ¡CORRE ADELANTE!'],
+    tips: ['BALSA DE TOTORA: SÚBETE Y TE LLEVA.', 'ALPACA: TÓCALA PARA MONTARLA. SALTA TEJADOS.', 'TREN: TÚNEL, AGÁCHATE. CÓNDOR, SALTA.', 'SI SE SUELTA TU VAGÓN, ¡CORRE ADELANTE!'],
     win: {
       title: '¡LLEGASTE A LA FOTO!',
       onTime: ['¡SALISTE EN LA FOTO!', '¡SALISTE EN LA FOTO DE LA PROMO, CAUSA!'],
