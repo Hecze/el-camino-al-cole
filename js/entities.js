@@ -9,7 +9,7 @@ const PHYS = {
   // cabra: rebote algo más alto y más lento (sube ~93 px, 1,45 salientes)
   GOAT_MAX: 2.6, GOAT_JUMP: -8.4, GOAT_GRAV: 0.38, GOAT_FALL: 5.2,
   // hielo: se acelera despacio y casi no se frena (la rapidez máxima es la misma)
-  ICE_ACCEL: 0.13, ICE_FRICTION: 0.018,
+  ICE_ACCEL: 0.13, ICE_FRICTION: 0.03,
 };
 
 function moveX(a, level) {
@@ -2029,11 +2029,12 @@ class Balsa extends Mount {
     if (this.caught) { ctx.translate(Math.round(this.cx), y + 4); ctx.rotate(this.spin); ctx.translate(-Math.round(this.cx), -(y + 4)); }
     if (this.rider === p && !(p.invuln > 0 && Math.floor(p.invuln / 4) % 2 === 0)) {
       // tú sentado, remando: el remo entra y sale del agua
-      const k = Math.floor(this.rowT / 10) % 2;
+      const k = Math.floor(this.rowT / 12) % 2;
       ctx.drawImage(P.sit, x + 9, y - 19);
-      ctx.fillStyle = '#6b4524';
-      for (let i = 0; i < 14; i++) ctx.fillRect(x + 10 + i * (k ? 0.6 : -0.2) + (k ? 0 : 4), y - 8 + i, 1, 1);
-      ctx.fillStyle = '#9b663b'; ctx.fillRect(x + (k ? 17 : 0), y + 5, 4, 3);   // la pala del remo
+      // el remo: de las manos al agua, adelante y atrás
+      const hx = x + 21, hy = y - 10, ex = k ? x + 31 : x + 9, ey = y + 9;
+      for (let i = 0; i <= 18; i++) { ctx.fillStyle = i % 6 === 0 ? '#6b4524' : '#9b663b'; ctx.fillRect(Math.round(hx + (ex - hx) * i / 18), Math.round(hy + (ey - hy) * i / 18), 1, 1); }
+      ctx.fillStyle = '#6b4524'; ctx.fillRect(ex - 1, ey - 2, 3, 5);   // la pala
     }
     ctx.drawImage(OBJ.balsa, x, y);
     ctx.restore();
@@ -2065,17 +2066,21 @@ class Remolino extends Actor {
     else if (k >= C.CALM + C.FORM + C.OPEN) a = 1 - (k - C.CALM - C.FORM - C.OPEN) / C.CLOSE;
     if (a <= 0) return;
     const x = this.x, s = this.s, r = this.r * Math.max(0.35, a);
-    // anillos de espuma que giran hacia el centro (elipses aplastadas)
-    for (let ring = 0; ring < 3; ring++) {
-      const rr = r * (1 - ring * 0.3);
-      for (let i = 0; i < 18; i++) {
-        const ang = this.t * (0.12 + ring * 0.05) + i * Math.PI / 9;
-        ctx.fillStyle = ring === 0 ? 'rgba(255,255,255,' + (0.85 * a).toFixed(2) + ')' : '#d2f6f2';
-        ctx.fillRect(Math.round(x + Math.cos(ang) * rr), Math.round(s + 2 + Math.sin(ang) * rr * 0.22), 2, 1);
-      }
+    // el embudo: el agua se hunde hacia el centro (más hondo mientras más abierto)
+    for (let dx = -Math.floor(r); dx <= r; dx++) {
+      const k2 = 1 - (dx / r) * (dx / r), depth = Math.round(k2 * 12 * a);
+      if (depth <= 0) continue;
+      ctx.fillStyle = '#27739f'; ctx.fillRect(Math.round(x + dx), s, 1, depth + 2);
+      ctx.fillStyle = '#123a5a'; ctx.fillRect(Math.round(x + dx), s + 2, 1, Math.max(0, depth - 2));
     }
-    // el hoyo oscuro del centro
-    if (a > 0.5) { const w = Math.round(r * 0.9 * a); ctx.fillStyle = '#1d5683'; ctx.fillRect(Math.round(x - w / 2), s + 1, w, 3); ctx.fillStyle = '#123a5a'; ctx.fillRect(Math.round(x - w / 4), s + 2, Math.round(w / 2), 2); }
+    // brazos de espuma que giran y se meten al centro
+    for (let arm = 0; arm < 3; arm++) for (let i = 0; i < 16; i++) {
+      const u = i / 16, ang = this.t * 0.14 + arm * 2.1 + u * 4, rad = r * (1 - u * 0.85);
+      const px = x + Math.cos(ang) * rad, py = s + 1 + Math.sin(ang) * rad * 0.25 + (1 - (rad / r) * (rad / r)) * 10 * a;
+      ctx.fillStyle = i < 5 ? '#ffffff' : '#d2f6f2'; ctx.fillRect(Math.round(px), Math.round(py), i < 8 ? 2 : 1, 1);
+    }
+    // espuma del borde
+    for (let i = 0; i < 12; i++) { const ang = -this.t * 0.08 + i * Math.PI / 6; ctx.fillStyle = 'rgba(255,255,255,' + (0.8 * a).toFixed(2) + ')'; ctx.fillRect(Math.round(x + Math.cos(ang) * (r + 3)), s - 1 + Math.round(Math.sin(ang) * 2), 2, 1); }
     // a punto de abrirse: "!" de aviso
     if (k >= C.CALM && k < C.CALM + C.FORM && Math.floor(this.t / 5) % 2 === 0) drawText(ctx, '!', x, s - 20, { scale: 2, color: '#ffffff', align: 'center', shadow: true, shadowColor: '#2a1f2d' });
   }
