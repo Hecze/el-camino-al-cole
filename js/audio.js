@@ -80,6 +80,21 @@ const AUDIO = (() => {
     g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
     o.connect(g); g.connect(out || sfxGain); o.start(t); o.stop(t + dur + 0.03);
   }
+  // un "¡guau!": tono de garganta que sube y cae rápido, filtrado como una boca abierta, con soplido encima
+  function woof(t, f0, vol) {
+    if (!enabled || !ctx) return;
+    const o = ctx.createOscillator(); o.type = 'sawtooth';
+    o.frequency.setValueAtTime(f0 * 0.7, t);
+    o.frequency.exponentialRampToValueAtTime(f0 * 1.25, t + 0.035);
+    o.frequency.exponentialRampToValueAtTime(f0 * 0.55, t + 0.16);
+    const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.Q.value = 1.4;
+    bp.frequency.setValueAtTime(700, t); bp.frequency.exponentialRampToValueAtTime(1300, t + 0.04); bp.frequency.exponentialRampToValueAtTime(600, t + 0.16);
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + 0.012);
+    g.gain.setValueAtTime(vol, t + 0.05); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.18);
+    o.connect(bp); bp.connect(g); g.connect(sfxGain); o.start(t); o.stop(t + 0.2);
+    noise(0.07, vol * 0.6, 1600, t, { type: 'bandpass', q: 0.9 });
+  }
   function noise(dur, vol, cut, when, opts = {}) {
     if (!enabled || !ctx) return;
     const t = (when || now()) + 0.0001;
@@ -152,12 +167,27 @@ const AUDIO = (() => {
     // capítulo 2: claxon de combi, ¡ay!, ladrido de perro chusco y "no se puede"
     honk:    () => { const t = now(); [0, 0.16].forEach(d => { tone(415, 0.13, 'square', 0.12, t + d); tone(523, 0.13, 'square', 0.1, t + d); }); },
     ouch:    () => { tone(900, 0.18, 'triangle', 0.22, 0, 500); noise(0.08, 0.2, 3000, 0, { type: 'highpass' }); },
-    bark:    () => { const t = now(); [0, 0.2].forEach(d => { tone(520, 0.09, 'sawtooth', 0.2, t + d, 260); noise(0.08, 0.25, 900, t + d, { type: 'bandpass', q: 1.5 }); }); },
+    bark:    () => { const t = now(); woof(t, 420, 0.5); woof(t + 0.2, 360, 0.42); },
+    // perro dormido que te siente cerca: gruñido bajito
+    grr:     () => { tone(95, 0.55, 'sawtooth', 0.18, 0, 80); noise(0.5, 0.2, 300, 0, { attack: 0.1 }); },
     swish:   () => { noise(0.18, 0.12, 2500, 0, { type: 'bandpass', q: 0.8, sweep: 900, attack: 0.04 }); },
     engine:  () => { const t = now(); for (let i = 0; i < 6; i++) tone(70 + (i % 2) * 18, 0.08, 'sawtooth', 0.1, t + i * 0.07, 60); },
     shout:   () => { const t = now(); [0, 0.1, 0.2].forEach((d, i) => tone(330 + i * 40, 0.08, 'square', 0.05, t + d, 300)); },
     brake:   () => { tone(1800, 0.3, 'sawtooth', 0.04, 0, 1500); noise(0.3, 0.1, 3000, 0, { type: 'highpass' }); },
     flap:    () => { noise(0.12, 0.25, 1200, 0, { type: 'bandpass', q: 0.7 }); },
+    // Barrio Chino: golpe de gong y redoble de tambores con platillos, como en una danza del león (~7 s)
+    leon:    () => {
+      const t = now();
+      [[98, 0.55], [139, 0.3], [207, 0.18], [263, 0.1]].forEach(([f, v]) => tone(f, 3.5, 'sine', v, t, f * 0.97));
+      noise(2.5, 0.22, 3500, t, { type: 'bandpass', q: 0.5, attack: 0.02 });
+      const golpes = [0.9, 1.2, 1.5, 1.65, 1.8, 2.1, 2.4, 2.7, 2.85, 3.0, 3.3, 3.6, 3.75, 3.9, 4.05, 4.2, 4.5, 4.8, 5.1, 5.4];
+      golpes.forEach((d, i) => {
+        tone(i % 4 === 0 ? 90 : 120, 0.18, 'sine', i % 4 === 0 ? 0.55 : 0.4, t + d, 55);
+        if (i % 2 === 0) noise(0.22, 0.18, 6000, t + d, { type: 'highpass' });
+      });
+      [98, 139, 207].forEach((f, i) => tone(f, 2.2, 'sine', [0.5, 0.25, 0.14][i], t + 5.7, f * 0.97));
+      noise(1.6, 0.2, 3500, t + 5.7, { type: 'bandpass', q: 0.5 });
+    },
     applause: () => { const t = now(); for (let i = 0; i < 26; i++) noise(0.04, 0.12 + Math.random() * 0.1, 2000 + Math.random() * 2000, t + i * 0.045 + Math.random() * 0.03, { type: 'bandpass', q: 1.2 }); },
     // soroche: un "uuuuu" que se tambalea
     heart:   () => { const t = now(); tone(120, 0.12, 'triangle', 0.3, t, 70); tone(110, 0.14, 'triangle', 0.24, t + 0.17, 65); },   // grave pero audible en el parlante del celular

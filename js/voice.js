@@ -74,5 +74,5 @@ const VOICE = (() => {
       if (a.gain && (performance.now() - a.seen > 200 || !AUDIO.isEnabled())) a.gain.gain.setTargetAtTime(0, AUDIO.context().currentTime, 0.1);
     }
   }, 150);
-  return { play, ambient };
+  return { play, ambient, speaking: () => !!current };
 })();

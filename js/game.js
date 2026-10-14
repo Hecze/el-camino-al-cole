@@ -134,7 +134,9 @@
   };
   window.Game = Game;
 
-  Game.audio = (name) => AUDIO.play(name);
+  // efectos que deben oírse sobre las canciones: las bajan un momento (ms)
+  const HUSH = { bark: 450, grr: 650 };
+  Game.audio = (name) => { if (HUSH[name]) CORTO.hush(HUSH[name]); AUDIO.play(name); };
   Game.addScore = (n) => { Game.score += n; };
   Game.shake = (mag, t) => { Game.shakeMag = Math.max(Game.shakeMag, mag); Game.shakeT = Math.max(Game.shakeT, t); };
   Game.near = (x, r) => Game.player && Math.abs(Game.player.cx - x) < r;
@@ -150,22 +152,14 @@
   Game.onPlayerJump = (a) => { Game.burst(a.cx, a.y + a.h, 'dust', 6); AUDIO.play('jump'); };
   Game.onPlayerLand = (a) => { Game.burst(a.cx, a.y + a.h, 'dust', 4); };
   Game.onMount = () => {};
+  // tramo con `music: null` va en silencio (solo efectos y cortos)
+  function zoneMusic(Z) { if (SONGS[Z.music]) AUDIO.playMusic(SONGS[Z.music]); else AUDIO.stopMusic(); }
   function resumeZoneMusic() {
     const Z = Game.level && Game.level.zones[Game.zone];
-    if (Z && ['play', 'respawn', 'pause'].includes(Game.state)) AUDIO.playMusic(SONGS[Z.music]);
+    if (Z && ['play', 'respawn', 'pause'].includes(Game.state)) zoneMusic(Z);
   }
-  // en la cumbre del Apu suena una frase de El Cóndor Pasa (o su corto) y luego vuelve la música del tramo
-  Game.onGoatDone = () => {
-    const s = SONGS.condorPasa; if (!s) return;
-    AUDIO.playMusic(s);
-    CORTO.play('CUMBRE DEL APU', resumeZoneMusic);
-    const token = Game.jingle = {}, ms = (s.chords.length - 1) * (s.bar || 8) * 60 / s.bpm / 4 * 1000 + 150;
-    setTimeout(() => {
-      if (Game.jingle !== token || CORTO.playing()) return;
-      Game.jingle = null;
-      resumeZoneMusic();
-    }, ms);
-  };
+  // en la cumbre del Apu ya no suena El Cóndor Pasa: sigue la canción que venía (Mi Valentín)
+  Game.onGoatDone = () => {};
   Game.setCheckpoint = (cp) => {
     Game.spawn = { x: cp.spawn.x, y: cp.spawn.y }; GUIDE.onCheckpoint(cp);
     const m = Game.player.riding;
@@ -378,14 +372,17 @@
   // ── zonas: la música cambia por tramo ─────────────────────────────────────
   function updateZone() {
     const lv = Game.level, x = Game.player.cx / TILE;
+    CORTO.pos(x, resumeZoneMusic);
     let z = 0;
     for (let i = 0; i < lv.zones.length; i++) if (x >= lv.zones[i].x) z = i;
     if (z > Game.zone) {
       Game.zone = z; const Z = lv.zones[z];
       Game.zoneName = Z.name;
+      CORTO.zone(Z.name);
       // un corto sigue sonando aunque cambies de tramo; al terminar vuelve la música del tramo en que estés
-      if (!CORTO.playing()) AUDIO.playMusic(SONGS[Z.music]);
+      if (!CORTO.playing()) zoneMusic(Z);
       CORTO.play(Z.name, resumeZoneMusic);
+      if (Z.sfx) AUDIO.play(Z.sfx);   // remate corto al entrar al tramo (p. ej. gong en Barrio Chino)
     }
   }
 

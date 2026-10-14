@@ -844,7 +844,12 @@
     update(g) {
       this.t++;
       const p = g.player, onRoof = p.cx > this.x0 - 6 && p.cx < this.x1 + 6 && p.y + p.h <= this.roof + 2 && p.y + p.h > this.roof - 70;
-      if (this.state === 'sleep') { if (onRoof && p.onGround) { this.state = 'alert'; this.t = 0; g.audio('bark'); } return; }
+      if (this.state === 'sleep') {
+        if (onRoof && p.onGround) { this.state = 'alert'; this.t = 0; g.audio('bark'); return; }
+        // dormido, pero te siente: gruñe bajito cuando te acercas
+        if (Math.abs(p.cx - this.cx) < 70 && this.t % 70 === 0) g.audio('grr');
+        return;
+      }
       if (this.state === 'alert') {
         this.face = p.cx < this.cx ? -1 : 1;
         if (this.t % 16 === 0) g.audio('bark');
@@ -2182,7 +2187,7 @@
       { x: 504, name: 'EN MOTOTAXI',     music: 'panamericana' },
       { x: 594, name: 'JR. DE LA UNIÓN', music: 'plebeyo' },
       { x: 674, name: 'PLAZA DE ARMAS',  music: 'plebeyo' },
-      { x: 734, name: 'BARRIO CHINO',    music: 'plebeyo' },
+      { x: 734, name: 'BARRIO CHINO',    music: null, sfx: 'leon' },   // gong y tambores al cruzar la portada
       { x: 830, name: 'LAS AZOTEAS',     music: 'plebeyo' },
       { x: CASONA + 2, name: 'LA CASONA', music: 'plebeyo' },
     ],

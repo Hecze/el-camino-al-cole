@@ -5,13 +5,13 @@ En `js/cortos.js` ajustas desde qué segundo empieza (`desde`) y cuánto dura (`
 
 | Archivo | Momento | Canción |
 |---|---|---|
-| `valle-mi-valentin.mp3` | Cap. 1, El Valle (arranque) | Mi Valentín (William Luna) |
-| `apu-el-condor-pasa.mp3` | Cap. 1, cumbre del Apu | El Cóndor Pasa (cantada) |
+| `valle-mi-valentin.mp3` | Cap. 1, El Valle y El Apu (se apaga al llegar al huaico) | Mi Valentín (William Luna) |
 | `selva-danza-de-los-mirlos.mp3` | Cap. 1, La Selva | La danza de los mirlos |
 | `panamericana-toro-mata.mp3` | Cap. 2, La Panamericana | Toro mata |
 | `barranco-puente-de-los-suspiros.mp3` | Cap. 2, Barranco | El puente de los suspiros |
-| `mototaxi-carinito.mp3` | Cap. 2, En mototaxi | Cariñito |
-| `centro-el-plebeyo.mp3` | Cap. 2, Jr. de la Unión | El Plebeyo (cantada) |
+| `mototaxi-el-aguajal.mp3` | Cap. 2, En mototaxi | El aguajal (Los Shapis) |
+| `plaza-marcha-de-banderas.mp3` | Cap. 2, al entrar a la Plaza de Armas (8 s) | Marcha de Banderas |
+| `barriochino-ojitos-chinos.mp3` | Cap. 2, Barrio Chino (se apaga en Las Azoteas) | Ojitos chinos (salsa) |
 | `cusco-valicha.mp3` | Cap. 3, El Cusco | Valicha |
 | `machupicchu-virgenes-del-sol.mp3` | Cap. 3, Machu Picchu | Vírgenes del Sol (cantada) |
 | `intipunku-el-condor-pasa.mp3` | Cap. 3, Inti Punku | El Cóndor Pasa (cantada) |
