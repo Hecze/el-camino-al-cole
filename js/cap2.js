@@ -2174,8 +2174,10 @@
     F('#6f6a72', px - 20, by - 10, 1, 9); F('#d8432f', px - 20, by - 11, 1, 1);
   };
   // el mar desde el malecón: horizonte, el Morro Solar con su cruz y la espuma
+  // la foto de la Costa Verde (img/costa-verde.png, 384×78): el malecón con sus edificios y el acantilado
+  const COSTA_FOTO = new Image(); COSTA_FOTO.src = 'img/costa-verde.png';
   const seaLayer = (seed, sea, sea2, morro, costa) => (g, W, H) => {
-    const hz = morro ? 96 : 112;
+    const hz = morro ? 96 : 112, foto = costa && COSTA_FOTO.complete && COSTA_FOTO.naturalWidth;
     g.fillStyle = sea; g.fillRect(0, hz, W, H - hz);
     g.fillStyle = sea2; for (let y = hz + 3; y < H; y += 5) for (let x = 0; x < W; x += 6) if (h2(seed + x * 7 + y) > 0.72) g.fillRect(x, y, 4, 1);
     if (costa) {
@@ -2183,6 +2185,11 @@
       // la neblina), la malla verde en la ladera, edificios del malecón encima, el circuito de playas
       // al pie, un muelle con su restaurante y parapentes. Se abre frente al Morro para que se vea la cruz.
       const mx = Math.floor(W * 0.62), F = (c, x, y, w, h) => { g.fillStyle = c; g.fillRect(x, y, w, h); };
+      if (foto) {
+        // la foto y su reflejo, lado a lado, para cubrir la tira (que se repite) sin costura
+        g.drawImage(COSTA_FOTO, 0, hz + 2 - 78);
+        g.save(); g.translate(2 * 384, 0); g.scale(-1, 1); g.drawImage(COSTA_FOTO, 0, hz + 2 - 78); g.restore();
+      } else {
       const gap = (x, r) => Math.min(1, Math.max(0, (Math.abs(x - mx) - r) / 70));
       // plano de atrás: acantilado gris azulado con edificios difuminados
       for (let x = 0; x < W; x += 2) {
@@ -2222,6 +2229,7 @@
         if (h2(seed + x * 9) > 0.55) F('#e8f0f2', x, hz, 2, 1);
       }
       for (let k = 0; k < 12; k++) { const cx = Math.floor(h2(seed + k * 41) * W); if (gap(cx, 150) > 0.5) F(['#d8432f', '#f6c94a', '#e8e0cc', '#3f6fb8'][k % 4], cx, hz - 3, 3, 1); }
+      }
       // el muelle con su restaurante entrando al mar
       const px = Math.floor(W * 0.2);
       F('#7a6a5a', px, hz + 1, 40, 2);
@@ -2234,7 +2242,7 @@
         F('#6a6470', x + 1, y + 3, 1, 4); F('#6a6470', x + 8, y + 3, 1, 4); F('#2a1f2d', x + 4, y + 7, 2, 2);
       });
     }
-    if (morro) {
+    if (morro && !foto) {
       const mx = Math.floor(W * 0.62);
       g.fillStyle = '#8f8c88'; for (let x = -90; x < 90; x += 2) { const hh = Math.round(26 * Math.cos((x / 90) * Math.PI / 2)); g.fillRect(mx + x, hz - hh, 2, hh); }
       g.fillStyle = '#f4efe4'; g.fillRect(mx - 1, hz - 34, 2, 8); g.fillRect(mx - 3, hz - 31, 6, 1);
