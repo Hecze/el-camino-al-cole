@@ -230,6 +230,9 @@
     Game.soroche = false; Game.sorocheK = 0; Game.sorocheLvl = 0; Game.cocaFlash = 0; Game.faint = null; Game.sorocheTold = false; Game.sorocheFlash = 0;
     DAY_START = ch.dayStart || DAY_START_DEFAULT;
     Game.level = lv;
+    // los fondos se guardan por nombre de zona ('z4'...), que se repite entre capítulos:
+    // sin vaciarlos, el Cap. 3 heredaba los cerros y edificios de Lima del Cap. 2
+    for (const c of [strips, cloudCache, cloudSeed]) for (const k in c) delete c[k];
     Game.entities = []; Game.movers = []; Game.particles = []; Game.huaico = null;
     Game.pages = 0; Game.score = 0; Game.deaths = 0; Game.time = 0;
     if (ch.onStart) ch.onStart(Game);   // contadores propios del capítulo
