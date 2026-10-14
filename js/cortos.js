@@ -2,6 +2,7 @@
 // (al entrar a un tramo, 'CUMBRE DEL APU' al coronar el Apu, 'FINAL' en el cierre). Mientras suena un
 // corto, la música del juego se calla; al terminar, vuelve la del tramo.
 // Cada corto: el archivo en musica/, desde qué segundo, cuántos segundos dura y `vol` opcional (0 a 1, por defecto 0.8).
+// `vuelta: true` repite el archivo (útil con `hasta`, para que dure todo un tramo).
 // Si el archivo no está, no pasa nada: sigue la música del juego.
 // PARA QUITARLOS TODOS: vaciar CORTOS (dejar `const CORTOS = {};`).
 const CORTOS = {
@@ -15,8 +16,7 @@ const CORTOS = {
   'EN MOTOTAXI':     { src: 'musica/mototaxi-el-aguajal.mp3', desde: 0, dura: 234, hasta: 674 },   // la canción entera, hasta la Plaza de Armas; ahí entra la Marcha
   'LAS AZOTEAS':     { src: 'musica/azoteas-soy-provinciano.mp3', desde: 0, dura: 150, hasta: 'LA CASONA' },   // los techos (desde el 1:44 de la canción), hasta la casona
   'EL CUSCO':        { src: 'musica/cusco-valicha.mp3', desde: 0, dura: 30 },
-  'MACHU PICCHU':    { src: 'musica/machupicchu-virgenes-del-sol.mp3', desde: 0, dura: 30 },
-  'INTI PUNKU':      { src: 'musica/intipunku-el-condor-pasa.mp3', desde: 0, dura: 30 },
+  'VALLE SAGRADO':   { src: 'musica/valle-sagrado.mp3', desde: 0, dura: 1800, vuelta: true },   // Alborada: se repite del valle hasta la foto final (sin cortes)
   'FINAL':           { src: 'musica/final-contigo-peru.mp3', desde: 0, dura: 40 },
 };
 
@@ -35,7 +35,7 @@ const CORTO = (() => {
     if (cur && typeof cur.hasta === 'number') { cur.next = [key, after]; return; }
     played[key] = true; stop();
     const a = new Audio(c.src), me = { a, after, hasta: c.hasta, apaga: c.apaga };
-    a.volume = 0; a.currentTime = c.desde || 0;
+    a.volume = 0; a.currentTime = c.desde || 0; a.loop = !!c.vuelta;
     a.play().then(() => {
       if (!played[key]) { a.pause(); return; }   // se reinició la partida mientras cargaba
       cur = me; AUDIO.stopMusic();
@@ -60,12 +60,13 @@ const CORTO = (() => {
           cerca = Math.max(0, Math.min(cerca, (me.apaga.suelo - Game.player.cy / TILE) / me.apaga.rango));
           if (cerca <= 0.02) me.dura = Math.min(me.dura, t);
         }
-        a.volume = (c.vol || VOL) * me.duck * cerca * Math.max(0, Math.min(1, t / FADE, (dura - t) / FADE));
+        const tIn = c.vuelta ? (performance.now() - t0) / 1000 : t;   // al repetir, el fundido de entrada no se repite
+        a.volume = (c.vol || VOL) * me.duck * cerca * Math.max(0, Math.min(1, tIn / FADE, (dura - t) / FADE));
       }, 50);
     }).catch(() => { played[key] = false; });   // sin archivo o sin permiso de audio: sigue la música del juego
   }
   // al entrar a un tramo: si el corto que suena tiene `hasta` ese tramo, se apaga con fundido
-  function zone(name) { if (cur && cur.hasta === name && cur.t != null) cur.dura = Math.min(cur.dura, cur.t + FADE); }
+  function zone(name) { if (cur && cur.hasta === name && cur.t != null) { cur.dura = Math.min(cur.dura, cur.t + FADE); cur.a.loop = false; } }
   // en cada paso, con la columna del jugador: si el corto tiene `hasta` una columna y ya la pasaste, se apaga con fundido
   let lastX = null;
   function pos(x, after) {

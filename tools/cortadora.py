@@ -50,7 +50,7 @@ button{font:inherit;padding:10px 18px;border:0;border-radius:8px;background:#e91
 <div id="ed" hidden>
   <audio id="a" controls></audio>
   <button id="aqui">Que empiece aquí ▸ <span id="desde">0:00</span></button>
-  <label>¿Cuántos segundos suena?</label><input id="dura" type="number" value="30" min="3" max="400">
+  <label>¿Cuántos segundos suena? (de entrada, hasta el final de la canción)</label><input id="dura" type="number" value="30" min="3" max="1200">
   <label>¿Para qué tramo?</label>
   <select id="nombre"></select>
   <button id="oir">▶ Escuchar el corte</button> <button id="ok">Guardar en el juego</button>
@@ -70,6 +70,8 @@ drop.ondrop = e => {
   const f = e.dataTransfer.files[0]; if (f) cargar(f, f.name);
 };
 function cargar(f, nombre) { archivo = f; drop.textContent = nombre; a.src = URL.createObjectURL(f); $('ed').hidden = false; }
+const resto = () => $('dura').value = Math.floor(a.duration - desde);   // por defecto suena hasta el final
+a.onloadedmetadata = () => { desde = 0; $('desde').textContent = '0:00'; resto(); };
 $('traer').onclick = async () => {
   const url = $('url').value.trim(); if (!url) return;
   drop.textContent = 'Trayendo la canción… (puede tardar un minuto)';
@@ -77,7 +79,7 @@ $('traer').onclick = async () => {
   if (!r.ok) return drop.textContent = '✗ ' + await r.text();
   cargar(await r.blob(), decodeURIComponent(r.headers.get('X-Titulo') || 'canción'));
 };
-$('aqui').onclick = () => { desde = a.currentTime; $('desde').textContent = fmt(desde); };
+$('aqui').onclick = () => { desde = a.currentTime; $('desde').textContent = fmt(desde); resto(); };
 let finOir;
 $('oir').onclick = () => {
   a.currentTime = desde; a.play(); clearTimeout(finOir);
@@ -118,6 +120,9 @@ class H(http.server.BaseHTTPRequestHandler):
             return self.responder(500, 'No se pudo cortar: ' + r.stderr[-300:])
         if tramo not in cortos():
             conectar(tramo, nombre, dura)
+        else:   # ya tenía canción: que suene lo que dura el corte nuevo (salvo las que se repiten)
+            txt = CORTOS.read_text()
+            CORTOS.write_text(re.sub(rf"^(.*src: 'musica/{nombre}\.mp3'(?!.*vuelta).*?dura: )\d+", lambda m: m[1] + str(round(dura)), txt, count=1, flags=re.M))
         self.responder(200, f'Listo: suena en {tramo}. Recarga el juego para oírla.')
 
     def traer(self, url):   # baja el audio del enlace con yt-dlp (brew install yt-dlp)

@@ -14,8 +14,6 @@ En `js/cortos.js` ajustas desde qué segundo empieza (`desde`) y cuánto dura (`
 | `barriochino-ojitos-chinos.mp3` | Cap. 2, Barrio Chino (se apaga en Las Azoteas) | Ojitos chinos (salsa) |
 | `azoteas-soy-provinciano.mp3` | Cap. 2, Las Azoteas (hasta La Casona) | Soy provinciano, desde el 1:44 |
 | `cusco-valicha.mp3` | Cap. 3, El Cusco | Valicha |
-| `machupicchu-virgenes-del-sol.mp3` | Cap. 3, Machu Picchu | Vírgenes del Sol (cantada) |
-| `intipunku-el-condor-pasa.mp3` | Cap. 3, Inti Punku | El Cóndor Pasa (cantada) |
 | `final-contigo-peru.mp3` | Final, foto de egreso | Contigo Perú |
 
 Si falta un archivo, ese momento sigue con la música del juego.
