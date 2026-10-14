@@ -2098,14 +2098,51 @@
     }
   };
 
-  // el cerro San Cristóbal con su cruz en la cima, sobre el Rímac
+  // el cerro San Cristóbal con su cruz en la cima, sobre el Rímac: un pico propio (no una loma
+  // pareja), roca pelada arriba, casitas de colores en hileras que trepan la ladera, el camino
+  // en zigzag hasta el mirador, la cruz y las antenas. Detrás, otros cerros en la neblina.
   const sanCristobal = (seed, col, col2) => (g, W, H) => {
-    cerroLayer(seed, col, col2)(g, W, H);
-    const ridge = (x) => 76 + Math.sin((x / W) * Math.PI * 2 + seed) * 18 + Math.sin((x / W) * Math.PI * 6 + seed * 2) * 7;
-    let bx = 0; for (let x = 0; x < W; x += 2) if (ridge(x) < ridge(bx)) bx = x;
-    const by = Math.round(ridge(bx));
-    g.fillStyle = '#f4efe4'; g.fillRect(bx - 1, by - 22, 3, 22); g.fillRect(bx - 6, by - 17, 13, 3);
-    g.fillStyle = '#6f6a72'; g.fillRect(bx + 14, by - 12, 1, 12); g.fillRect(bx + 12, by - 9, 5, 1);   // antena
+    const F = (c, x, y, w, h) => { g.fillStyle = c; g.fillRect(x, y, w, h); };
+    // cerros de atrás, bajos y difuminados, con casitas apenas marcadas
+    const back = (x) => 100 + Math.sin((x / W) * Math.PI * 4 + seed) * 8 + Math.sin((x / W) * Math.PI * 10) * 3;
+    for (let x = 0; x < W; x += 2) { const y = Math.round(back(x)); F('#b4aca8', x, y, 2, H - y); if (h2(seed + x) > 0.6) F('#c4b8b4', x, y + 4 + Math.floor(h2(x * 3) * 20), 2, 1); }
+    // el pico: ladera que se empina hacia la cima
+    const px = Math.floor(W * 0.45), sy = 78, ridge = (x) => { const d = Math.abs(x - px) / 150; return sy + Math.min(1, d) ** 1.4 * 34 + Math.sin(x * 0.07) * 1.5; };
+    for (let x = px - 180; x < px + 180; x += 2) {
+      if (x < 0 || x >= W) continue;
+      const y = Math.round(ridge(x));
+      F(col, x, y, 2, H - y);
+      F('#b3a79e', x, y, 2, 1);                                                          // el filo con luz
+      if (h2(seed + x * 5) > 0.5) F(col2, x, y + 3 + Math.floor(h2(x) * 12), 2, 2 + Math.floor(h2(x * 7) * 5));   // quebradas de roca
+    }
+    // casitas en hileras, siguiendo la ladera: más juntas abajo, ralas arriba
+    const HC = ['#d98f8f', '#e0c26a', '#8fb3d9', '#b99fd6', '#9fc48f', '#e6a86a', '#f0ece2', '#7fc4c0'];
+    for (let row = 0; row < 18; row++) {
+      const yRow = 92 + row * 2.2, dens = 0.16 + row * 0.03;
+      for (let x = 0; x < W; x += 4) {
+        const top = Math.abs(x - px) < 180 ? ridge(x) : back(x);
+        if (yRow < top + 8 || yRow > 130) continue;
+        if (h2(seed * 31 + x * 13 + row * 101) > dens) continue;
+        const y = Math.round(yRow + (h2(x + row) - 0.5) * 2), c = HC[Math.floor(h2(x * 3 + row * 7) * HC.length)];
+        F(c, x, y, 3, 2); F('#5a4c4c', x + (h2(x + row * 3) > 0.5 ? 0 : 2), y + 1, 1, 1);   // la casita y su puerta
+        if (h2(x * 5 + row) > 0.7) F('#6f6a72', x, y - 1, 3, 1);                            // techo de calamina
+      }
+    }
+    // el camino al mirador, en zigzag
+    let cx = px + 70, cy = 118, dir = -1;
+    while (cy > sy + 8) {
+      const len = 14 + Math.floor(h2(cy) * 10);
+      for (let k = 0; k < len; k += 2) { const x = cx + dir * k, y = Math.round(cy - k * 0.35); if (y > ridge(x) + 1) F('#ddd5c6', x, y, 2, 1); }
+      cx += dir * len; cy -= Math.round(len * 0.35) + 4; dir = -dir;
+      if (Math.abs(cx - px) > 60) cx = px + Math.sign(cx - px) * 60;
+    }
+    // la cima: el mirador, la cruz blanca y las antenas
+    const by = Math.round(ridge(px));
+    F('#d8d2c6', px - 8, by - 2, 16, 2);
+    F('#f4efe4', px - 1, by - 26, 3, 24); F('#f4efe4', px - 7, by - 20, 15, 3);
+    F('#dcd6ca', px + 2, by - 26, 1, 24);
+    F('#6f6a72', px + 18, by - 14, 1, 14); F('#6f6a72', px + 16, by - 10, 5, 1); F('#d8432f', px + 18, by - 15, 1, 1);
+    F('#6f6a72', px - 20, by - 10, 1, 9); F('#d8432f', px - 20, by - 11, 1, 1);
   };
   // el mar desde el malecón: horizonte, el Morro Solar con su cruz y la espuma
   const seaLayer = (seed, sea, sea2, morro, costa) => (g, W, H) => {
@@ -2498,7 +2535,7 @@
       { type: 'sign', x: 456, y: ST, lines: ['BARRANCO'], style: 'post' },
       { type: 'npc', x: 462.5, y: ST, model: 'pintor', lines: ['¡CUIDADO, PINTURA FRESCA!', '¿TE GUSTA MI MURAL?'] },
       { type: 'balde', x: 465 },
-      { type: 'npc', x: 472.5, y: ST, model: 'senora', voz: 'casera', lines: ['¡CASERO, CASERO, LLÉVATE!', '¡PICARONES CALIENTITOS!'] },
+      { type: 'npc', x: 472.5, y: ST, model: 'senora', lines: ['¡PICARONES CALIENTITOS!', '¡CON SU MIELCITA!'] },
       { type: 'carretilla', x0: 456, x1: 484, speed: 1.8, gap: 220, load: 'bici' },
       { type: 'help', x0: 454, x1: 490, kind: 'bici', text: '¡SALTA LA BICI!' },
       // ── JR. DE LA UNIÓN ──

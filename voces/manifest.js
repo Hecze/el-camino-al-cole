@@ -7,7 +7,6 @@ const VOICE_MANIFEST = {
   egreso: ['egreso-1.m4a'],                                   // el final de egreso (Cap. 3); vacío: suena 'gana'
   sube:   ['cobrador-1.m4a'],                                 // el cobrador cuando te subes a la combi (Cap. 2)
   baja:   ['cobrador-2.m4a'],                                 // el cobrador cuando te bajas
-  casera: ['casera-1.m4a'],                                   // la señora de los picarones (Cap. 2), al acercarte
   ambulante: ['ambulante.m4a'],                               // megáfono en bucle del Centro (VOICE.ambient)
 };
 
