@@ -5,6 +5,7 @@
 // Si el archivo no está, no pasa nada: sigue la música del juego.
 // PARA QUITARLOS TODOS: vaciar CORTOS (dejar `const CORTOS = {};`).
 const CORTOS = {
+  'EL VALLE':        { src: 'musica/valle-mi-valentin.mp3', desde: 0, dura: 30 },
   'CUMBRE DEL APU':  { src: 'musica/apu-el-condor-pasa.mp3', desde: 0, dura: 30 },
   'LA SELVA':        { src: 'musica/selva-danza-de-los-mirlos.mp3', desde: 0, dura: 30 },
   'LA PANAMERICANA': { src: 'musica/panamericana-toro-mata.mp3', desde: 0, dura: 30 },

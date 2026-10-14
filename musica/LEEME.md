@@ -5,6 +5,7 @@ En `js/cortos.js` ajustas desde qué segundo empieza (`desde`) y cuánto dura (`
 
 | Archivo | Momento | Canción |
 |---|---|---|
+| `valle-mi-valentin.mp3` | Cap. 1, El Valle (arranque) | Mi Valentín (William Luna) |
 | `apu-el-condor-pasa.mp3` | Cap. 1, cumbre del Apu | El Cóndor Pasa (cantada) |
 | `selva-danza-de-los-mirlos.mp3` | Cap. 1, La Selva | La danza de los mirlos |
 | `panamericana-toro-mata.mp3` | Cap. 2, La Panamericana | Toro mata |
