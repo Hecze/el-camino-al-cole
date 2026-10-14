@@ -174,7 +174,9 @@ class Player extends Actor {
     // por detrás no te enganchan ni te arrastran
     const onSolid = this.onGround;
     let onMover = null;
-    if (this.vy >= 0 && !onSolid) for (const m of g.movers) {
+    // primero la que ya pisas: si dos techos se cruzan (combis), no te cambias de una a otra
+    const movers = this.lastMover && !this.lastMover.dead ? [this.lastMover, ...g.movers] : g.movers;
+    if (this.vy >= 0 && !onSolid) for (const m of movers) {
       if (m.dead || m.falling) continue;
       const on = this.lastMover === m, grace = on ? 7 : 4;
       if (this.x + this.w > m.x - grace && this.x < m.x + m.w + grace &&
