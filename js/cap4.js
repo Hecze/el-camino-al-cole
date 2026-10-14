@@ -1354,13 +1354,14 @@ const ART4 = (() => {
       // entre un obstáculo y el siguiente hay al menos 14 casillas: el salto del bote
       // cubre ~11 y hay que alcanzar a aterrizar y volver a saltar (un tronco que baja
       // se encuentra con el bote ~5 casillas antes de donde empieza)
-      ...[290, 310, 388, 422, 544, 600].map(x => ({ type: 'palizada', x, wl: W, w: 2, h: x === 290 ? 10 : 12 })),
-      ...[326, 372, 516].map(x => ({ type: 'palizada', x, wl: W, w: 3, h: x === 326 ? 12 : 14 })),
+      // más fácil: 5 palizadas (antes 9) y más bajas, con mucho aire entre una y otra
+      ...[290, 388, 600].map(x => ({ type: 'palizada', x, wl: W, w: 2, h: 8 })),
+      ...[326, 516].map(x => ({ type: 'palizada', x, wl: W, w: 3, h: 10 })),
       { type: 'hint', x: 284, y: W, text: 'SALTA', key: 'jump', r: 8, pass: 0, dy: 20, vr: 3, when: (g) => !!g.player.riding },
       { type: 'help', x0: RIO, x1: PS, kind: 'palizada', text: 'SALTA ANTES DE LLEGAR A LA PALIZADA' },
       { type: 'help', x0: RIO, x1: PS, kind: 'tronco', text: 'EL TRONCO VIENE HACIA TI: SÁLTALO' },
-      { type: 'red', x: 342, w: 3, wl: W }, { type: 'red', x: 476, w: 3, wl: W },
-      ...[462, 566].map(x => ({ type: 'tronco', x, wl: W })),
+      { type: 'red', x: 342, w: 3, wl: W },
+      { type: 'tronco', x: 462, wl: W },
       { type: 'remolino', x0: 400, x1: 408, wl: W }, { type: 'remolino', x0: 494, x1: 502, wl: W },
       ...[[300, 1, 0], [316, -1, 60], [330, 1, 120], [344, 1, 30], [366, -1, 90], [412, 1, 10], [452, 1, 0], [456, -1, 70], [470, 1, 130], [520, -1, 40], [540, 1, 100], [580, 1, 20], [606, -1, 80]]
         .map(([x, dir, ph]) => ({ type: 'bufeo', x, dir, ph, wl: W })),
