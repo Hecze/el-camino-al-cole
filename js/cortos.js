@@ -6,7 +6,7 @@
 // Si el archivo no está, no pasa nada: sigue la música del juego.
 // PARA QUITARLOS TODOS: vaciar CORTOS (dejar `const CORTOS = {};`).
 const CORTOS = {
-  'EL VALLE':        { src: 'musica/valle-mi-valentin.mp3', desde: 0, dura: 240, vol: 0.4, apaga: { x: 119, suelo: 110, rango: 30 } },   // sigue por El Apu; se apaga al acercarte al piso del huaico
+  'EL VALLE':        { src: 'musica/valle-mi-valentin.mp3', desde: 0, dura: 240, vol: 0.4, apaga: { x: 289, suelo: 110, rango: 30 } },   // sigue por El Apu y La Laguna; se apaga al bajar en parapente hacia el huaico (x = ce(119) en level.js)
   'LA SELVA':        { src: 'musica/selva-danza-de-los-mirlos.mp3', desde: 0, dura: 30 },
   'LA PANAMERICANA': { src: 'musica/panamericana-toro-mata.mp3', desde: 0, dura: 30 },
   'BARRANCO':        { src: 'musica/barranco-puente-de-los-suspiros.mp3', desde: 0, dura: 30 },

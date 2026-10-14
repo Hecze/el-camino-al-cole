@@ -1213,4 +1213,152 @@ T.jungleBody = spr([
   'iiiiiiIiiiiiiiii', 'iiIiiiiiiiiIiiii', 'iiiiiiiiiiiiiiii', 'iiiiIiiiiiiiiIii',
 ]);
 
+// ── EL PUEBLO: calle empedrada y casas encaladas con techo de tejas ─────────
+T.cobble = spr([
+  '.d..1...d...1.d.',
+  'KdsSKdssSKdsSKds',
+  'sssSKsSsSKssSKss',
+  'SSSDKSSSDKSSDKSS',
+  'KKKKKKKKKKKKKKKK',
+  'mmmmmMmmmmmmmmmm',
+  'mmjmmmmmmmmjmmmm',
+  'mmmmmmmmmmMmmsmm',
+  'mjmmmmmmmmmmmmjm',
+  'mmmsmmmmMmmmmmmm',
+  'mmmMmmmmmmmmmmmm',
+  'mmmmmmmmmmmmjmmm',
+  'mmmmmmjmmmmmmmmm',
+  'mMmmmmmmmmmmmmMm',
+  'mmmmmmmmmsmmmmmm',
+  'MmmmmmmmmmmmmmmM',
+]);
+// tejas de arcilla (el borde del alero da sombra sobre la pared)
+T.teja = spr([
+  '.AA..AA..AA..AA.',
+  'zAAzzAAzzAAzzAAz',
+  'ZzAZZzAZZzAZZzAZ',
+  'BZzBBZzBBZzBBZzB',
+  'zAAzzAAzzAAzzAAz',
+  'ZzAZZzAZZzAZZzAZ',
+  'BZzBBZzBBZzBBZzB',
+  'IBBIIBBIIBBIIBBI',
+  'KKKKKKKKKKKKKKKK',
+  'LLLLLLLLLLLLLLLL',
+  'WWWWWWWWWWWWWWWW',
+  'llllllllllllllll',
+  'llllWlllllllllll',
+  'llllllllllllWlll',
+  'lllllllllllllllL',
+  'llWlllllllllllll',
+]);
+// pared de adobe encalada, con algún desconchón
+T.cal = spr([
+  'llllllllllllllll', 'llllWlllllllllll', 'llllllllllllWlll', 'llllllllllllllll',
+  'llllllllltjlllll', 'llWlllllllllllll', 'llllllllllllllll', 'lllllllllllllllL',
+  'llllllWlllllllll', 'llllllllllllllll', 'llllllllllllWlll', 'llllllllllllllll',
+  'llllllllllllllll', 'llllllllWlllllll', 'WlllllllllllllWl', 'LLLLLLLLLLLLLLLL',
+]);
+
+// ── LA LAGUNA DEL APU: hielo turquesa ───────────────────────────────────────
+T.ice = spr([
+  '1111111111111111',
+  'f1ffff1fffff1fff',
+  'dffdvvdfffdvvffd',
+  'vvvvvvvfvvvvvvvv',
+  'vvnvvvvvvvvnvvvv',
+  'vvvvvv1vvvvvvvnv',
+  'nvvvnvvvvnvvvvvv',
+  'nnvnnnvvnnnvnnnn',
+  'nnnnnnnnnnnnnnnn',
+  'unnnnnnnunnnnnnu',
+  'uunnuunnnnuunnuu',
+  'uuuuuuuuuuuuuuuu',
+  'uuuuuuvuuuuuuuuu',
+  'UuuuuuuuuuuuUuuu',
+  'UUuuUUuuuUUUuuUU',
+  'UUUUUUUUUUUUUUUU',
+]);
+T.iceBody = spr([
+  'UUUUUUUUUUUUUUUU', 'UUUUUUUuUUUUUUUU', 'UUUUUUUUUUUUUUUU', 'UuUUUUUUUUUUUUuU',
+  'UUUUUUUUUUuUUUUU', 'UUUUUUUUUUUUUUUU', 'UUUuUUUUUUUUUUUU', 'UUUUUUUUUUUUUuUU',
+  'UUUUUUUUUUUUUUUU', 'UUUUUUuUUUUUUUUU', 'UUUUUUUUUUUUUUUU', 'UUUUUUUUuUUUUUUU',
+  'UuUUUUUUUUUUUUUU', 'UUUUUUUUUUUUUUuU', 'UUUUUuUUUUUUUUUU', 'UUUUUUUUUUUUUUUU',
+]);
+
+// ── EL DOSEL: plataforma de tablones atados en la copa (una vía) ────────────
+T.deck = spr([
+  'KKKKKKKKKKKKKKKK',
+  'tmmmtmmmmtmmmtmm',
+  'mjmmMmmjmmmMmmjm',
+  'MMMMMMMMMMMMMMMM',
+  'KKKKKKKKKKKKKKKK',
+  '.L..........L...',
+  '.L..........L...',
+]);
+
+// DANZANTE DE TIJERAS (mirando a la derecha): montera con espejitos y plumas,
+// chaleco bordado, pañuelo y las tijeras de acero en la mano. 16x28
+const DANZ_TOP = [
+  '.....y..x.y.....',
+  '.....yxqqxy.....',
+  '....KKKKKKKK....',
+  '...KdsdsdsdsK...',
+  '..KKKKKKKKKKKK..',
+  '....KhhaaaaK....',
+  '....KhaaaKaK....',
+  '....KaaaaaaaK...',
+  '.....KaaRaK.....',
+  '...KKKrrrrKKK...',
+  '..KxqyqyqyqxK...',
+  '.KaKqyqqqyqKaK..',
+  '.KaKqqyqyqqKdK..',
+  '.KaKqyqqqyqKsdK.',
+  '..K.KyyyyyK.KsK.',
+  '....KrrrrrK..K..',
+];
+const DANZ_LEGS = {
+  a:    ['....KrrKrrK.....', '....KrrKrrK.....', '....KrrKrrK.....', '....KyK.KyK.....', '....KrK.KrK.....', '....KrK.KrK.....', '....KaK.KaK.....', '....KaK.KaK.....', '...KKKK.KKKK....', '................', '................', '................'],
+  b:    ['....KrrKrrK.....', '....KrrKKrrK....', '....KrrK.KrrK...', '....KyK...KyyK..', '....KrK....KrK..', '....KrK....KaK..', '....KaK...KKKK..', '....KaK.........', '...KKKK.........', '................', '................', '................'],
+  leap: ['...KrrrKrrrK....', '..KrrK...KrrK...', '.KrrK.....KrrK..', 'KyK.........KyK.', 'KaK.........KaK.', 'KKK.........KKK.', '................', '................', '................', '................', '................', '................'],
+};
+const DANZ = {};
+DANZ.a = spr(DANZ_TOP.concat(DANZ_LEGS.a));
+DANZ.b = spr(DANZ_TOP.concat(DANZ_LEGS.b));
+DANZ.leap = spr(DANZ_TOP.concat(DANZ_LEGS.leap));
+// agachado antes del gran salto: el cuerpo baja y las rodillas se doblan
+DANZ.crouch = spr(['', '', '', '', '', ''].concat(DANZ_TOP, ['...KrrKKrrK.....', '..KrrK..KrrK....', '..KaK....KaK....', '.KKKK....KKKK...', '................', '................']));
+
+// MONO MAQUISAPA (mono araña negro): cuelga de la liana con la mano y la cola.
+// La mochila del niño (azul y amarilla) la lleva cuando te la quita. 14x18
+const MONO_ROWS = (legs) => [
+  '......Kd......',
+  '......Kd......',
+  '.....KKK......',
+  '....KKKKK.....',
+  '...KbbKbbK....',
+  '...KbebebK....',
+  '...KKbbbKK....',
+  '.KKKKKKKKKKK..',
+  'KK.KKDDDKK.KK.',
+  'K..KKDDDKK..K.',
+  '...KKKKKKK....',
+].concat(legs);
+const MONO = {
+  a: spr(MONO_ROWS(['...KK...KK....', '..KK.....KK...', '..K.......K...', '.KK.......KK..', '..........K...', '..........KK..', '...........K..'])),
+  b: spr(MONO_ROWS(['....KK.KK.....', '....KK.KK.....', '...KK...KK....', '...K.....K....', '...KK....KK...', '..........K...', '.........KK...'])),
+};
+// la mochila robada
+OBJ.mochila = spr(['..KKKK..', '.KK..KK.', 'KuuuuuuK', 'KuyyyyuK', 'KuuuuuuK', 'KUuuuuUK', '.KKKKKK.']);
+
+// BALSA de palos de balsa amarrados con soga (de lado). 34x8
+OBJ.balsa = spr(widen([
+  '..KKKKKKKKKKKKKKKKKKKKKKKKKK..',
+  '.KtttLtttttttLttttttttLttttLK.',
+  'KtTtyTtttttTtyTtttttTtyTttttTK',
+  'KTTTyTTTTTTTTyTTTTTTTTyTTTTTTK',
+  'KMMMyMMMMMMMMyMMMMMMMMyMMMMMMK',
+  '.KMMMMMMMMMMMMMMMMMMMMMMMMMMK.',
+  '..KKKKKKKKKKKKKKKKKKKKKKKKKK..',
+], 4, 15));
+
 const ART = { T, P, LL, GOAT, E, OBJ };
