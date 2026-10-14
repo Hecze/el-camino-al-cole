@@ -1715,6 +1715,7 @@ const ART3 = (() => {
     c3anden:  { solid: true, top: T3.andenTop, body: T3.inca },
     c3plat:   { solid: true, top: T3.plat, body: T3.inca },
     c3gran:   { solid: true, top: T3.granTop, body: T3.inca },
+    c3granStep: { solid: true, step: true, top: T3.granTop, body: T3.inca },   // escalón del Camino Inca: se sube caminando
     c3sacks:  { solid: true, body: T3.sacks },
     c3saruna: { oneway: true, body: T3.saruna },
     c3quay:   { solid: true, top: T3.cobble, body: T3.inca },   // malecón de piedra
@@ -1748,8 +1749,21 @@ const ART3 = (() => {
   const PE = OL + 18;     // fin del andén: ahí espera el tren
   const AC = PE + 412;    // andén de Aguas Calientes (el tren para justo antes)
 
-  // ── el camino inca: escalones de 4 casillas que suben 2 ──────────────────
-  const steps = (x0, row0, n) => [...Array(n).keys()].map(i => [x0 + 4 * i, row0 - 2 * i, 4, 84 - (row0 - 2 * i), 'c3gran']);
+  // ── el camino inca: tramos de escalones bajitos (una fila, se suben caminando)
+  // con descansos planos entre tramo y tramo. Ocupa W casillas desde x0 y sube de
+  // row0 a rowEnd (la fila del descanso grande que sigue) ─────────────────────
+  const stairs = (x0, row0, W, rowEnd) => {
+    const rise = row0 - rowEnd, groups = Math.ceil(rise / 4), flat = Math.floor((W - rise) / groups);
+    const out = []; let x = x0, row = row0, left = rise;
+    for (let g = 0; g < groups; g++) {
+      const n = Math.min(4, left - (groups - g - 1) * 3 > 4 ? 4 : Math.ceil(left / (groups - g)));
+      for (let k = 0; k < n; k++) { out.push([x++, row, 1, 84 - row, 'c3granStep']); if (k < n - 1) row--; }
+      left -= n; row = rowEnd + left;
+      const w = g === groups - 1 ? x0 + W - x : flat;
+      out.push([x, row, w, 84 - row, 'c3granStep']); x += w;
+    }
+    return out;
+  };
 
   const LEVEL3 = {
     name: 'LA EXCURSIÓN A MACHU PICCHU', w: AC + 196, h: 84,
@@ -1831,11 +1845,11 @@ const ART3 = (() => {
       [OL, ROOF, PE - OL, 84 - ROOF, 'c3plat'],
       [AC, ROOF, 20, 84 - ROOF, 'c3plat'],
       // ── MACHU PICCHU: el Camino Inca ──
-      ...steps(AC + 20, 72, 6),
+      ...stairs(AC + 20, 72, 24, 60),
       [AC + 44, 60, 6, 24, 'c3gran'],
-      ...steps(AC + 53, 59, 6),
+      ...stairs(AC + 53, 59, 24, 48),
       [AC + 77, 48, 6, 36, 'c3gran'],
-      ...steps(AC + 86, 46, 4),
+      ...stairs(AC + 86, 46, 16, 40),
       [AC + 102, 40, 5, 44, 'c3gran'],
       // pilares de piedra sobre las nubes
       [AC + 110, 41, 4, 43, 'c3gran'], [AC + 117, 39, 4, 45, 'c3gran'], [AC + 124, 41, 3, 43, 'c3gran'],
@@ -1954,8 +1968,8 @@ const ART3 = (() => {
       { type: 'checkpoint', x: AC + 3, y: ROOF },
       { type: 'tourist', x: AC + 9, y: ROOF, v: 1 },
       { type: 'sign3', x: AC + 15, y: ROOF, lines: ['A MACHU PICCHU:', 'BUS S/ 80', 'A PIE: GRATIS'], color: 'wood' },
-      { type: 'sign3', x: AC + 22, y: 72, lines: ['CAMINO INCA', '¡SOLO 1700 ESCALONES!'], color: 'wood' },
-      { type: 'npc', x: AC + 27, y: 70, model: 'guia', lines: ['¡RESPIREN, JÓVENES!', '¡LA FOTO ES ARRIBA!'] },
+      { type: 'sign3', x: AC + 17, y: ROOF, lines: ['CAMINO INCA', '¡SOLO 1700 ESCALONES!'], color: 'wood' },
+      { type: 'npc', x: AC + 26, y: 68, model: 'guia', lines: ['¡RESPIREN, JÓVENES!', '¡LA FOTO ES ARRIBA!'] },
       { type: 'checkpoint', x: AC + 46, y: 60 },
       { type: 'tourist', x: AC + 48, y: 60, v: 0 },
       { type: 'rockfall', x: AC + 75, y: 40, interval: 150 },

@@ -1542,7 +1542,12 @@
   // republicanas de colores, ficus enormes, buganvillas que cuelgan y faroles.
   const BAJ_WALLS = [['#e3c06a', '#c9a24e'], ['#f08a7a', '#d06a5a'], ['#9cc3d0', '#7aa4b4'], ['#b8d4a8', '#94b486'], ['#e8e0cc', '#c9bfa8'], ['#d98a6a', '#b86a4e']];
   // escalones de la Bajada de Baños: 18 de una fila entre las columnas 410 y 437 (de la playa a la calle)
-  const BAJADA_STEPS = Array.from({ length: 18 }, (_, k) => { const x = 410 + Math.floor(k * 1.5), nx = k === 17 ? 437 : 410 + Math.floor((k + 1) * 1.5); return [x, nx - x, 63 - k]; });
+  // la Bajada de Baños: tramos de 3 escalones bajitos (una fila, se suben caminando)
+  // con un descanso plano entre tramo y tramo. De 410 a 437, de la fila 63 a la 46. [x, ancho, fila]
+  const BAJADA_STEPS = (() => {
+    const anchos = [1, 1, 1, 3, 1, 1, 1, 3, 1, 1, 1, 3, 1, 1, 1, 4, 1, 1];   // 1 = escalón, 3-4 = descanso
+    let x = 410; return anchos.map((w, k) => { const s = [x, w, 63 - k]; x += w; return s; });
+  })();
   class Bajada extends Actor {
     constructor(def) { super(def.x0 * TS, def.top * TS, (def.x1 - def.x0) * TS, (def.bottom - def.top) * TS); this.def = def; }
     update() {}
@@ -1711,7 +1716,7 @@
         // la bocina (flecha abajo): la gente de la vereda y los cobradores reaccionan
         if (this.honkCd > 0) this.honkCd--;
         if (Input.pressed('down') && this.honkCd === 0) {
-          this.honkCd = 30; g.audio('honk'); g.honked = true;
+          this.honkCd = 30; g.audio('honk'); CORTO.hush(400); g.honked = true;   // solo la bocina baja la canción
           for (const e of g.entities) if (e.onHonk && !e.dead && Math.abs(e.cx - this.cx) < 150) e.onHonk(g);
         }
         // el humito del escape
@@ -1948,37 +1953,6 @@
     draw() {}
   }
 
-  // MONEDA DE SOL flotando en el aire: se agarra con el mototaxi o a pie
-  class Sol extends Actor {
-    constructor(def) { super(def.x * TS - 5, def.y * TS - 5, 10, 10); this.t = Math.floor(def.x * 9); this.taken = false; }
-    update(g) {
-      this.t++;
-      if (this.taken) return;
-      const p = g.player, m = p.riding;
-      if (!p.overlaps(this) && !(m && m.overlaps(this))) return;
-      this.taken = true; g.soles = (g.soles || 0) + 1;
-      g.audio('coin'); goldPuff(g, this.cx, this.cy, 10);
-    }
-    draw(ctx) {
-      if (this.taken) return;
-      // gira: el ancho de la moneda va y viene; el brillo cruza la cara
-      const cx = Math.round(this.cx), cy = Math.round(this.cy + Math.sin(this.t / 12)), k = Math.abs(Math.cos(this.t / 9)), w = Math.max(1, Math.round(4 * k));
-      R(ctx, '#7a5410', cx - w - 1, cy - 4, 2 * w + 2, 8); R(ctx, '#7a5410', cx - w, cy - 5, 2 * w, 10);
-      R(ctx, '#f6c94a', cx - w, cy - 4, 2 * w, 8); R(ctx, '#c9921e', cx - w, cy + 2, 2 * w, 2);
-      if (w > 2) { R(ctx, '#c9921e', cx - 1, cy - 2, 2, 4); R(ctx, '#fff3b0', cx - w + 1 + ((this.t >> 3) % Math.max(1, 2 * w - 2)), cy - 3, 1, 3); }
-      else R(ctx, '#fff3b0', cx - w, cy - 3, 1, 4);
-    }
-  }
-  // un arco de monedas a lo largo de un salto: (x0, piso) es donde despega el mototaxi;
-  // se simula la física del salto y se pone una moneda en ciertos cuadros (a la altura del centro)
-  function solArc(x0, vx, vy, frames) {
-    const out = []; let x = x0 * TS, y = ST * TS, v = vy;
-    for (let f = 1; f <= frames[frames.length - 1]; f++) {
-      v += PHYS.GRAV; y += v; x += vx;
-      if (frames.includes(f)) out.push({ type: 'sol', x: x / TS, y: (y - 10) / TS });
-    }
-    return out;
-  }
 
   // AMBULANTE que cruza la pista con su carrito: al oír el mototaxi se aparta
   class Cruce extends Actor {
@@ -2580,7 +2554,7 @@
       { type: 'checkpoint', x: 404, y: 64, help: 'SUBE POR LA ESCALERA' },
       // ── BARRANCO ──
       { type: 'bajada', x0: 408, x1: 437, top: 30, bottom: 64 },
-      { type: 'sign', x: 413, y: 62, lines: ['BAJADA', 'DE BAÑOS'], style: 'board', col: '#fff3d6' },
+      { type: 'sign', x: 413, y: 60, lines: ['BAJADA', 'DE BAÑOS'], style: 'board', col: '#fff3d6' },
       { type: 'checkpoint', x: 438, y: ST, help: 'CRUZA SIN SALTAR: ¡+1 MIN!' },
       { type: 'npc', x: 440.5, y: ST, model: 'abuelo', lines: ['EL PUENTE DE LOS SUSPIROS...', 'SI LO CRUZAS SIN RESPIRAR...', '¡SE CUMPLE TU DESEO!'] },
       { type: 'suspiros', x0: 444, x1: 454, y: ST },
@@ -2618,8 +2592,6 @@
       // pasajeros en los paraderos de la vereda y la bocina
       ...[507, 529.5, 545, 565, 580.5].map((x, n) => ({ type: 'pasajero', x, n })),
       { type: 'hint', x: 527, y: ST, text: 'BOCINA', key: 'down', r: 4, pass: 2, when: (g) => g.player.riding instanceof MotoRide && !g.honked },
-      ...solArc(539, 2.6, -7.3, [10, 15, 20]),
-      ...solArc(569.5, 2.6, -7.3, [10, 15, 20]),
       { type: 'sign', x: 583, y: ST, lines: ['AL CENTRO NO', 'ENTRAN MOTOTAXIS'], style: 'board' },
       { type: 'checkpoint', x: 590, y: ST, help: 'SALTA LOS HUECOS EN EL BORDE' },
       { type: 'sign', x: 497, y: ST + 2.4, lines: ['AL CENTRO'], style: 'paint', col: '#f6c94a' },
@@ -2730,7 +2702,6 @@
     balde: (d) => new Balde(d),
     rampa: (d) => new Rampa(d),
     pasajero: (d) => new Pasajero(d),
-    sol: (d) => new Sol(d),
     bache: (d) => new Bache(d),
     parkedCombi: (d) => new ParkedCombi(d),
     rutaCombi: (d) => new RutaCombi(d),
@@ -2767,7 +2738,7 @@
       fall: '¡TE FUISTE PARA ABAJO!', bici: '¡TE CHOCÓ LA BICI!', default: '¡QUÉ PASÓ, CAUSA!',
     },
     tips: ['TABLA: TÓCALA, BAJA LAS DUNAS Y SALTA EN LAS CRESTAS.', 'COMBI: SÚBETE AL TECHO. MOTOTAXI: ¡MANÉJALO!', 'BALCONES, TOLDOS Y ROPA: SÚBETE ENCIMA.', 'BUZÓN, CARRETILLA Y PERRO: SÁLTALOS.'],
-    onStart: (g) => { g.combiRides = 0; g.pasajeros = 0; g.soles = 0; g.honked = false; },
+    onStart: (g) => { g.combiRides = 0; g.pasajeros = 0; g.honked = false; },
     win: {
       title: '¡LLEGASTE A LA HACKATÓN!',
       onTime: ['¡ANTES DE LAS 8:00!', '¡ANTES DE LAS 8:00 Y ANTES QUE EL JURADO!'],
@@ -2786,7 +2757,6 @@
         arrival,
         [narrow ? 'COMBIS' : 'COMBIS QUE TE LLEVARON', '' + (g.combiRides || 0), '#f6c94a'],
         [narrow ? 'PASAJEROS' : 'PASAJEROS LLEVADOS', '' + (g.pasajeros || 0), '#f6c94a'],
-        ['SOLES', '' + (g.soles || 0), '#f6c94a'],
         ['CAÍDAS', '' + g.deaths, '#f2917d'],
       ],
     },
