@@ -22,8 +22,10 @@ const CORTO = (() => {
   let played = {}, cur = null;
   function stop() { if (cur) { cur.a.pause(); clearInterval(cur.timer); cur = null; } }
   // suena el corto de `key` (una vez por partida); `after` se llama al terminar
+  // interruptor en index.html: <meta name="cortos" content="on|off">
+  const ON = (document.querySelector('meta[name="cortos"]') || {}).content !== 'off';
   function play(key, after) {
-    const c = CORTOS[key];
+    const c = ON && CORTOS[key];
     if (!c || played[key]) return;
     played[key] = true; stop();
     const a = new Audio(c.src), me = { a, after };
