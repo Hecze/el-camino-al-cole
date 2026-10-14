@@ -315,11 +315,11 @@ const GUIA = [
   // EL PUEBLO
   { type: 'npc', x: 2.75, y: G, model: 'mama', ghost: true, r: 9, lines: ['¡YA SON LAS SEIS MENOS VEINTE, HIJITO!', '¡NO TE OLVIDES TU TAREA!'] },
   { type: 'hint', x: 10, y: G, text: 'SALTA', key: 'jump', r: 4, pass: 2, when: onFoot },
-  { type: 'npc', x: 16.5, y: G, model: 'pastor', lines: ['¡HOY ES LA FIESTA DEL PATRÓN!', '¡YA EMPEZÓ LA ALBORADA!'] },
+  { type: 'npc', x: 16.5, y: G, model: 'pastor', lines: ['¡YA EMPEZÓ LA ALBORADA!'] },
   { type: 'hint', x: 30.5, y: G - 2, text: '¡POR LOS TECHOS!', arrow: 'right', r: 4, pass: 1 },
   { type: 'hint', x: 46.5, y: G - 5, text: ['¡UN COHETE!', 'PASA CUANDO YA SALIÓ'], arrow: 'down', r: 6, pass: 0, dy: 12 },
   { type: 'help', x0: 31, x1: 64, kind: 'cohete', text: 'PASA CUANDO EL COHETE YA SALIÓ' },
-  { type: 'npc', x: 68.5, y: G, model: 'senora', lines: ['¡PAN WAWA CALIENTITO!', '¡VIVA EL PATRÓN!'] },
+  { type: 'npc', x: 68.5, y: G, model: 'senora', lines: ['¡PAN WAWA CALIENTITO!'] },
   { type: 'prop', kind: 'olla', x: 70.5, y: G, bonus: 1 },
   { type: 'prop', kind: 'perro', x: 87, y: G },
   { type: 'hint', x: 76, y: G, text: ['¡EL DANZANTE!', 'SÁLTALO CUANDO ESTÉ ABAJO'], key: 'jump', r: 6, pass: 0, dy: 20 },
