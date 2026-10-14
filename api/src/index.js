@@ -1,7 +1,8 @@
 // API del ranking — Cloudflare Worker + D1.
-//   POST /api/runs            { chapter }                      -> { runId }
+//   POST /api/runs            { chapter, playerId?, name? }    -> { runId }
 //   POST /api/scores          { runId, name, timeMs, deaths }  -> { rank, total, best }
 //   GET  /api/scores?chapter=1&limit=20                        -> { scores: [...] }
+//   GET  /api/stats                                            -> { players, chapters, daily } (solo agregados)
 // El juego pide un ticket al empezar; al terminar, el servidor comprueba que
 // el tiempo reportado sea creíble contra su propio reloj.
 
@@ -11,6 +12,7 @@ const RUN_TTL_MS = 3 * 60 * 60 * 1000;    // un ticket vale 3 h
 const CLOCK_SLACK_MS = 3000;              // latencia entre el juego y el servidor
 const RUNS_PER_10_MIN = 40;               // por IP
 // ponytail: lista corta de groserías; si se cuela algo, ampliar o moderar a mano en D1
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const BLOCKED = ['puta', 'puto', 'mierda', 'conchatu', 'ctm', 'huevon', 'cojud', 'pinga', 'verga', 'maricon', 'cabro', 'chucha', 'pendej', 'imbecil', 'idiota', 'nazi'];
 
 export default {
@@ -36,17 +38,23 @@ async function route(req, env, url) {
   if (p === '/api/runs' && req.method === 'POST') return startRun(req, env);
   if (p === '/api/scores' && req.method === 'POST') return submitScore(req, env);
   if (p === '/api/scores' && req.method === 'GET') return leaderboard(env, url);
+  if (p === '/api/stats' && req.method === 'GET') return stats(env);
   throw new HttpError(404, 'No existe');
 }
 
 async function startRun(req, env) {
-  const { chapter } = await body(req);
+  const { chapter, playerId, name } = await body(req);
   if (!CHAPTERS.includes(chapter)) throw new HttpError(400, 'Capítulo inválido');
   const ip = await ipHash(req, env), now = Date.now();
   const { n } = await env.DB.prepare('SELECT COUNT(*) AS n FROM runs WHERE ip_hash = ? AND started_at > ?').bind(ip, now - 10 * 60 * 1000).first();
   if (n >= RUNS_PER_10_MIN) throw new HttpError(429, 'Demasiadas partidas, espera un ratito');
   const runId = crypto.randomUUID();
-  await env.DB.prepare('INSERT INTO runs (id, chapter, started_at, ip_hash) VALUES (?, ?, ?, ?)').bind(runId, chapter, now, ip).run();
+  // medición: ambos son opcionales (los clientes viejos no los mandan) y, si vienen mal, se ignoran
+  const pid = typeof playerId === 'string' && UUID.test(playerId) ? playerId.toLowerCase() : null;
+  let pname = null;
+  try { pname = cleanName(name); } catch { /* sin nombre válido: la partida cuenta igual */ }
+  await env.DB.prepare('INSERT INTO runs (id, chapter, started_at, ip_hash, player_id, player_name) VALUES (?, ?, ?, ?, ?, ?)')
+    .bind(runId, chapter, now, ip, pid, pname).run();
   return json({ runId });
 }
 
@@ -87,6 +95,23 @@ async function leaderboard(env, url) {
     'SELECT name, MIN(time_ms) AS timeMs, deaths FROM scores WHERE chapter = ? GROUP BY name_key ORDER BY timeMs ASC LIMIT ?'
   ).bind(chapter, limit).all();
   return json({ scores: results }, 200, { 'Cache-Control': 'public, max-age=15' });
+}
+
+// Solo agregados: nunca nombres ni ids. Un jugador = su player_id (o su ip_hash si no mandó id).
+async function stats(env) {
+  const who = 'COALESCE(player_id, ip_hash)';
+  const since = Date.now() - 14 * 24 * 60 * 60 * 1000;
+  const [all, perChapter, daily] = await Promise.all([
+    env.DB.prepare(`SELECT COUNT(DISTINCT ${who}) AS players FROM runs`).first(),
+    env.DB.prepare('SELECT chapter, COUNT(*) AS runs, COALESCE(SUM(finished), 0) AS won FROM runs GROUP BY chapter ORDER BY chapter').all(),
+    env.DB.prepare(`SELECT date(started_at / 1000, 'unixepoch') AS day, COUNT(DISTINCT ${who}) AS players FROM runs WHERE started_at > ? GROUP BY day ORDER BY day`).bind(since).all(),
+  ]);
+  const byChapter = Object.fromEntries(perChapter.results.map(r => [r.chapter, r]));
+  return json({
+    players: all.players,
+    chapters: CHAPTERS.map(c => ({ chapter: c, runs: byChapter[c]?.runs || 0, won: byChapter[c]?.won || 0 })),
+    daily: daily.results,
+  }, 200, { 'Cache-Control': 'public, max-age=60' });
 }
 
 // ── utilidades ──────────────────────────────────────────────────────────────
