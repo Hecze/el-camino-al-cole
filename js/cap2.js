@@ -124,7 +124,7 @@
     crate:      { solid: true, top: T2.crate, body: T2.crate },
     playa:      { solid: true, top: T2.playa, body: T2.cliff },
     malecon:    { solid: true, top: T2.malecon, body: T2.cliff },
-    bajada:     { solid: true, top: T2.paving, body: T2.brick },
+    bajada:     { solid: true, step: true, top: T2.paving, body: T2.brick },   // step: se sube caminando, sin saltar
     avenida:    { solid: true, top: T2.asphalt, body: T2.conc },
   });
 
@@ -168,19 +168,24 @@
   // ───────────────────────────────────────────────────────────────────────────
   //  SPRITES
   // ───────────────────────────────────────────────────────────────────────────
-  // perro chusco: cruzado de mil razas, con su collar rojo. 18x12, mira a la derecha
-  const DPAL = { '.': null, K: '#2a1f2d', b: '#a8743c', B: '#7a4f28', w: '#efe2c8', r: '#d8432f', p: '#f08a7a' };
+  // perro chusco: cruzado de mil razas, color canela, orejas caídas, mancha blanca en la cara,
+  // pecho y patas blancas, patas largas. 20x14, mira a la derecha (se dibuja 1 px a la izquierda y 2 arriba)
+  const DPAL = { '.': null, K: '#2a1f2d', b: '#d49650', B: '#a86c34', w: '#f4ead8', e: '#3a2414', n: '#1d1622', p: '#f08a7a' };
   const DOG_TOP = [
-    '............KK....', '...........KBK....', '..........KbbbK...', '..........KbKbbK..', '..K.......KbbbbbbK',
-    '.KbK......KrrbbKKK', '..KbKKKKKKKbbbK...', '...KbbbwwbbbbbbK..', '...KbbwwwbbbbbbK..', '...KBbbbbbbbbbBK..',
+    '..............KK....', '.............KBBKK..', '............KBBbbbK.', '............KbbewbbK', '..K.........KbbbwwbK', '.KbK.......KbbbbwwnK', '..KbK......KbbbbwwKK', '...KbKKKKKKKbbbbwK..', '...KbbbbbbbbbbbwwK..', '...KBbbbbbbbbbbwwK..', '...KBBbbbbbbbbbwK...',
   ];
-  const DOG_LEGS = { a: ['...KBK.KbK.KBK.KbK', '...KK..KK..KK..KK.'], b: ['....KBKbK...KBKbK.', '....KK.KK...KK.KK.'] };
+  const DOG_LEGS = { a: [
+    '...KBK.KbK..KbK.KwK.', '...KBK.KbK..KbK.KwK.', '...KwK.KwK..KwK.KwK.',
+  ], b: [
+    '....KBKKbK...KbKwK..', '...KBK..KbK.KbK.KwK.', '..KwK....KwKKwK..KwK',
+  ] };
   const DOG = {
     a: PIX.fromRows(DOG_TOP.concat(DOG_LEGS.a), DPAL),
     b: PIX.fromRows(DOG_TOP.concat(DOG_LEGS.b), DPAL),
-    bark: PIX.fromRows(DOG_TOP.slice(0, 5).concat(['.KbK......KrrbbKpK'], DOG_TOP.slice(6), DOG_LEGS.a), DPAL),
-    sleep: PIX.fromRows(['..................', '..................', '..................', '..................', '..........KK......',
-      '.........KBK......', '..KKKKKKKbbbKK....', '.KbbbwwbbbbKbbK...', 'KbbbwwwbbbbbbbbK..', 'KBbbbbbbbbbbbBKK..', '.KKKKKKKKKKKKK....', '..................'], DPAL),
+    bark: PIX.fromRows(DOG_TOP.slice(0, 6).concat(['..KbK......KbbbbwKpK'], DOG_TOP.slice(7), DOG_LEGS.a), DPAL),
+    sleep: PIX.fromRows([
+    '....................', '....................', '....................', '....................', '....................', '....................', '...............KK...', '..............KBBK..', '...KKKKKKKKKKKKBBbK.', '..KbbbbbbbbbbKbbKwwK', '.KbbbbbbbbbbbbbbwwnK', 'KBbbbbbbbbbbbbwwwwK.', 'KBBbbbbbbbbbbwKwwK..', '.KKKKKKKKKKKKKKKKK..',
+  ], DPAL),
   };
 
   // LIMEÑOS del Centro: un solo molde de 12x24 que se viste según el oficio.
@@ -564,7 +569,8 @@
     update(g) {
       const px = this.x; this.t++; if (this.sayT > 0) this.sayT--;
       const p = g.player, aboard = p.lastMover === this;
-      if (aboard && !this.wasAboard) { this.shout(g, '¡OYE, AL FONDO HAY SITIO!'); g.combiRides = (g.combiRides || 0) + 1; }
+      if (aboard && !this.wasAboard) { this.shout(g, '¡OYE, AL FONDO HAY SITIO!'); VOICE.play('sube'); g.combiRides = (g.combiRides || 0) + 1; }
+      if (!aboard && this.wasAboard && g.state === 'play') VOICE.play('baja');
       this.wasAboard = aboard;
       const next = this.stops[0];
       if (this.state === 'drive') {
@@ -877,7 +883,7 @@
       let img = DOG.sleep;
       if (this.state === 'alert') img = Math.floor(this.t / 8) % 2 ? DOG.bark : DOG.a;
       else if (this.state === 'chase' || this.state === 'back') img = this.turnT > 0 ? DOG.bark : (Math.floor(this.t / 5) % 2 ? DOG.a : DOG.b);
-      ctx.drawImage(this.face < 0 ? flipS(img) : img, x, y + (this.state === 'chase' && Math.floor(this.t / 5) % 2 ? -1 : 0));
+      ctx.drawImage(this.face < 0 ? flipS(img) : img, x - 1, y - 2 + (this.state === 'chase' && Math.floor(this.t / 5) % 2 ? -1 : 0));
       if (this.state === 'sleep') { const z = Math.floor(this.t / 30) % 3; drawText(ctx, 'Z', x + 12 + z * 2, y - 6 - z * 3, { color: '#fffaf0', shadow: true, shadowColor: '#2a1f2d' }); }
       else if (this.state === 'alert' || (this.state === 'chase' && Math.floor(this.t / 30) % 2 === 0)) bubble(ctx, '¡GUAU!', x + 9, y - 2, '#d8432f');
     }
@@ -1472,18 +1478,57 @@
     drawBack(ctx, g) {
       const x0 = Math.max(this.x, Math.floor(g.cam.x)), x1 = Math.min(this.x + this.w, g.cam.x + VIEW.w + 2), b = this.y, t = this.t;
       if (x1 <= x0) return;
-      R(ctx, '#6f8b98', x0, b - 64, x1 - x0, 64); R(ctx, '#5f7d8c', x0, b - 40, x1 - x0, 40); R(ctx, '#7f9aa6', x0, b - 64, x1 - x0, 4);
-      // filas de espuma que avanzan hacia la orilla
-      for (let r = 0; r < 4; r++) {
-        const yy = b - 52 + r * 13 + ((t >> 3) + r * 5) % 6;
-        for (let x = x0 - (x0 % 4); x < x1; x += 4) if (h2(x * 3 + r * 101 + (t >> 4)) > 0.55) R(ctx, '#e8f0f2', x, yy, 3, 1);
+      const W = x1 - x0;
+      // el mar por franjas: arriba empalma con el mar del fondo y se vuelve verde agua cerca de la orilla
+      const BANDS = ['#7f97a2', '#7b98a3', '#7599a3', '#6f9aa4', '#6a9ca5', '#6fa3a8'];
+      BANDS.forEach((c, i) => R(ctx, c, x0, b - 48 + i * 8, W, 9));
+      // brillos del sol sobre el agua (titilan)
+      for (let x = x0 - (x0 % 3); x < x1; x += 3) {
+        const hsh = h2(x * 7 + (t >> 3));
+        if (hsh > 0.93) R(ctx, '#dbe8ec', x, b - 46 + Math.floor(h2(x * 13) * 24), hsh > 0.97 ? 3 : 2, 1);
       }
-      R(ctx, '#e8f0f2', x0, b - 3, x1 - x0, 2);   // la orilla
+      // mar de fondo: lomas largas que se mueven despacio
+      for (let r = 0; r < 3; r++) {
+        const yy = b - 44 + r * 8;
+        for (let x = x0 - (x0 % 2); x < x1; x += 2) {
+          const s1 = Math.sin(x * 0.045 + t * 0.012 + r * 1.7);
+          if (s1 > 0.55) R(ctx, '#3e6780', x, yy + Math.round(s1 * 2), 2, 1);
+          if (s1 > 0.8) R(ctx, '#86adb8', x, yy + Math.round(s1 * 2) - 1, 2, 1);
+        }
+      }
+      // olas que vienen hacia la orilla, se levantan y revientan en espuma
+      for (let r = 0; r < 3; r++) {
+        const per = 240, ph = ((t + r * 80) % per) / per;            // 0: nace mar adentro, 1: revienta
+        const yy = Math.round(b - 26 + ph * 18), alto = Math.round(1 + Math.sin(ph * Math.PI) * 4);
+        for (let x = x0 - (x0 % 2); x < x1; x += 2) {
+          const cresta = Math.sin(x * 0.03 + r * 2.1 + t * 0.004) * 0.5 + 0.5;   // las olas no son una línea recta
+          if (cresta < 0.25) continue;
+          const hh = Math.max(1, Math.round(alto * cresta));
+          R(ctx, '#3b6378', x, yy - hh + 1, 2, hh);        // la cara de la ola, en sombra
+          R(ctx, '#eef5f6', x, yy - hh, 2, 1);             // la cresta blanca
+          if (ph > 0.75 && h2(x * 5 + r * 31 + (t >> 2)) > 0.6) R(ctx, '#ffffff', x, yy - hh - 1 - Math.floor(h2(x + t) * 2), 1, 1);   // espuma que salta
+        }
+      }
+      // la orilla: espuma que sube y baja sobre la arena mojada
+      const resaca = Math.round((Math.sin(t * 0.025) * 0.5 + 0.5) * 5);
+      R(ctx, '#8faab0', x0, b - 7, W, 4);
+      for (let x = x0 - (x0 % 2); x < x1; x += 2) {
+        const e = resaca + Math.round(Math.sin(x * 0.08 + t * 0.02) * 1.5);
+        R(ctx, '#e8f0f2', x, b - 4 - Math.max(0, e), 2, 1 + (h2(x * 3 + (t >> 4)) > 0.5 ? 1 : 0));
+      }
+      R(ctx, '#e8f0f2', x0, b - 3, W, 2);
+      // pelícanos que pasan en fila sobre el mar
+      for (let k = 0; k < 4; k++) {
+        const px = Math.round(this.x + ((t * 0.35 + k * 14) % (this.w + 120)) - 60), py = b - 62 + k * 3 + Math.round(Math.sin(t * 0.06 + k) * 1.5);
+        if (px < x0 - 6 || px > x1) continue;
+        const ala = Math.floor((t + k * 5) / 10) % 2;
+        R(ctx, '#3a3440', px, py, 3, 1); R(ctx, '#3a3440', px - 3, py - ala, 3, 1); R(ctx, '#3a3440', px + 3, py - ala, 3, 1);
+      }
       // surfistas sobre la ola
       for (let k = 0; k < 2; k++) {
-        const sx = Math.round(this.x + 60 + k * 300 + Math.sin(t * 0.01 + k * 2) * 80), sy = b - 30 - k * 12 + Math.round(Math.sin(t * 0.05 + k) * 2);
+        const sx = Math.round(this.x + 60 + k * 300 + Math.sin(t * 0.01 + k * 2) * 80), sy = b - 26 - k * 8 + Math.round(Math.sin(t * 0.05 + k) * 2);
         if (sx < x0 - 20 || sx > x1) continue;
-        R(ctx, '#e8f0f2', sx - 8, sy + 6, 22, 2);   // la ola que lo lleva
+        R(ctx, '#3b6378', sx - 10, sy + 5, 26, 2); R(ctx, '#eef5f6', sx - 9, sy + 4, 24, 1);   // la ola que lo lleva
         R(ctx, '#f6c94a', sx - 4, sy + 4, 14, 2); R(ctx, '#1d1622', sx + 1, sy - 4, 4, 8); R(ctx, '#b87a52', sx + 1, sy - 7, 4, 3);
         R(ctx, '#1d1622', sx - 2, sy - 3, 3, 1); R(ctx, '#1d1622', sx + 5, sy - 3, 3, 1);   // brazos abiertos
       }
@@ -1494,11 +1539,13 @@
   // LA BAJADA DE BAÑOS: la quebrada empedrada que baja al mar entre casonas
   // republicanas de colores, ficus enormes, buganvillas que cuelgan y faroles.
   const BAJ_WALLS = [['#e3c06a', '#c9a24e'], ['#f08a7a', '#d06a5a'], ['#9cc3d0', '#7aa4b4'], ['#b8d4a8', '#94b486'], ['#e8e0cc', '#c9bfa8'], ['#d98a6a', '#b86a4e']];
+  // escalones de la Bajada de Baños: 18 de una fila entre las columnas 410 y 437 (de la playa a la calle)
+  const BAJADA_STEPS = Array.from({ length: 18 }, (_, k) => { const x = 410 + Math.floor(k * 1.5), nx = k === 17 ? 437 : 410 + Math.floor((k + 1) * 1.5); return [x, nx - x, 63 - k]; });
   class Bajada extends Actor {
     constructor(def) { super(def.x0 * TS, def.top * TS, (def.x1 - def.x0) * TS, (def.bottom - def.top) * TS); this.def = def; }
     update() {}
-    // fila del escalón a la altura de la columna tx (los escalones: 3 casillas, 2 filas)
-    stepRow(tx) { const k = Math.max(0, Math.min(8, Math.floor((tx - 410) / 3))); return tx < 410 ? 64 : 62 - 2 * k; }
+    // fila del escalón a la altura de la columna tx (escalones bajitos de 1 fila: se suben caminando)
+    stepRow(tx) { if (tx < 410) return 64; let r = 63; for (const [x, , row] of BAJADA_STEPS) if (tx >= x) r = row; return r; }
     drawBack(ctx) {
       const d = this.def, bottom = d.bottom * TS;
       // las casonas: suben escalonadas con la bajada, de 2 o 3 pisos
@@ -1629,18 +1676,27 @@
     constructor(def) {
       super(def.x * TS, def.y * TS - 20, 30, 20, { dx: 12, dy: 2 });
       this.img = OBJ.torito[def.model] || OBJ.torito.rojo; this.end = def.end * TS;
-      this.canDismount = false; this.drawsRider = true; this.ownJump = true; this.camMax = 3.6; this.taken = false; this.air = 0; this.blockT = 0;
+      this.canDismount = false; this.drawsRider = true; this.ownJump = true; this.camMax = 3.6; this.taken = false; this.air = 0; this.blockT = 0; this.honkCd = 0;
     }
-    reset() { super.reset(); this.air = 0; this.hop = false; }
+    reset() { super.reset(); this.air = 0; this.hop = false; this.honkCd = 0; }
+    // ¿hay una combi parada justo adelante? (un muro bajo, que se puede saltar)
+    wallAhead(g, look) {
+      const lv = g.level, row = Math.floor((this.y + this.h - 1) / TS);
+      for (let d = 1; d <= look; d += 4) {
+        const col = Math.floor((this.x + this.w + d) / TS);
+        if (isSolidCode(lv.tile(col, row))) return !isSolidCode(lv.tile(col, row - 3));
+      }
+      return false;
+    }
     update(g) {
       this.animT++;
       if (this.rider) {
         if (!this.taken) { this.taken = true; g.audio('honk'); }
         const left = Input.held('left'), right = Input.held('right');
-        // sin tocar nada avanza solo, despacito; a la derecha acelera; a la izquierda frena
-        let want = right ? 3.6 : left ? -1.2 : 1.7;
-        if (this.launched) want = Math.max(want, this.vx);   // volando por una rampa no pierde impulso
-        this.vx += Math.max(-0.12, Math.min(0.1, want - this.vx));
+        // sin tocar nada avanza solo a buen ritmo; a la derecha acelera; a la izquierda frena
+        let want = right ? 3.6 : left ? -1.2 : 2.4;
+        if (this.launched || this.hop) want = Math.max(want, this.vx);   // volando o en el saltito de un bache no pierde impulso
+        this.vx += Math.max(-0.16, Math.min(0.14, want - this.vx));
         if (this.vx > 0.1) this.facing = 1; else if (this.vx < -0.1) this.facing = -1;
         // se puede saltar en el suelo, un instante después de dejarlo (coyote) o en el saltito de un bache:
         // antes el salto se perdía si lo apretabas justo al pasar un bache, y chocabas con la combi
@@ -1648,6 +1704,14 @@
         if ((this.onGround || this.coyote > 0 || this.hop) && Input.consumeJump()) { this.vy = -7.8; this.onGround = false; this.coyote = 0; this.hop = false; g.onPlayerJump(this); g.audio('honk'); }
         const held = Input.held('jump') || Input.held('up');
         if (!held && this.vy < -PHYS.JUMP_CUT && !this.launched) this.vy = -PHYS.JUMP_CUT;
+        // combi parada adelante: brinca solo antes de chocar, sin frenar
+        if (this.onGround && this.vx > 0.5 && this.wallAhead(g, 6 + this.vx * 7)) { this.vy = -7.8; this.onGround = false; this.launched = true; this.coyote = 0; g.onPlayerJump(this); g.audio('honk'); }
+        // la bocina (flecha abajo): la gente de la vereda y los cobradores reaccionan
+        if (this.honkCd > 0) this.honkCd--;
+        if (Input.pressed('down') && this.honkCd === 0) {
+          this.honkCd = 30; g.audio('honk'); g.honked = true;
+          for (const e of g.entities) if (e.onHonk && !e.dead && Math.abs(e.cx - this.cx) < 150) e.onHonk(g);
+        }
         // el humito del escape
         if (this.animT % (Math.abs(this.vx) > 2 ? 4 : 9) === 0) g.particles.push({ x: this.facing > 0 ? this.x : this.x + this.w, y: this.y + this.h - 6, vx: -this.facing * 0.3, vy: -0.25, life: 45, max: 45, col: '#c8c2cc', size: 2, grav: -0.004 });
       } else { this.vx *= 0.8; if (this.animT % 30 === 0) g.particles.push({ x: this.x, y: this.y + this.h - 6, vx: -0.25, vy: -0.2, life: 50, max: 50, col: '#c8c2cc', size: 2, grav: -0.004 }); }
@@ -1779,7 +1843,86 @@
     constructor(def) { super(def.x * TS, ST * TS, { stops: [], end: 1e9, n: def.n || 0 }); this.isMover = false; this.v = 0; this.hazardKind = null; this.told = false; this.line = def.line || '¡PIII! ¡QUÉ TRÁFICO!'; }
     onRespawn() { this.told = false; }
     update(g) { this.t++; if (this.sayT > 0) this.sayT--; this.dx = 0; if (!this.told && g.near(this.cx, 120)) { this.told = true; this.say = this.line; this.sayT = 110; g.audio('honk'); } }
+    // le tocas bocina: el cobrador te contesta
+    onHonk(g) { this.told = true; this.say = HONK_BACK[(this.n + (this.honks = (this.honks || 0) + 1)) % HONK_BACK.length]; this.sayT = 110; g.audio('shout'); }
     hazardBox() { return null; }
+  }
+  const HONK_BACK = ['¡TRANQUILO, CAUSA!', '¡YA, YA, PASA NOMÁS!', '¡QUÉ APURO, OE!'];
+
+  // texto que sube y se desvanece (+S/ 1)
+  class FloatTxt {
+    constructor(x, y, text, col) { this.x = x; this.y = y; this.text = text; this.col = col; this.t = 0; }
+    update() { if (++this.t > 50) this.dead = true; }
+    drawFront(ctx) {
+      ctx.globalAlpha = Math.min(1, (50 - this.t) / 15);
+      drawText(ctx, this.text, this.x, this.y - this.t * 0.4, { color: this.col, align: 'center', shadow: true, shadowColor: '#2a1f2d' });
+      ctx.globalAlpha = 1;
+    }
+    draw() {}
+  }
+  const goldPuff = (g, x, y, n) => { for (let i = 0; i < n; i++) g.particles.push({ x, y, vx: (Math.random() - 0.5) * 2.4, vy: -Math.random() * 2, life: 20 + Math.random() * 14, max: 34, col: i % 3 ? '#f6c94a' : '#fff3b0', size: Math.random() < 0.4 ? 2 : 1, grav: 0.06 }); };
+
+  // PASAJERO en el paradero: hace señas al mototaxi; si pasas cerca manejando, se sube
+  const PAS_ROLES = ['cambista', 'abuelo', 'ambulante', 'cargador', 'pintor'];
+  class Pasajero extends Actor {
+    constructor(def) { super(def.x * TS, ST * TS - 24, 12, 24); this.role = PAS_ROLES[(def.n || 0) % PAS_ROLES.length]; this.t = Math.floor(def.x * 5); this.taken = false; this.onRespawn(); }
+    onRespawn() { this.jy = 0; this.vy = 0; this.sayT = 0; }
+    onHonk() { if (this.taken) return; if (this.jy === 0) this.vy = -2.2; this.sayT = 70; }
+    update(g) {
+      this.t++; if (this.sayT > 0) this.sayT--;
+      if (this.jy < 0 || this.vy < 0) { this.vy += 0.25; this.jy = Math.min(0, this.jy + this.vy); if (this.jy === 0) this.vy = 0; }
+      const m = g.player.riding;
+      if (this.taken || !(m instanceof MotoRide) || Math.abs(m.cx - this.cx) > 20 || m.y + m.h < this.y - 10) return;
+      this.taken = true; g.pasajeros = (g.pasajeros || 0) + 1;
+      g.audio('coin'); g.burst(this.cx, this.cy, 'dust', 12); goldPuff(g, this.cx, this.y, 8);
+      g.addEntity(new FloatTxt(this.cx, this.y - 6, '+S/ 1', '#f6c94a'));
+    }
+    drawBack(ctx, g) {
+      const x = Math.round(this.x), b = ST * TS;
+      // el paradero: un poste con su letrerito
+      R(ctx, '#5d5768', x - 8, b - 34, 2, 34); R(ctx, '#1d1622', x - 13, b - 42, 12, 10); R(ctx, '#2b6fb8', x - 12, b - 41, 10, 8);
+      drawText(ctx, 'P', x - 7, b - 40, { color: '#ffffff', align: 'center' });
+      if (this.taken) return;
+      const S = LIMENO[this.role], C = ROLES[this.role], y = b - 24 + Math.round(this.jy), up = Math.floor(this.t / 10) % 2;
+      ctx.drawImage(this.sayT > 0 ? S.talk : S.idle, x, y);
+      // el brazo que hace señas: arriba y abajo
+      R(ctx, '#2a1f2d', x + 10, y + (up ? 1 : 4), 3, 9); R(ctx, C.v, x + 11, y + (up ? 5 : 8), 1, 4); R(ctx, C.a, x + 11, y + (up ? 2 : 5), 1, 3);
+      if (this.sayT > 0) bubble(ctx, '¡YA VA!', x + 6, y - 2);
+      else if (Math.floor(this.t / 40) % 3 === 0 && g.near(this.cx, 200)) bubble(ctx, '¡TAXI!', x + 6, y - 2);
+    }
+    draw() {}
+  }
+
+  // MONEDA DE SOL flotando en el aire: se agarra con el mototaxi o a pie
+  class Sol extends Actor {
+    constructor(def) { super(def.x * TS - 5, def.y * TS - 5, 10, 10); this.t = Math.floor(def.x * 9); this.taken = false; }
+    update(g) {
+      this.t++;
+      if (this.taken) return;
+      const p = g.player, m = p.riding;
+      if (!p.overlaps(this) && !(m && m.overlaps(this))) return;
+      this.taken = true; g.soles = (g.soles || 0) + 1;
+      g.audio('coin'); goldPuff(g, this.cx, this.cy, 10);
+    }
+    draw(ctx) {
+      if (this.taken) return;
+      // gira: el ancho de la moneda va y viene; el brillo cruza la cara
+      const cx = Math.round(this.cx), cy = Math.round(this.cy + Math.sin(this.t / 12)), k = Math.abs(Math.cos(this.t / 9)), w = Math.max(1, Math.round(4 * k));
+      R(ctx, '#7a5410', cx - w - 1, cy - 4, 2 * w + 2, 8); R(ctx, '#7a5410', cx - w, cy - 5, 2 * w, 10);
+      R(ctx, '#f6c94a', cx - w, cy - 4, 2 * w, 8); R(ctx, '#c9921e', cx - w, cy + 2, 2 * w, 2);
+      if (w > 2) { R(ctx, '#c9921e', cx - 1, cy - 2, 2, 4); R(ctx, '#fff3b0', cx - w + 1 + ((this.t >> 3) % Math.max(1, 2 * w - 2)), cy - 3, 1, 3); }
+      else R(ctx, '#fff3b0', cx - w, cy - 3, 1, 4);
+    }
+  }
+  // un arco de monedas a lo largo de un salto: (x0, piso) es donde despega el mototaxi;
+  // se simula la física del salto y se pone una moneda en ciertos cuadros (a la altura del centro)
+  function solArc(x0, vx, vy, frames) {
+    const out = []; let x = x0 * TS, y = ST * TS, v = vy;
+    for (let f = 1; f <= frames[frames.length - 1]; f++) {
+      v += PHYS.GRAV; y += v; x += vx;
+      if (frames.includes(f)) out.push({ type: 'sol', x: x / TS, y: (y - 10) / TS });
+    }
+    return out;
   }
 
   // AMBULANTE que cruza la pista con su carrito: al oír el mototaxi se aparta
@@ -1965,10 +2108,66 @@
     g.fillStyle = '#6f6a72'; g.fillRect(bx + 14, by - 12, 1, 12); g.fillRect(bx + 12, by - 9, 5, 1);   // antena
   };
   // el mar desde el malecón: horizonte, el Morro Solar con su cruz y la espuma
-  const seaLayer = (seed, sea, sea2, morro) => (g, W, H) => {
+  const seaLayer = (seed, sea, sea2, morro, costa) => (g, W, H) => {
     const hz = morro ? 96 : 112;
     g.fillStyle = sea; g.fillRect(0, hz, W, H - hz);
     g.fillStyle = sea2; for (let y = hz + 3; y < H; y += 5) for (let x = 0; x < W; x += 6) if (h2(seed + x * 7 + y) > 0.72) g.fillRect(x, y, 4, 1);
+    if (costa) {
+      // LA COSTA VERDE a lo lejos: el acantilado de la bahía en dos planos (el de atrás, perdido en
+      // la neblina), la malla verde en la ladera, edificios del malecón encima, el circuito de playas
+      // al pie, un muelle con su restaurante y parapentes. Se abre frente al Morro para que se vea la cruz.
+      const mx = Math.floor(W * 0.62), F = (c, x, y, w, h) => { g.fillStyle = c; g.fillRect(x, y, w, h); };
+      const gap = (x, r) => Math.min(1, Math.max(0, (Math.abs(x - mx) - r) / 70));
+      // plano de atrás: acantilado gris azulado con edificios difuminados
+      for (let x = 0; x < W; x += 2) {
+        const f = gap(x, 105); if (f <= 0) continue;
+        const hh = Math.round((24 + 7 * Math.sin(x * Math.PI * 2 / W * 2 + 1) + 2 * Math.sin(x * 0.2)) * f), top = hz - 3 - hh;
+        if (hh < 2) continue;
+        F('#9d9a9c', x, top, 2, hh); F('#a9a6a6', x, top, 2, 1);
+        if (h2(seed + x * 5) > 0.5) F('#94989a', x, top + Math.floor(hh * 0.4), 2, Math.floor(hh * 0.5));
+        const bh = h2(seed + 7 + Math.floor(x / 8) * 13);
+        if (bh > 0.3) F('#b2b0b2', x, top - 2 - Math.floor(bh * 10), 2, 2 + Math.floor(bh * 10));
+      }
+      // plano de adelante: la cara de tierra con estratos y la malla verde en franjas diagonales
+      for (let x = 0; x < W; x += 2) {
+        const f = gap(x, 125); if (f <= 0) continue;
+        const hh = Math.round((17 + 7 * Math.sin(x * Math.PI * 2 / W * 3) + 3 * Math.sin(x * 0.09)) * f), top = hz - 2 - hh;
+        if (hh < 3) continue;
+        F('#8d7f6e', x, top, 2, hh);
+        for (let y = top + 3; y < hz - 3; y += 4) if (h2(seed + x * 3 + y) > 0.6) F('#7b6e5f', x, y, 2, 1);   // estratos
+        for (let y = top + 2; y < hz - 3; y++) {
+          const band = ((x + y * 2) >> 3) % 3 === 0;                                            // franjas de la malla
+          if (band && h2(seed + x * 11 + y * 5) > 0.35) F(h2(x * 7 + y) > 0.5 ? '#6f8c5c' : '#5d7b4e', x, y, 2, 1);
+        }
+        F('#a39684', x, top, 2, 1); F('#c8c2b6', x, top - 1, 2, 1);                             // el borde y la baranda del malecón
+        // edificios: torres de departamentos con ventanas, algunas altas
+        const k = Math.floor(x / 12), bh = h2(seed + k * 17);
+        if (bh > 0.25) {
+          const tall = 4 + Math.floor(bh * bh * 26), col = ['#d4cec2', '#b8c4c4', '#d8cbb0', '#aab6bc', '#e2ddd2'][k % 5];
+          F(col, x, top - 1 - tall, 2, tall);
+          if (x % 12 === 10) F('#7d7a78', x, top - 1 - tall, 2, tall);                          // el canto en sombra
+          else for (let y = top - tall + 1; y < top - 2; y += 3) if (h2(x * 3 + y) > 0.35) F('#7f8e98', x, y, 1, 1);
+        }
+      }
+      // el circuito de playas al pie, con carritos y espuma contra las piedras
+      for (let x = 0; x < W; x += 2) {
+        if (gap(x, 140) <= 0) continue;
+        F('#5f5f66', x, hz - 2, 2, 1); F('#c8c2b6', x, hz - 1, 2, 1);
+        if (h2(seed + x * 9) > 0.55) F('#e8f0f2', x, hz, 2, 1);
+      }
+      for (let k = 0; k < 12; k++) { const cx = Math.floor(h2(seed + k * 41) * W); if (gap(cx, 150) > 0.5) F(['#d8432f', '#f6c94a', '#e8e0cc', '#3f6fb8'][k % 4], cx, hz - 3, 3, 1); }
+      // el muelle con su restaurante entrando al mar
+      const px = Math.floor(W * 0.2);
+      F('#7a6a5a', px, hz + 1, 40, 2);
+      for (let k = 0; k < 40; k += 5) F('#5a4c40', px + k, hz + 3, 1, 4);
+      F('#f2eee4', px + 26, hz - 8, 16, 9); F('#4f8a8e', px + 24, hz - 11, 20, 3); F('#4f8a8e', px + 30, hz - 14, 8, 3);
+      for (let k = 0; k < 3; k++) F('#9fb3c4', px + 28 + k * 5, hz - 6, 3, 3);
+      // parapentes sobre el malecón
+      [[Math.floor(W * 0.08), 46, '#d8432f', '#f6c94a'], [Math.floor(W * 0.3), 38, '#3f6fb8', '#f4efe4'], [Math.floor(W * 0.9), 50, '#f6c94a', '#2fa35a']].forEach(([x, y, c1, c2]) => {
+        F(c1, x, y, 10, 2); F(c2, x + 3, y, 4, 2); F(c1, x - 1, y + 1, 1, 2); F(c1, x + 10, y + 1, 1, 2);
+        F('#6a6470', x + 1, y + 3, 1, 4); F('#6a6470', x + 8, y + 3, 1, 4); F('#2a1f2d', x + 4, y + 7, 2, 2);
+      });
+    }
     if (morro) {
       const mx = Math.floor(W * 0.62);
       g.fillStyle = '#8f8c88'; for (let x = -90; x < 90; x += 2) { const hh = Math.round(26 * Math.cos((x / 90) * Math.PI / 2)); g.fillRect(mx + x, hz - hh, 2, hh); }
@@ -2160,12 +2359,11 @@
       // torres de iglesia y casonas con balcones
       // Miraflores: panza de burro sobre el mar, el Morro Solar al fondo
       { x0: 302, x1: 316, anchorRow: 48, sky: { dawn: ['#6f7080', '#9a9aa6', '#bdbcbf'], morning: ['#8f929e', '#b4b6be', '#d2d1d2'], sun: false }, layers: [
-        { kind: 'hills', color: '#7f97a2', color2: '#7f97a2', y: 44, parallax: 0.04, vpar: 0.06, amp: 1, build: seaLayer(3, '#7f97a2', '#a9bcc4', true) },
-        { kind: 'hills', color: '#6f8b98', color2: '#6f8b98', y: 50, parallax: 0.2, vpar: 0.3, amp: 1, build: seaLayer(9, '#6f8b98', '#e8f0f2', false) },
-      ] },
+        { kind: 'hills', color: '#7f97a2', color2: '#7f97a2', y: 46, parallax: 0.04, vpar: 0.06, amp: 1, build: seaLayer(3, '#7f97a2', '#a9bcc4', true, true) },
+        ] },
       // Barranco: casonas de colores sobre el acantilado y el mar detrás
       { x0: 404, x1: 418, anchorRow: 46, sky: { dawn: ['#6f7080', '#9a9aa6', '#bdbcbf'], morning: ['#8f929e', '#b4b6be', '#d2d1d2'], sun: false }, layers: [
-        { kind: 'hills', color: '#7f97a2', color2: '#7f97a2', y: 44, parallax: 0.04, vpar: 0.06, amp: 1, build: seaLayer(5, '#7f97a2', '#a9bcc4', true) },
+        { kind: 'hills', color: '#7f97a2', color2: '#7f97a2', y: 44, parallax: 0.04, vpar: 0.06, amp: 1, build: seaLayer(5, '#7f97a2', '#a9bcc4', true, true) },
         { kind: 'hills', color: '#a8a39a', color2: '#9a958c', y: 46, parallax: 0.2, vpar: 0.26, amp: 1, build: colonialLayer(17, '#7a706a', 26, true) },
       ] },
       { x0: 482, x1: 494, anchorRow: 44, sky: { dawn: ['#6f7080', '#9a9aa6', '#bdbcbf'], morning: ['#8f929e', '#b4b6be', '#d2d1d2'], sun: false }, layers: [
@@ -2201,7 +2399,7 @@
       [316, 44, 36, H - 44, 'malecon'],
       [352, 64, 58, H - 64, 'playa'],
       // ── BARRANCO: la Bajada de Baños (escalones de 2 filas), el Puente de los Suspiros y la calle ──
-      ...Array.from({ length: 9 }, (_, k) => [410 + 3 * k, 62 - 2 * k, 3, H - (62 - 2 * k), 'bajada']),
+      ...BAJADA_STEPS.map(([x, w, row]) => [x, row, w, H - row, 'bajada']),
       [437, ST, 7, H - ST, 'paving'], [444, ST, 10, 1, 'blockInvis'], [454, ST, 36, H - ST, 'paving'],
       // ── EL CENTRO: sobre el túnel de la Vía Expresa y la calle de lajas ──
       [490, 44, 14, 10, 'conc'], [496, 54, 8, H - 54, 'conc'],
@@ -2300,7 +2498,7 @@
       { type: 'sign', x: 456, y: ST, lines: ['BARRANCO'], style: 'post' },
       { type: 'npc', x: 462.5, y: ST, model: 'pintor', lines: ['¡CUIDADO, PINTURA FRESCA!', '¿TE GUSTA MI MURAL?'] },
       { type: 'balde', x: 465 },
-      { type: 'npc', x: 472.5, y: ST, model: 'senora', lines: ['¡PICARONES CALIENTITOS!', '¿CON MIEL, CASERITO?'] },
+      { type: 'npc', x: 472.5, y: ST, model: 'senora', voz: 'casera', lines: ['¡CASERO, CASERO, LLÉVATE!', '¡PICARONES CALIENTITOS!'] },
       { type: 'carretilla', x0: 456, x1: 484, speed: 1.8, gap: 220, load: 'bici' },
       { type: 'help', x0: 454, x1: 490, kind: 'bici', text: '¡SALTA LA BICI!' },
       // ── JR. DE LA UNIÓN ──
@@ -2327,6 +2525,14 @@
       { type: 'parkedCombi', x: 554, n: 2, line: '¡LIMA, LIMA, LIMA!' }, { type: 'parkedCombi', x: 559, n: 3, line: '¡PIII! ¡QUÉ TRÁFICO!' },
       { type: 'bache', x: 568 }, { type: 'bache', x: 571 },
       { type: 'cruce', x: 574 },
+      // pasajeros en los paraderos de la vereda y la bocina
+      ...[507, 529.5, 545, 565, 580.5].map((x, n) => ({ type: 'pasajero', x, n })),
+      { type: 'hint', x: 527, y: ST, text: 'BOCINA', key: 'down', r: 4, pass: 2, when: (g) => g.player.riding instanceof MotoRide && !g.honked },
+      // monedas de sol: en el arco de las rampas y en lo alto sobre algunos baches (hay que saltar)
+      ...solArc(517 - 0.7, 3.0, -8.0, [5, 10, 15, 20, 25]),
+      ...solArc(549 - 0.7, 3.45, -10.0, [6, 12, 18, 24, 30, 36]),
+      ...solArc(539, 2.6, -7.3, [10, 15, 20]),
+      ...solArc(569.5, 2.6, -7.3, [10, 15, 20]),
       { type: 'sign', x: 583, y: ST, lines: ['AL CENTRO NO', 'ENTRAN MOTOTAXIS'], style: 'board' },
       { type: 'checkpoint', x: 590, y: ST, help: 'SALTA LOS HUECOS EN EL BORDE' },
       { type: 'sign', x: 497, y: 46.4, lines: ['AL CENTRO'], style: 'paint', col: '#f6c94a' },
@@ -2436,6 +2642,8 @@
     murales: (d) => new Murales(d),
     balde: (d) => new Balde(d),
     rampa: (d) => new Rampa(d),
+    pasajero: (d) => new Pasajero(d),
+    sol: (d) => new Sol(d),
     bache: (d) => new Bache(d),
     parkedCombi: (d) => new ParkedCombi(d),
     tambo: (d) => new TamboStore(d),
@@ -2471,7 +2679,7 @@
       fall: '¡TE FUISTE PARA ABAJO!', bici: '¡TE CHOCÓ LA BICI!', default: '¡QUÉ PASÓ, CAUSA!',
     },
     tips: ['TABLA: TÓCALA, BAJA LAS DUNAS Y SALTA EN LAS CRESTAS.', 'COMBI: SÚBETE AL TECHO. MOTOTAXI: ¡MANÉJALO!', 'BALCONES, TOLDOS Y ROPA: SÚBETE ENCIMA.', 'BUZÓN, CARRETILLA Y PERRO: SÁLTALOS.'],
-    onStart: (g) => { g.combiRides = 0; },
+    onStart: (g) => { g.combiRides = 0; g.pasajeros = 0; g.soles = 0; g.honked = false; },
     win: {
       title: '¡LLEGASTE A LA HACKATÓN!',
       onTime: ['¡ANTES DE LAS 8:00!', '¡ANTES DE LAS 8:00 Y ANTES QUE EL JURADO!'],
@@ -2489,6 +2697,8 @@
         [narrow ? 'HOJAS' : 'HOJAS DE LA EXPOSICIÓN', g.pages + ' / 3', '#ffffff'],
         arrival,
         [narrow ? 'COMBIS' : 'COMBIS QUE TE LLEVARON', '' + (g.combiRides || 0), '#f6c94a'],
+        [narrow ? 'PASAJEROS' : 'PASAJEROS LLEVADOS', '' + (g.pasajeros || 0), '#f6c94a'],
+        ['SOLES', '' + (g.soles || 0), '#f6c94a'],
         ['CAÍDAS', '' + g.deaths, '#f2917d'],
       ],
     },

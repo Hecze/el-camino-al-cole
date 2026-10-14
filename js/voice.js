@@ -11,7 +11,7 @@ const VOICE = (() => {
   let current = null;  // la voz que está sonando (una a la vez)
 
   const M = typeof VOICE_MANIFEST !== 'undefined' ? VOICE_MANIFEST : {};
-  for (const ev in M) clips[ev] = M[ev].map(f => ({
+  for (const ev in M) clips[ev] = M[ev].map(f => ({ f,
     raw: fetch(DIR + f).then(r => (r.ok ? r.arrayBuffer() : null)).catch(() => null), buf: null, bad: false,
   }));
 
@@ -35,6 +35,7 @@ const VOICE = (() => {
     let i = Math.floor(Math.random() * list.length);
     if (list.length > 1 && list[i] === last[ev]) i = (i + 1) % list.length;
     const c = list[i]; last[ev] = c;
+    const said = c.f;   // se devuelve para que el título muestre la frase que suena
     decode(c).then(buf => {
       if (!buf) return;
       const ctx = AUDIO.context();
@@ -47,6 +48,7 @@ const VOICE = (() => {
         AUDIO.duck(buf.duration);
       }, delayMs);
     });
+    return said;
   }
   // AMBIENTE en bucle (p. ej. el megáfono del ambulante): VOICE.ambient('ambulante', 0..1)
   // se llama en cada update con el volumen deseado; si deja de llamarse (pausa,

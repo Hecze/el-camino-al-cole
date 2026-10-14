@@ -142,7 +142,11 @@
   Game.audio = (name) => {
     if (HUSH[name]) CORTO.hush(HUSH[name]);
     const smp = SAMPLES[name];
-    if (smp && smp.readyState >= 2 && AUDIO.isEnabled()) { const a = smp.cloneNode(); a.volume = 0.9; a.play().catch(() => AUDIO.play(name)); return; }
+    if (smp && smp.readyState >= 2 && AUDIO.isEnabled()) {
+      // un ladrido a la vez: si el anterior aún suena, este se salta (si no, se amontonan)
+      const t = performance.now(); if (t - (smp.last || 0) < 500) return; smp.last = t;
+      const a = smp.cloneNode(); a.volume = 0.9; a.play().catch(() => AUDIO.play(name)); return;
+    }
     AUDIO.play(name);
   };
   Game.addScore = (n) => { Game.score += n; };
@@ -187,7 +191,9 @@
     else if (kind === 'dog') { AUDIO.play('bark'); AUDIO.play('crush'); Game.shake(3, 10); Game.burst(a.cx, a.cy, 'dust', 14); }
     else AUDIO.play('fall');
     Game.deaths++; Game.lastDeath = kind; Game.state = 'respawn'; Game.stateT = 0;
-    GUIDE.onDeath(Game); VOICE.play('muerte', 250);
+    GUIDE.onDeath(Game);
+    // el título dice lo mismo que la voz; sin sonido, queda el del capítulo
+    Game.deathSaid = (typeof VOICE_TEXT !== 'undefined' && VOICE_TEXT[VOICE.play('muerte', 250)]) || null;
   };
   Game.gameComplete = () => {
     if (Game.state !== 'play') return;
@@ -1323,7 +1329,7 @@
       const a = Math.min(1, Game.stateT / 16);
       ctx.fillStyle = 'rgba(11,10,18,' + (a * 0.85) + ')'; ctx.fillRect(0, 0, BASE_W, BASE_H);
       const ch = Game.chapter, msg = ch.deathMsgs && (ch.deathMsgs[Game.lastDeath] || ch.deathMsgs.default);
-      drawText(ctx, ch.deathTitle || '¡ACHACHÁU!', BASE_W / 2, BASE_H / 2 - 14, { scale: 2, color: '#ffd166', align: 'center', shadow: true });
+      drawText(ctx, Game.deathSaid || ch.deathTitle || '¡ACHACHÁU!', BASE_W / 2, BASE_H / 2 - 14, { scale: 2, color: '#ffd166', align: 'center', shadow: true });
       // la causa, con jerga (solo en los capítulos que la traen)
       if (msg) drawText(ctx, msg, BASE_W / 2, BASE_H / 2 + 8, { color: '#f2917d', align: 'center', shadow: true });
       // muchas caídas en el mismo tramo: una pista (guide.js)
@@ -1368,10 +1374,11 @@
       arrival,
       ['CAÍDAS', '' + Game.deaths, '#f2917d'],
     ];
+    const gap = rows.length > 4 ? 9 : 13;   // con más filas van más juntas para no pisar el pie
     rows.forEach((r, i) => {
       const half = Math.min(110, BASE_W / 2 - 8);
-      drawText(ctx, r[0], BASE_W / 2 - half, WY.rows + i * 13, { color: '#cdbde8' });
-      drawText(ctx, r[1], BASE_W / 2 + half, WY.rows + i * 13, { color: r[2], align: 'right' });
+      drawText(ctx, r[0], BASE_W / 2 - half, WY.rows + i * gap, { color: '#cdbde8' });
+      drawText(ctx, r[1], BASE_W / 2 + half, WY.rows + i * gap, { color: r[2], align: 'right' });
     });
     const done = W.allPages || ['¡TAREA COMPLETA!', '¡TAREA COMPLETA! LA PROFE ESTARÁ ORGULLOSA'];
     if (Game.pages === 3) drawText(ctx, narrow ? done[0] : done[1], BASE_W / 2, WY.done, { color: '#9be7c4', align: 'center' });

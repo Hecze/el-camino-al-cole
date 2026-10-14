@@ -25,4 +25,4 @@ juego sigue igual.
 
 Convertir desde la Mac: `afconvert -f m4af -d aac grabacion.wav muerte-5.m4a`
 
-Los clips actuales son de **prueba** (voz sintética "Paulina" de macOS).
+Las voces son grabaciones de Harold; los crudos quedan en `voces/crudos/` (fuera de git).

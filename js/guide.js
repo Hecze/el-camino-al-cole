@@ -224,7 +224,7 @@ const GUIDE = (() => {
       const near = g.banner > 140 && Math.abs(dx) < this.r && Math.abs(p.cy - this.cy) < 5 * TS && this.lines.length;
       if (near) {
         this.face = dx < 0 ? -1 : 1;
-        if (!this.talking) { this.talking = true; this.line = 0; this.lt = 0; g.audio('click'); }
+        if (!this.talking) { this.talking = true; this.line = 0; this.lt = 0; g.audio('click'); if (this.d.voz) VOICE.play(this.d.voz); }
         // cada frase dura según lo larga que es; luego pasa a la siguiente
         if (++this.lt > 80 + this.lines[this.line].length * 3) { this.lt = 0; this.line = (this.line + 1) % this.lines.length; }
       } else if (this.talking && Math.abs(dx) > this.r + 3 * TS) {

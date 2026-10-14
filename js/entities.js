@@ -16,11 +16,25 @@ function moveX(a, level) {
   const top = Math.floor(a.y / TS), bot = Math.floor((a.y + a.h - 1) / TS);
   if (a.vx > 0) {
     const col = Math.floor((a.x + a.w - 1) / TS);
+    if (stepUp(a, level, col, top, bot)) return;
     for (let ty = top; ty <= bot; ty++) if (isSolidCode(level.tile(col, ty))) { a.x = col * TS - a.w; a.vx = 0; a.wall = 1; break; }
   } else {
     const col = Math.floor(a.x / TS);
+    if (stepUp(a, level, col, top, bot)) return;
     for (let ty = top; ty <= bot; ty++) if (isSolidCode(level.tile(col, ty))) { a.x = (col + 1) * TS; a.vx = 0; a.wall = -1; break; }
   }
+}
+
+// escalón bajito (tile con `step`): si en el suelo chocas solo con un escalón de una fila
+// y arriba hay sitio, lo subes caminando en vez de frenar
+function stepUp(a, level, col, top, bot) {
+  if (!a.onGround) return false;
+  const s = tileSpec(level.tile(col, bot));
+  if (!s || !s.step) return false;
+  for (let ty = top; ty < bot; ty++) if (isSolidCode(level.tile(col, ty))) return false;
+  const ny = bot * TS - a.h, nTop = Math.floor(ny / TS);
+  for (let ty = nTop; ty < top; ty++) if (isSolidCode(level.tile(col, ty))) return false;
+  a.y = ny; return true;
 }
 
 function moveY(a, level) {
