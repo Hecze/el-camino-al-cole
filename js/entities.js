@@ -1685,6 +1685,7 @@ class Pueblo extends Actor {
   }
   update(g) {
     this.t++;
+    if (this.d.castillo == null) return;   // sin castillo: el pueblo tranquilo (es lo primero que ve el jugador)
     // el castillo: sus ruedas sueltan chispas y de rato en rato dispara un cohete al cielo
     const cx = this.d.castillo * TS + 8;
     if (Math.abs(g.player.cx - cx) > 420) return;
@@ -1732,7 +1733,7 @@ class Pueblo extends Actor {
     }
     // EL CASTILLO: torre de carrizo con figuras de colores y ruedas de fuego
     const cx = this.d.castillo * TS + 8;
-    if (vis(cx - 40, cx + 40)) {
+    if (this.d.castillo != null && vis(cx - 40, cx + 40)) {
       const top = gy - 124;
       for (const sx of [-14, 14]) R('#8a6a3a', cx + sx - 1, top, 2, gy - top);
       for (let y = top + 6, k = 0; y < gy - 4; y += 14, k++) {

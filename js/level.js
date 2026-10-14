@@ -316,15 +316,13 @@ const GUIA = [
   { type: 'npc', x: 2.75, y: G, model: 'mama', ghost: true, r: 9, lines: ['¡YA SON LAS SEIS MENOS VEINTE, HIJITO!', '¡NO TE OLVIDES TU TAREA!'] },
   { type: 'hint', x: 10, y: G, text: 'SALTA', key: 'jump', r: 4, pass: 2, when: onFoot },
   { type: 'npc', x: 16.5, y: G, model: 'pastor', lines: ['¡HOY ES LA FIESTA DEL PATRÓN!', '¡YA EMPEZÓ LA ALBORADA!'] },
-  { type: 'prop', kind: 'gallina', x: 19.5, y: G },
-  { type: 'hint', x: 25, y: G, text: ['¡EL DANZANTE!', 'SÁLTALO CUANDO ESTÉ ABAJO'], key: 'jump', r: 6, pass: 0, dy: 20 },
-  { type: 'help', x0: 18, x1: 31, kind: 'tijeras', text: 'SÁLTALO CUANDO ESTÉ ABAJO' },
   { type: 'hint', x: 30.5, y: G - 2, text: '¡POR LOS TECHOS!', arrow: 'right', r: 4, pass: 1 },
   { type: 'hint', x: 46.5, y: G - 5, text: ['¡UN COHETE!', 'PASA CUANDO YA SALIÓ'], arrow: 'down', r: 6, pass: 0, dy: 12 },
   { type: 'help', x0: 31, x1: 64, kind: 'cohete', text: 'PASA CUANDO EL COHETE YA SALIÓ' },
   { type: 'npc', x: 68.5, y: G, model: 'senora', lines: ['¡PAN WAWA CALIENTITO!', '¡VIVA EL PATRÓN!'] },
   { type: 'prop', kind: 'olla', x: 70.5, y: G, bonus: 1 },
   { type: 'prop', kind: 'perro', x: 87, y: G },
+  { type: 'hint', x: 76, y: G, text: ['¡EL DANZANTE!', 'SÁLTALO CUANDO ESTÉ ABAJO'], key: 'jump', r: 6, pass: 0, dy: 20 },
   { type: 'help', x0: 64, x1: 92, kind: 'tijeras', text: 'SÁLTALO CUANDO ESTÉ ABAJO' },
   { type: 'npc', x: 92.5, y: G, model: 'nino', lines: ['¡TU LLAMA TE ESPERA!', '¡CORRE, QUE YA ES TARDE!'] },
   // EL VALLE
@@ -530,14 +528,12 @@ const LEVEL = {
     // la casa del niño, con mamá en la puerta
     { type: 'house', x: 0, y: G },
     // la fiesta: banderines, la iglesia, el castillo de fuegos y puertas y ventanas de las casas
-    { type: 'pueblo', casas: CASAS, iglesia: 72, castillo: 80, arco: 96, flags: [[13, 31, G - 6], [62, 92, G - 7]] },
-    // danzantes de tijeras: bailan en la calle y de rato en rato dan un gran salto
-    { type: 'danzante', x: 25, y: G, phase: 0 },
-    { type: 'danzante', x: 73, y: G, phase: 40, flip: true },
-    { type: 'danzante', x: 83, y: G, phase: 100 },
-    // cohetes de la alborada clavados en los techos: se prenden y salen disparados
+    // la fiesta, sin castillo ni banderines al inicio: es lo primero que ve el jugador y va tranquilo
+    { type: 'pueblo', casas: CASAS, iglesia: 72, castillo: null, arco: 96, flags: [[62, 92, G - 7]] },
+    // un danzante de tijeras en la plaza: baila y de rato en rato da un gran salto
+    { type: 'danzante', x: 80, y: G, phase: 40 },
+    // un cohete de la alborada clavado en un techo: se prende y sale disparado
     { type: 'cohete', x: 46.5, y: G - 5, phase: 0 },
-    { type: 'cohete', x: 58.5, y: G - 4, phase: 90 },
     { type: 'checkpoint', x: 66, y: G, help: 'SÁLTALO CUANDO ESTÉ ABAJO' },
     // ── EL VALLE ──
     { type: 'llama', x: va(10), y: G },
