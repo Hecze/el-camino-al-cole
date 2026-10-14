@@ -1851,6 +1851,59 @@
   }
   const HONK_BACK = ['¡TRANQUILO, CAUSA!', '¡YA, YA, PASA NOMÁS!', '¡QUÉ APURO, OE!'];
 
+  // EL PARADERO CORRECTO (Barranco): tres combis paradas, cada una con su letrero.
+  // Súbete al techo de la que va al CENTRO: te lleva hasta el muro de la Vía
+  // Expresa y desde su techo saltas arriba. Las otras retroceden, te dejan más
+  // atrás y, cuando te bajas, vuelven a su sitio. Ninguna atropella.
+  // ruta: [letrero, color del texto, grito al arrancar, grito al llegar]
+  const RUTAS = {
+    CENTRO:     ['#f6c94a', '#2a1f2d', '¡CENTRO, CENTRO!', null],   // al llegar no grita: el globo taparía al niño
+    CALLAO:     ['#3f86d8', '#ffffff', '¡ESTA VA AL CALLAO!', '¡TE EQUIVOCASTE, CAUSA!'],
+    CHORRILLOS: ['#f4f4f6', '#c8322a', '¡ESTA VA A CHORRILLOS!', '¡TE EQUIVOCASTE, CAUSA!'],
+  };
+  class RutaCombi extends Combi {
+    constructor(def) {
+      super(def.x * TS, ST * TS, { stops: [], end: 1e9, n: def.n || 0 });
+      this.v = 0; this.hazardKind = null; this.route = def.route; this.homeX = this.x; this.toX = def.to * TS;
+      this.onRespawn();
+    }
+    onRespawn() { this.x = this.homeX; this.v = 0; this.state = 'park'; this.waitT = 0; this.sayT = 0; this.dx = 0; }
+    get good() { return this.toX > this.homeX; }
+    // avanza (o retrocede) hasta tx; true al llegar
+    drive(g, tx) {
+      const d = tx - this.x;
+      if (Math.abs(d) < 0.5) { this.x = tx; this.v = 0; return true; }
+      this.v = Math.min(2.2, this.v + 0.06, Math.abs(d) * 0.08 + 0.3);
+      this.x += Math.sign(d) * Math.min(this.v, Math.abs(d));
+      return false;
+    }
+    update(g) {
+      const px = this.x, R0 = RUTAS[this.route], aboard = g.player.lastMover === this; this.t++; if (this.sayT > 0) this.sayT--;
+      if (this.state === 'park') {
+        if (aboard) { this.state = 'go'; this.waitT = 30; this.shout(g, R0[2]); g.audio('honk'); if (this.good) g.combiRides = (g.combiRides || 0) + 1; }
+      } else if (this.state === 'go') {
+        if (this.waitT > 0) this.waitT--;
+        else if (this.drive(g, this.toX)) { this.state = 'there'; this.waitT = 0; g.audio('brake'); if (R0[3]) this.shout(g, R0[3]); if (!this.good) g.audio('nope'); }
+      } else if (this.state === 'there') {
+        // la equivocada espera que te bajes y vuelve a su sitio; la buena se queda junto al muro
+        if (!this.good && !aboard && ++this.waitT > 50) this.state = 'back';
+      } else if (this.state === 'back') {
+        if (aboard) this.state = 'there';
+        else if (this.drive(g, this.homeX)) this.state = 'park';
+      }
+      this.dx = this.x - px; this.dy = 0;
+    }
+    hazardBox() { return null; }
+    draw(ctx, g) {
+      super.draw(ctx, g);
+      // el letrero de la ruta, grande sobre el costado (tapa el letrerito de fábrica)
+      const [bg, fg] = RUTAS[this.route], x = Math.round(this.x), y = Math.round(this.y) + (this.v > 0.5 && Math.floor(this.t / 4) % 2 ? 1 : 0);
+      const sp = this.route.length > 8 ? 0 : 1, w = textWidth(this.route, 1, sp) + 6;
+      R(ctx, '#1d1622', x + 25 - w / 2, y + 12, w + 2, 11); R(ctx, bg, x + 26 - w / 2, y + 13, w, 9);
+      drawText(ctx, this.route, x + 26, y + 15, { color: fg, align: 'center', sp });
+    }
+  }
+
   // texto que sube y se desvanece (+S/ 1)
   class FloatTxt {
     constructor(x, y, text, col) { this.x = x; this.y = y; this.text = text; this.col = col; this.t = 0; }
@@ -2370,6 +2423,8 @@
   ];
   // balcones de cajón que se pisan (Jr. de la Unión): [x, ancho, fila]
   const BALCONES = [[608, 5, 43], [615, 5, 41], [622, 5, 43], [634, 5, 43], [641, 5, 41], [647, 6, 43]];
+  // la combi del CENTRO ya llegó al muro
+  const combiCentro = (g) => g.entities.some(e => e instanceof RutaCombi && e.route === 'CENTRO' && e.state === 'there');
   const L2 = {
     name: 'LA HACKATÓN EN LIMA', w: CASONA + 54, h: H, anchorRow: 46,
     dunes: DUNES,
@@ -2441,6 +2496,8 @@
       // ── BARRANCO: la Bajada de Baños (escalones de 2 filas), el Puente de los Suspiros y la calle ──
       ...BAJADA_STEPS.map(([x, w, row]) => [x, row, w, H - row, 'bajada']),
       [437, ST, 7, H - ST, 'paving'], [444, ST, 10, 1, 'blockInvis'], [454, ST, 36, H - ST, 'paving'],
+      // el muro de la Vía Expresa: muy alto para saltarlo desde la calle; desde el techo de la combi sí
+      [490, ST - 6, 4, 4, 'conc'],
       // ── EL CENTRO: sobre el túnel de la Vía Expresa y la calle de lajas ──
       [490, ST, 14, 8, 'conc'], [496, 54, 8, H - 54, 'conc'],   // al mismo nivel que la calle y la avenida
       // la avenida del mototaxi, hasta la entrada del Jr. de la Unión
@@ -2533,8 +2590,15 @@
       { type: 'npc', x: 462.5, y: ST, model: 'pintor', lines: ['¡CUIDADO, PINTURA FRESCA!', '¿TE GUSTA MI MURAL?'] },
       { type: 'balde', x: 465 },
       { type: 'npc', x: 472.5, y: ST, model: 'senora', lines: ['¡PICARONES CALIENTITOS!', '¡CON SU MIELCITA!'] },
-      { type: 'carretilla', x0: 456, x1: 484, speed: 1.8, gap: 220, load: 'bici' },
-      { type: 'help', x0: 454, x1: 490, kind: 'bici', text: '¡SALTA LA BICI!' },
+      { type: 'carretilla', x0: 456, x1: 467, speed: 1.8, gap: 220, load: 'bici' },
+      { type: 'help', x0: 454, x1: 468, kind: 'bici', text: '¡SALTA LA BICI!' },
+      // ── EL PARADERO CORRECTO: súbete a la combi que va al CENTRO ──
+      { type: 'sign', x: 467.5, y: ST, lines: ['AL CENTRO'], style: 'board', col: '#f6c94a' },
+      { type: 'hint', x: 467.5, y: ST, text: '¿CUÁL VA AL CENTRO?', r: 6, pass: 6, dy: 30, when: (g) => !combiCentro(g) },
+      { type: 'rutaCombi', x: 469, route: 'CALLAO', to: 461, n: 3 },
+      { type: 'rutaCombi', x: 479, route: 'CHORRILLOS', to: 466, n: 2 },
+      { type: 'rutaCombi', x: 474, route: 'CENTRO', to: 486, n: 1 },   // la última: se dibuja delante al pasar a las otras
+      { type: 'hint', x: 489, y: ST - 2, text: 'SALTA', key: 'jump', r: 4, pass: 1, when: (g) => combiCentro(g) && g.player.lastMover && g.player.lastMover.route === 'CENTRO' },
       // ── JR. DE LA UNIÓN ──
       // casonas y balcones primero: se dibujan detrás de todo lo demás
       ...CASONAS.map(c => ({ type: 'casona', x0: c[0], x1: c[1], top: c[2], col: c[3], sign: c[4] })),
@@ -2669,6 +2733,7 @@
     sol: (d) => new Sol(d),
     bache: (d) => new Bache(d),
     parkedCombi: (d) => new ParkedCombi(d),
+    rutaCombi: (d) => new RutaCombi(d),
     tambo: (d) => new TamboStore(d),
     cruce: (d) => new Cruce(d),
     contramano: (d) => new Contramano(d),

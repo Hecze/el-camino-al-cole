@@ -614,6 +614,128 @@ const ART3 = (() => {
     }
   }
 
+  // LA PIEDRA DE LOS 12 ÁNGULOS: una portada inca cerrada y, al pie del muro, el
+  // hueco de una piedra que falta. La piedra está fuera de lugar en la calle:
+  // gírala (abajo, pegado a ella o encima) y empújala hasta el hueco. Si está
+  // bien girada encaja y la puerta se abre; si no, rebota y vuelves a probar.
+  const P12 = 24;   // lado de la piedra (px)
+  // sus doce esquinas, en la posición que encaja (girada 0)
+  const P12_PTS = [[3, 0], [13, 0], [16, 3], [22, 2], [24, 8], [21, 13], [24, 19], [20, 24], [9, 24], [6, 20], [0, 18], [2, 8]];
+  function inPoly(x, y, pts) {
+    let ins = false;
+    for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) {
+      const [xi, yi] = pts[i], [xj, yj] = pts[j];
+      if ((yi > y) !== (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi) ins = !ins;
+    }
+    return ins;
+  }
+  // las cuatro posiciones de la piedra, pixel a pixel (luz de arriba a la izquierda);
+  // hole: la silueta oscura del hueco en el muro
+  const P12_IMG = (() => {
+    const make = (rot, hole) => {
+      const c = document.createElement('canvas'); c.width = c.height = P12; const g = c.getContext('2d');
+      const at = (x, y) => {
+        if (x < 0 || y < 0 || x >= P12 || y >= P12) return false;
+        let u = x + 0.5 - P12 / 2, v = y + 0.5 - P12 / 2;
+        for (let r = 0; r < rot; r++) [u, v] = [v, -u];   // deshace el giro
+        return inPoly(u + P12 / 2, v + P12 / 2, P12_PTS);
+      };
+      for (let y = 0; y < P12; y++) for (let x = 0; x < P12; x++) {
+        if (!at(x, y)) continue;
+        let col;
+        if (hole) col = !at(x - 1, y) || !at(x, y - 1) ? '#5f574a' : '#241c22';
+        else if (!at(x - 1, y) || !at(x + 1, y) || !at(x, y - 1) || !at(x, y + 1)) col = '#2a1f2d';
+        else if (!at(x - 2, y) || !at(x, y - 2)) col = '#c7bdaa';
+        else if (!at(x + 2, y) || !at(x, y + 2)) col = '#7d7464';
+        else col = (x * 7 + y * 13) % 11 === 0 ? '#bdb3a0' : '#a89e8c';
+        g.fillStyle = col; g.fillRect(x, y, 1, 1);
+      }
+      return c;
+    };
+    return { rot: [0, 1, 2, 3].map(r => make(r, false)), hole: make(0, true) };
+  })();
+  class Piedra12 extends Actor {
+    // def: x = dónde está tirada, slot = columna del hueco, door = columna de la puerta, y = fila del suelo, rot = giro inicial
+    constructor(def, level) {
+      super(def.x * TS, def.y * TS - P12, P12, P12);
+      this.level = level; this.ground = def.y * TS; this.homeX = this.x; this.rot0 = def.rot || 2;
+      this.slotX = def.slot * TS; this.doorCol = def.door; this.minX = this.homeX - 3 * TS;
+      // el techo de la piedra es una plataforma: se pisa como un tronco del huaico
+      this.top = { x: this.x, y: this.y, w: P12, h: 4, dx: 0, dy: 0, update() {} };
+      this.fit = false; this.openT = 0; this.t = 0;
+      this.onRespawn();
+      this.setDoor(true);   // la grilla del nivel se comparte entre partidas: se vuelve a cerrar
+    }
+    onRespawn() { if (this.fit) return; this.x = this.homeX; this.rot = this.rot0; this.kick = 0; this.spin = 0; this.wrongT = 0; }
+    setDoor(on) { for (let r = 1; r <= 8; r++) this.level.grid[this.ground / TS - r][this.doorCol] = on ? 'c3puerta' : null; }
+    update(g) {
+      this.t++;
+      if (!g.movers.includes(this.top)) g.movers.push(this.top);
+      if (this.spin > 0) this.spin--;
+      if (this.wrongT > 0) this.wrongT--;
+      const px = this.x, p = g.player;
+      if (this.fit) {
+        if (this.openT < 60) { this.openT++; if (this.openT === 30) { this.setDoor(false); g.audio('rumble'); } }
+      } else {
+        // rebote después de no encajar
+        if (this.kick) { this.x += this.kick; this.kick *= 0.8; if (Math.abs(this.kick) < 0.2) this.kick = 0; }
+        const onTop = p.lastMover === this.top;
+        const beside = !p.riding && p.y + p.h > this.y + 2 && p.y < this.y + this.h;
+        // girar: abajo, pegado a la piedra o parado encima
+        if ((onTop || (beside && p.x + p.w > this.x - 4 && p.x < this.x + this.w + 4)) && Input.pressed('down') && !this.spin) {
+          this.rot = (this.rot + 1) % 4; this.spin = 10; g.audio('click'); g.burst(this.cx, this.y + this.h, 'dust', 6);
+        }
+        // empujar: el niño no la atraviesa; si camina contra ella en el suelo, la mueve
+        if (beside && p.x < this.x + this.w && p.x + p.w > this.x) {
+          const fromLeft = p.cx < this.cx, dir = fromLeft ? 1 : -1;
+          if (p.onGround && Input.held(fromLeft ? 'right' : 'left') && !this.kick) {
+            this.x = Math.max(this.minX, Math.min(this.slotX, this.x + dir * 0.9));
+            if (this.t % 14 === 0) { g.audio('land'); g.burst(fromLeft ? this.x : this.x + this.w, this.ground - 1, 'dust', 2); }
+          }
+          p.x = fromLeft ? this.x - p.w : this.x + this.w; p.vx = 0;
+        }
+        // llegó al hueco
+        if (this.x >= this.slotX - 0.5) {
+          if (this.rot === 0) {
+            this.x = this.slotX; this.fit = true; this.openT = 0;
+            g.audio('encaje'); g.shake(2, 10); g.burst(this.cx, this.cy, 'spark', 22); g.burst(this.cx, this.ground, 'dust', 10);
+          } else { this.kick = -3.2; this.wrongT = 30; g.audio('clank'); g.shake(1, 6); }
+        }
+      }
+      Object.assign(this.top, { x: this.x, y: this.y, dx: this.x - px });
+    }
+    // la portada inca vista de frente: sillares, el hueco de la piedra y la puerta trapezoidal
+    drawBack(ctx) {
+      const G = this.ground, x0 = this.slotX - 10, x1 = (this.doorCol + 2) * TS + 6, top = G - 8 * TS;
+      if (!onScreen(x0, x1 - x0)) return;
+      R(ctx, '#2a1f2d', x0 - 1, top - 1, x1 - x0 + 2, G - top + 1);
+      for (let y = top; y < G; y += TS) for (let x = x0; x < x1; x += TS) {
+        const w = Math.min(TS, x1 - x), h = Math.min(TS, G - y);
+        ctx.drawImage(A3.T.inca, 0, 0, w, h, x, y, w, h);
+      }
+      // el dintel de una sola piedra
+      const dc = (this.doorCol + 0.5) * TS;
+      R(ctx, '#2a1f2d', dc - 19, G - 4 * TS - 7, 38, 9); R(ctx, '#c7bdaa', dc - 18, G - 4 * TS - 6, 36, 7); R(ctx, '#a89e8c', dc - 18, G - 4 * TS - 2, 36, 3);
+      // la puerta: trapecio oscuro; mientras está cerrada, una losa que sube al abrirse
+      const k = Math.min(1, Math.max(0, (this.openT - 20) / 36));
+      for (let r = 0; r < 4 * TS - 2; r++) {
+        const half = Math.round(13 - r * 4 / (4 * TS)), yy = G - 1 - r;
+        R(ctx, '#1d1622', dc - half, yy, half * 2, 1);
+        const slabTop = G - 4 * TS + 2 - Math.round(k * 4 * TS);
+        if (yy >= slabTop && yy < slabTop + 4 * TS - 2 && k < 1) R(ctx, (r + Math.round(k * 4 * TS)) % 12 === 0 ? '#7d7464' : '#958b78', dc - half + 2, yy, half * 2 - 4, 1);
+      }
+      ctx.drawImage(P12_IMG.hole, this.slotX, G - P12);
+    }
+    draw(ctx) {
+      // mal girada, tiembla; al girarla da un saltito
+      const sh = this.wrongT > 0 ? (Math.floor(this.wrongT / 3) % 2 ? 1 : -1) : 0, lift = this.spin > 0 ? -2 : 0;
+      R(ctx, 'rgba(30,20,30,0.35)', this.x + 1, this.ground - 2, P12, 3);
+      ctx.drawImage(P12_IMG.rot[this.rot], Math.round(this.x) + sh, Math.round(this.y) + lift);
+      // bajo la puerta cerrada sigue el empedrado (la grilla lo ve tapado por la columna sólida)
+      if (this.openT < 30) ctx.drawImage(A3.T.cobble, this.doorCol * TS, this.ground);
+    }
+  }
+
   // MANTA DEL MERCADO: el toldo tejido de un puesto; si caes encima, rebotas
   const MANTA = [['#d8432f', '#f6c94a', '#3f7a4c', '#f08a7a', '#3f6fb8'], ['#8a4cc0', '#f0913c', '#c2185b', '#f6c94a', '#5c9f4a'], ['#3f6fb8', '#ffffff', '#d8432f', '#f6c94a', '#2a1f2d']];
   class Awning extends Actor {
@@ -1533,6 +1655,7 @@ const ART3 = (() => {
     wagon: (d) => new Wagon(d),
     trainCondor: (d) => new TrainCondor(d),
     classPhoto: (d) => new ClassPhoto(d),
+    piedra12: (d, level) => new Piedra12(d, level),
   });
   window.CAP3 = { get train() { return currentTrain; }, get balsa() { return currentBalsa; }, ending: ENDING };
 })();
@@ -1598,6 +1721,7 @@ const ART3 = (() => {
     c3pier:   { solid: true, body: T3.pier },
     c3totora: { solid: true, body: T3.totora },
     c3road:   { solid: true, top: T3.road, body: T.dirt },
+    c3puerta: { solid: true },                     // la portada de la piedra de 12 ángulos (la dibuja la entidad)
   });
 
   // ── las casas coloniales de los tejados (sólidas) ─────────────────────────
@@ -1781,8 +1905,11 @@ const ART3 = (() => {
       { type: 'sign3', x: C - 12, y: GC, lines: ['BIENVENIDOS', 'AL CUSCO'], color: 'yellow' },
       // ── EL CUSCO ──
       { type: 'checkpoint', x: C + 5, y: GC },
-      { type: 'sign3', x: C + 15.5, y: GC, lines: ['NO TOCAR LOS', 'MUROS INCAS'], color: 'white', post: 12 },
-      { type: 'tourist', x: C + 9.5, y: GC, v: 0 },
+      { type: 'tourist', x: C + 1.5, y: GC, v: 0 },
+      { type: 'sign3', x: C + 5.7, y: GC, lines: ['NO TOCAR LOS', 'MUROS INCAS'], color: 'white', post: 12 },
+      // LA PIEDRA DE LOS 12 ÁNGULOS: gírala y empújala al hueco para abrir la portada
+      { type: 'piedra12', x: C + 9, y: GC, slot: C + 14, door: C + 17, rot: 2 },
+      { type: 'hint', x: C + 10.5, y: GC, text: ['GÍRALA', 'Y EMPÚJALA'], key: 'down', r: 6, pass: 4, dy: 4, when: (g) => !g.entities.some(e => e.doorCol && e.fit) },
       { type: 'npc', x: C + 21, y: GC, model: 'chullera', lines: ['¡CHULLO DE ALPACA, CASERITO!', '¡BARATITO, BARATITO!'] },
       { type: 'photoLady', x: C + 27, y: GC },
       { type: 'alpaca', x: C + 29.5, y: GC, retireX: V + 60 },
