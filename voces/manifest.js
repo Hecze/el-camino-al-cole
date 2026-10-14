@@ -5,8 +5,6 @@ const VOICE_MANIFEST = {
   tarde:  ['tarde-1.m4a', 'tarde-2.m4a'],                     // el reloj pasa las 8:00 o llegas tarde
   gana:   ['gana-2.m4a'],                                     // llegas a tiempo
   egreso: ['egreso-1.m4a'],                                   // el final de egreso (Cap. 3); vacío: suena 'gana'
-  sube:   ['cobrador-1.m4a'],                                 // el cobrador cuando te subes a la combi (Cap. 2)
-  baja:   ['cobrador-2.m4a'],                                 // el cobrador cuando te bajas
   ambulante: ['ambulante.m4a'],                               // megáfono en bucle del Centro (VOICE.ambient)
 };
 

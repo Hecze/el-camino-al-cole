@@ -569,8 +569,7 @@
     update(g) {
       const px = this.x; this.t++; if (this.sayT > 0) this.sayT--;
       const p = g.player, aboard = p.lastMover === this;
-      if (aboard && !this.wasAboard) { this.shout(g, '¡OYE, AL FONDO HAY SITIO!'); VOICE.play('sube'); g.combiRides = (g.combiRides || 0) + 1; }
-      if (!aboard && this.wasAboard && g.state === 'play') VOICE.play('baja');
+      if (aboard && !this.wasAboard) { this.shout(g, '¡OYE, AL FONDO HAY SITIO!'); g.combiRides = (g.combiRides || 0) + 1; }
       this.wasAboard = aboard;
       const next = this.stops[0];
       if (this.state === 'drive') {
@@ -2542,32 +2541,21 @@
       // casonas y balcones primero: se dibujan detrás de todo lo demás
       ...CASONAS.map(c => ({ type: 'casona', x0: c[0], x1: c[1], top: c[2], col: c[3], sign: c[4] })),
       ...BALCONES.map((b, i) => ({ type: 'balcon', x: b[0], w: b[1], y: b[2], col: ['#5a3418', '#2f5a3a', '#6a3a1a'][i % 3] })),
-      { type: 'checkpoint', x: 494, y: 44, help: 'SÚBETE AL MOTOTAXI Y ACELERA' },
+      { type: 'checkpoint', x: 494, y: 44, help: 'SÚBETE AL MOTOTAXI Y SALTA LAS COMBIS' },
       // ── EN MOTOTAXI ──
       { type: 'avenida', x0: 504, x1: 594, skip: [[521, 532]], panel: 562 },
-      { type: 'contramano', x0: 504, x1: 594 },
       { type: 'npc', x: 497.5, y: 44, model: 'mototaxista', lines: ['¡TE PRESTO MI MOTO, CAUSA!', '¡AL CENTRO, VOLANDO!'] },
       { type: 'motoRide', x: 499, y: 44, model: 'rojo', end: 586 },
       { type: 'hint', x: 500, y: 44, text: '¡SÚBETE AL MOTOTAXI!', arrow: 'down', r: 6, pass: 2, dy: 16, when: (g) => !g.player.riding },
-      { type: 'hint', x: 508, y: ST, text: '¡ACELERA!', key: 'right', r: 4, pass: 4, when: (g) => g.player.riding instanceof MotoRide },
-      { type: 'bache', x: 510 }, { type: 'bache', x: 513.5 },
-      { type: 'rampa', x: 517 },
       { type: 'parkedCombi', x: 521, n: 1, line: '¡SUBE, SUBE, HAY SITIO!' },
       { type: 'hint', x: 518, y: ST, text: 'SALTA', key: 'jump', r: 3, pass: 1, when: (g) => g.player.riding instanceof MotoRide },
       { type: 'tambo', x: 525.5 },
       { type: 'cruce', x: 532 },
-      { type: 'bache', x: 538 }, { type: 'bache', x: 540.5 }, { type: 'bache', x: 543 },
-      { type: 'sign', x: 547, y: ST, lines: ['¡VUELA,', 'CAUSA!'], style: 'board', col: '#f6c94a' },
-      { type: 'rampa', x: 549, big: true, power: 10.5 },
       { type: 'parkedCombi', x: 554, n: 2, line: '¡LIMA, LIMA, LIMA!' }, { type: 'parkedCombi', x: 559, n: 3, line: '¡PIII! ¡QUÉ TRÁFICO!' },
-      { type: 'bache', x: 568 }, { type: 'bache', x: 571 },
       { type: 'cruce', x: 574 },
       // pasajeros en los paraderos de la vereda y la bocina
       ...[507, 529.5, 545, 565, 580.5].map((x, n) => ({ type: 'pasajero', x, n })),
       { type: 'hint', x: 527, y: ST, text: 'BOCINA', key: 'down', r: 4, pass: 2, when: (g) => g.player.riding instanceof MotoRide && !g.honked },
-      // monedas de sol: en el arco de las rampas y en lo alto sobre algunos baches (hay que saltar)
-      ...solArc(517 - 0.7, 3.0, -8.0, [5, 10, 15, 20, 25]),
-      ...solArc(549 - 0.7, 3.45, -10.0, [6, 12, 18, 24, 30, 36]),
       ...solArc(539, 2.6, -7.3, [10, 15, 20]),
       ...solArc(569.5, 2.6, -7.3, [10, 15, 20]),
       { type: 'sign', x: 583, y: ST, lines: ['AL CENTRO NO', 'ENTRAN MOTOTAXIS'], style: 'board' },
