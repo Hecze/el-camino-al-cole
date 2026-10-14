@@ -285,7 +285,7 @@ const GUIA = [
   { type: 'prop', kind: 'gallina', x: 16.5, y: G },
   { type: 'npc', x: 18.5, y: G, model: 'pastor', lines: ['¡BUENOS DÍAS, WAWA!', '¡VAS TARDE, CAUSA!'] },
   // EL QUIPU: la piedra tallada dice en qué orden tocar los cordones
-  { type: 'hint', x: 21, y: G, text: 'EN ESTE ORDEN', arrow: 'down', r: 7, pass: 9, dy: -8, when: (g) => !quipuOpen(g) },
+  { type: 'hint', x: 21, y: G, text: 'EN ESTE ORDEN', r: 7, pass: 9, dy: -8, when: (g) => !quipuOpen(g) },
   { type: 'prop', kind: 'cuy', x: 35.5, y: G },
   { type: 'prop', kind: 'flor', x: 34, y: G }, { type: 'prop', kind: 'gallina', x: 36.5, y: G, flip: true },
   { type: 'npc', x: 41, y: G - 2, model: 'senora', lines: ['¡CHOCLITO CON QUESO, CASERITO!', '¡A UN SOLCITO NOMÁS!'] },

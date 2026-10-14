@@ -2600,7 +2600,7 @@
       { type: 'rutaCombi', x: 469, route: 'CALLAO', to: 461, n: 3 },
       { type: 'rutaCombi', x: 479, route: 'CHORRILLOS', to: 466, n: 2 },
       { type: 'rutaCombi', x: 474, route: 'CENTRO', to: 486, n: 1 },   // la última: se dibuja delante al pasar a las otras
-      { type: 'hint', x: 489, y: ST - 2, text: 'SALTA', key: 'jump', arrow: 'up', r: 4, pass: 1, when: (g) => combiCentro(g) && g.player.lastMover && g.player.lastMover.route === 'CENTRO' },
+      { type: 'hint', x: 489, y: ST - 2, text: 'SALTA', key: 'jump', r: 4, pass: 1, when: (g) => combiCentro(g) && g.player.lastMover && g.player.lastMover.route === 'CENTRO' },
       // ── JR. DE LA UNIÓN ──
       // casonas y balcones primero: se dibujan detrás de todo lo demás
       ...CASONAS.map(c => ({ type: 'casona', x0: c[0], x1: c[1], top: c[2], col: c[3], sign: c[4] })),
