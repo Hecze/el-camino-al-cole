@@ -136,7 +136,15 @@
 
   // efectos que deben oírse sobre las canciones: las bajan un momento (ms)
   const HUSH = { bark: 450, grr: 650 };
-  Game.audio = (name) => { if (HUSH[name]) CORTO.hush(HUSH[name]); AUDIO.play(name); };
+  // ladrido grabado (voces/ladrido.mp3); si no carga, suena el sintetizado
+  const LADRIDO = new Audio('voces/ladrido.mp3'); LADRIDO.preload = 'auto';
+  const SAMPLES = { bark: LADRIDO };
+  Game.audio = (name) => {
+    if (HUSH[name]) CORTO.hush(HUSH[name]);
+    const smp = SAMPLES[name];
+    if (smp && smp.readyState >= 2 && AUDIO.isEnabled()) { const a = smp.cloneNode(); a.volume = 0.9; a.play().catch(() => AUDIO.play(name)); return; }
+    AUDIO.play(name);
+  };
   Game.addScore = (n) => { Game.score += n; };
   Game.shake = (mag, t) => { Game.shakeMag = Math.max(Game.shakeMag, mag); Game.shakeT = Math.max(Game.shakeT, t); };
   Game.near = (x, r) => Game.player && Math.abs(Game.player.cx - x) < r;
