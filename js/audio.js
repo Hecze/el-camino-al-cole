@@ -199,6 +199,8 @@ const AUDIO = (() => {
     whistle: () => { const t = now(); [0, 0.42].forEach((d, i) => { const L = i ? 0.75 : 0.32; tone(740, L, 'triangle', 0.13, t + d); tone(932, L, 'triangle', 0.09, t + d); tone(1109, L, 'sine', 0.05, t + d); noise(L, 0.05, 2200, t + d, { type: 'bandpass', q: 2 }); }); },
     click:   () => { noise(0.03, 0.45, 4200, 0, { type: 'highpass' }); noise(0.04, 0.3, 3000, now() + 0.08, { type: 'highpass' }); },
     clank:   () => { tone(190, 0.18, 'square', 0.14, 0, 90); noise(0.25, 0.35, 1400, 0, { type: 'bandpass', q: 3 }); },
+    // la piedra de 12 ángulos encaja: golpe seco de piedra y un arpegio que sube
+    encaje:  () => { const t = now(); noise(0.18, 0.5, 300, t); tone(90, 0.3, 'sine', 0.35, t, 50); [523, 659, 784, 1046, 1319].forEach((f, i) => tone(f, 0.35, 'triangle', 0.18, t + 0.12 + i * 0.08)); },
     nope:    () => { tone(220, 0.12, 'square', 0.12); tone(165, 0.18, 'square', 0.12, now() + 0.1); },
     win:     () => { [523, 659, 784, 1046, 784, 1046, 1318].forEach((f, i) => tone(f, 0.3, 'triangle', 0.24, now() + 0.15 + i * 0.13)); },
   };
