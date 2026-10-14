@@ -135,7 +135,7 @@
   window.Game = Game;
 
   // efectos que deben oírse sobre las canciones: las bajan un momento (ms)
-  const HUSH = { bark: 450, grr: 650 };
+  const HUSH = { bark: 450, grr: 650, honk: 400 };
   // ladrido grabado (voces/ladrido.mp3); si no carga, suena el sintetizado
   const LADRIDO = new Audio('voces/ladrido.mp3'); LADRIDO.preload = 'auto';
   const SAMPLES = { bark: LADRIDO };

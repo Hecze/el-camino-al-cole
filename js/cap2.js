@@ -116,7 +116,9 @@
     roof:       { solid: true, top: T2.roof, body: T2.brick },
     roofS:      { solid: true, top: T2.roofS, body: T2.stucco },
     steel:      { oneway: true, body: T2.steel },
+    steelDeck:  { solid: true, top: T2.steel, body: T2.steel },   // tablero del puente: no se atraviesa hacia abajo
     conc:       { solid: true, top: T2.concTop, body: T2.conc },
+    concStep:   { solid: true, step: true, top: T2.concTop, body: T2.conc },   // escalón que se sube caminando
     canopy:     { oneway: true, body: T2.canopy },
     paving:     { solid: true, top: T2.paving, body: T2.conc },
     balc:       { oneway: true, body: T2.balc },
@@ -728,10 +730,11 @@
     update() {}
     drawBack(ctx) {
       // viga bajo el tablero
-      R(ctx, '#8a8f99', this.steps[this.steps.length - 1][0] * TS + 48, this.deck + 5, this.x + this.w - this.steps[this.steps.length - 1][0] * TS - 48, 8);
+      const last = this.steps[this.steps.length - 1], endX = (last[0] + last[2]) * TS;
+      R(ctx, '#8a8f99', endX, this.deck + 5, this.x + this.w - endX, 8);
       // pilares y barandas
       R(ctx, '#7d838c', this.x + this.w - 6, this.deck + 4, 4, GR * TS - this.deck - 4);
-      for (const s of this.steps) { R(ctx, '#2b6fb8', s[0] * TS, s[1] * TS - 12, 48, 2); R(ctx, '#2b6fb8', s[0] * TS + 2, s[1] * TS - 12, 1, 12); }
+      for (const s of this.steps) { R(ctx, '#2b6fb8', s[0] * TS, s[1] * TS - 12, s[2] * TS, 2); R(ctx, '#2b6fb8', s[0] * TS + 2, s[1] * TS - 12, 1, 12); }
       R(ctx, '#2b6fb8', this.steps[this.steps.length - 1][0] * TS, this.deck - 12, this.x + this.w - this.steps[this.steps.length - 1][0] * TS, 2);
       for (let x = this.steps[this.steps.length - 1][0] * TS; x < this.x + this.w; x += 6) R(ctx, '#2b6fb8', x, this.deck - 12, 1, 12);
     }
@@ -2346,8 +2349,8 @@
   const BLD = [[830, 846, 43, 'roof'], [847, 860, 35, 'roofS'], [863, 878, 38, 'roof'], [880, 892, 40, 'roofS'],
                [899, 914, 38, 'roof'], [917, 930, 41, 'roofS'], [933, 946, 39, 'roof']];
   const CASONA = 946;   // donde empieza el patio de la casona del concurso
-  // escalones del puente peatonal: macizos (te frenan), de 3 casillas y 2 filas de alto
-  const FB_STEPS = [[283, GR - 2], [286, GR - 4], [289, GR - 6], [292, GR - 8], [295, GR - 10], [298, GR - 12]];
+  // escalones del puente peatonal: 12 bajitos de una fila entre 283 y 301, se suben caminando. [x, fila, ancho]
+  const FB_STEPS = Array.from({ length: 12 }, (_, k) => { const x = 283 + Math.floor(k * 1.5), nx = k === 11 ? 301 : 283 + Math.floor((k + 1) * 1.5); return [x, GR - 1 - k, nx - x]; });
   // la calle del Centro (fila ST) con sus buzones sin tapa: [x, ancho]
   const BUZONES = [[601, 2], [616, 3], [630, 3], [648, 3], [662, 3], [772, 3], [802, 3]];
   const STREET = [594, 830];
@@ -2430,7 +2433,8 @@
       // ── LA PANAMERICANA: la pista sigue por debajo del puente hasta el túnel ──
       [196, GR, 126, H - GR, 'asphalt'],
       [316, GR - 2, 1, 2, 'blockInvis'],                        // boca del túnel: solo entran las combis
-      ...FB_STEPS.map(s => [s[0], s[1], 3, GR - s[1], 'conc']),   // escalera del puente peatonal
+      ...FB_STEPS.map(s => [s[0], s[1], s[2], GR - s[1], 'concStep']),   // escalera del puente peatonal
+      [301, 44, 15, 1, 'steelDeck'],                                      // el tablero: firme, no te deja caer a la pista
       // ── MIRAFLORES: el malecón sobre el acantilado y la playa de la Costa Verde ──
       [316, 44, 36, H - 44, 'malecon'],
       [352, 64, 58, H - 64, 'playa'],
@@ -2438,7 +2442,7 @@
       ...BAJADA_STEPS.map(([x, w, row]) => [x, row, w, H - row, 'bajada']),
       [437, ST, 7, H - ST, 'paving'], [444, ST, 10, 1, 'blockInvis'], [454, ST, 36, H - ST, 'paving'],
       // ── EL CENTRO: sobre el túnel de la Vía Expresa y la calle de lajas ──
-      [490, 44, 14, 10, 'conc'], [496, 54, 8, H - 54, 'conc'],
+      [490, ST, 14, 8, 'conc'], [496, 54, 8, H - 54, 'conc'],   // al mismo nivel que la calle y la avenida
       // la avenida del mototaxi, hasta la entrada del Jr. de la Unión
       [504, ST, 90, H - ST, 'avenida'],
       // el tráfico: combis paradas que se pueden pisar
@@ -2458,15 +2462,11 @@
     platforms: [
       // techo del peaje
       [262, GR - 6, 10, 'canopy'],
-      // escaleras y tablero del puente peatonal
-      [301, 44, 15, 'steel'],
       // balcones del Jr. de la Unión y el tejado de la portada china
       ...BALCONES.map(b => [b[0], b[2], b[1], 'balc']),
       [740, 42, 11, 'tejado'],
     ],
     liquids: [
-      // aniego: la tubería reventó y la pista está inundada
-      [222, GR, 10, 2, 'water', 1],
     ],
     entities: [
       // ── EL DESIERTO ──
@@ -2480,7 +2480,7 @@
       // el oasis de Huacachina
       { type: 'palm', x: 177, y: GR, tall: 54, lean: -0.2 }, { type: 'palm', x: 183, y: GR, tall: 44, lean: 0.25 }, { type: 'palm', x: 188, y: GR, tall: 58, lean: 0.1 }, { type: 'palm', x: 193, y: GR, tall: 40, lean: -0.3 },
       { type: 'sign', x: 181, y: GR, lines: ['HUACACHINA'], style: 'post' },
-      // ── LA PANAMERICANA (corta: un aniego, el peaje y el puente) ──
+      // ── LA PANAMERICANA (corta: el peaje y el puente) ──
       // apenas dejas la tabla (así nunca reapareces a pie en las dunas)
       { type: 'checkpoint', x: 180, y: GR },
       // el bus Ica–Lima (el mismo del capítulo 3): te lleva por la costa hasta el puente peatonal
@@ -2491,8 +2491,6 @@
       { type: 'sign', x: 230, y: GR, lines: ['ASIA', 'PLAYAS DEL SUR'], style: 'board', col: '#9cd3f0' },
       { type: 'sign', x: 240, y: GR, lines: ['PUNTA HERMOSA'], style: 'post' },
       { type: 'vendor', x: 207, y: GR, shout: '¡CHICHA MORADA, CHICHA!', kind: 'chicha' },
-      { type: 'sign', x: 219.5, y: GR, lines: ['¡CUIDADO!', 'ANIEGO'], style: 'board', col: '#f6c94a' },
-      { type: 'geyser', x: 226.5 },
       { type: 'sign', x: 248, y: GR, lines: ['LIMA 12 KM'], style: 'post' },
       { type: 'vendor', x: 252, y: GR, shout: '¡GASEOSA, GALLETA, CHIFLES!', kind: 'cooler' },
       { type: 'peaje', x0: 262, x1: 272, y: GR - 6, price: 'S/ 6.10' },
@@ -2541,12 +2539,12 @@
       // casonas y balcones primero: se dibujan detrás de todo lo demás
       ...CASONAS.map(c => ({ type: 'casona', x0: c[0], x1: c[1], top: c[2], col: c[3], sign: c[4] })),
       ...BALCONES.map((b, i) => ({ type: 'balcon', x: b[0], w: b[1], y: b[2], col: ['#5a3418', '#2f5a3a', '#6a3a1a'][i % 3] })),
-      { type: 'checkpoint', x: 494, y: 44, help: 'SÚBETE AL MOTOTAXI Y SALTA LAS COMBIS' },
+      { type: 'checkpoint', x: 494, y: ST, help: 'SÚBETE AL MOTOTAXI Y SALTA LAS COMBIS' },
       // ── EN MOTOTAXI ──
       { type: 'avenida', x0: 504, x1: 594, skip: [[521, 532]], panel: 562 },
-      { type: 'npc', x: 497.5, y: 44, model: 'mototaxista', lines: ['¡TE PRESTO MI MOTO, CAUSA!', '¡AL CENTRO, VOLANDO!'] },
-      { type: 'motoRide', x: 499, y: 44, model: 'rojo', end: 586 },
-      { type: 'hint', x: 500, y: 44, text: '¡SÚBETE AL MOTOTAXI!', arrow: 'down', r: 6, pass: 2, dy: 16, when: (g) => !g.player.riding },
+      { type: 'npc', x: 497.5, y: ST, model: 'mototaxista', lines: ['¡TE PRESTO MI MOTO, CAUSA!', '¡AL CENTRO, VOLANDO!'] },
+      { type: 'motoRide', x: 499, y: ST, model: 'rojo', end: 586 },
+      { type: 'hint', x: 500, y: ST, text: '¡SÚBETE AL MOTOTAXI!', arrow: 'down', r: 6, pass: 2, dy: 16, when: (g) => !g.player.riding },
       { type: 'parkedCombi', x: 521, n: 1, line: '¡SUBE, SUBE, HAY SITIO!' },
       { type: 'hint', x: 518, y: ST, text: 'SALTA', key: 'jump', r: 3, pass: 1, when: (g) => g.player.riding instanceof MotoRide },
       { type: 'tambo', x: 525.5 },
@@ -2560,8 +2558,8 @@
       ...solArc(569.5, 2.6, -7.3, [10, 15, 20]),
       { type: 'sign', x: 583, y: ST, lines: ['AL CENTRO NO', 'ENTRAN MOTOTAXIS'], style: 'board' },
       { type: 'checkpoint', x: 590, y: ST, help: 'SALTA LOS HUECOS EN EL BORDE' },
-      { type: 'sign', x: 497, y: 46.4, lines: ['AL CENTRO'], style: 'paint', col: '#f6c94a' },
-      { type: 'sign', x: 501, y: 44, lines: ['CENTRO DE LIMA'], style: 'post' },
+      { type: 'sign', x: 497, y: ST + 2.4, lines: ['AL CENTRO'], style: 'paint', col: '#f6c94a' },
+      { type: 'sign', x: 501, y: ST, lines: ['CENTRO DE LIMA'], style: 'post' },
       { type: 'megafono', xs: [597.5, 791.5] },   // el ambulante del Jr. de la Unión y el del Mercado
       { type: 'npc', x: 597.5, y: ST, model: 'ambulante', lines: ['¡CHICLE, CARAMELO, CHUPETÍN!', '¡A SOL NOMÁS, CAUSA!'] },
       { type: 'hint', x: 601.5, y: ST, text: '¡SALTA EL HUECO!', key: 'jump', arrow: 'down', r: 6, pass: 1 },

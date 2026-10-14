@@ -165,7 +165,7 @@ const AUDIO = (() => {
     start:   () => { [440, 523, 659, 880].forEach((f, i) => tone(f, 0.14, 'triangle', 0.24, now() + i * 0.06)); },
     bell:    () => { const t = now(); [0, 0.55, 1.1].forEach(d => { tone(880, 1.6, 'sine', 0.22, t + d); tone(2200, 0.7, 'sine', 0.07, t + d); tone(1318, 1.1, 'triangle', 0.08, t + d); }); },
     // capítulo 2: claxon de combi, ¡ay!, ladrido de perro chusco y "no se puede"
-    honk:    () => { const t = now(); [0, 0.16].forEach(d => { tone(415, 0.13, 'square', 0.12, t + d); tone(523, 0.13, 'square', 0.1, t + d); }); },
+    honk:    () => { const t = now(); [0, 0.16].forEach(d => { tone(415, 0.13, 'square', 0.22, t + d); tone(523, 0.13, 'square', 0.18, t + d); }); },
     // moneda de sol: dos notas cortas y brillantes
     coin:    () => { const t = now(); tone(988, 0.07, 'square', 0.09, t); tone(1319, 0.2, 'square', 0.08, t + 0.07); tone(2637, 0.14, 'sine', 0.05, t + 0.07); },
     ouch:    () => { tone(900, 0.18, 'triangle', 0.22, 0, 500); noise(0.08, 0.2, 3000, 0, { type: 'highpass' }); },

@@ -12,6 +12,7 @@ En `js/cortos.js` ajustas desde qué segundo empieza (`desde`) y cuánto dura (`
 | `mototaxi-el-aguajal.mp3` | Cap. 2, En mototaxi | El aguajal (Los Shapis) |
 | `plaza-marcha-de-banderas.mp3` | Cap. 2, al entrar a la Plaza de Armas (8 s) | Marcha de Banderas |
 | `barriochino-ojitos-chinos.mp3` | Cap. 2, Barrio Chino (se apaga en Las Azoteas) | Ojitos chinos (salsa) |
+| `azoteas-soy-provinciano.mp3` | Cap. 2, Las Azoteas (hasta La Casona) | Soy provinciano, desde el 1:44 |
 | `cusco-valicha.mp3` | Cap. 3, El Cusco | Valicha |
 | `machupicchu-virgenes-del-sol.mp3` | Cap. 3, Machu Picchu | Vírgenes del Sol (cantada) |
 | `intipunku-el-condor-pasa.mp3` | Cap. 3, Inti Punku | El Cóndor Pasa (cantada) |

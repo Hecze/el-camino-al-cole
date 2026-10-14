@@ -13,6 +13,7 @@ const CORTOS = {
   'PLAZA':           { src: 'musica/plaza-marcha-de-banderas.mp3', cap: 2, en: 674, desde: 0, dura: 8 },   // remate frente a Palacio
   'OJITOS CHINOS':   { src: 'musica/barriochino-ojitos-chinos.mp3', cap: 2, en: 725, desde: 0, dura: 240, hasta: 'LAS AZOTEAS' },   // todo Barrio Chino; se apaga al subir a las azoteas
   'EN MOTOTAXI':     { src: 'musica/mototaxi-el-aguajal.mp3', desde: 0, dura: 234, hasta: 674 },   // la canción entera, hasta la Plaza de Armas; ahí entra la Marcha
+  'LAS AZOTEAS':     { src: 'musica/azoteas-soy-provinciano.mp3', desde: 0, dura: 150, hasta: 'LA CASONA' },   // los techos (desde el 1:44 de la canción), hasta la casona
   'EL CUSCO':        { src: 'musica/cusco-valicha.mp3', desde: 0, dura: 30 },
   'MACHU PICCHU':    { src: 'musica/machupicchu-virgenes-del-sol.mp3', desde: 0, dura: 30 },
   'INTI PUNKU':      { src: 'musica/intipunku-el-condor-pasa.mp3', desde: 0, dura: 30 },
