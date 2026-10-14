@@ -576,6 +576,8 @@ const ART4 = (() => {
         this.retired = true; this.vx = 0; const p = this.rider;
         p.syncRide(); p.dismount(g, -5.4); p.x = this.end + 6; p.vx = 1.4;
         g.audio('brake'); g.toast('¡LLEGASTE A PACAYA SAMIRIA!');
+        // el punto de control pasa a la orilla: si no, al morir aquí reaparecías en el río sin bote, una y otra vez
+        g.spawn = { x: this.end + 9 * TS, y: GP * TS }; g.spawnMount = null;   // donde está el punto de control de la restinga
       }
       if (this.retired && this.vx === 0) this.x = Math.min(this.x, this.end - this.w - 2);
       this.pull = 0;

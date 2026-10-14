@@ -424,6 +424,7 @@
     const before = Game.state;
     switch (Game.state) {
       case 'menu': updateMenu(); break;
+      case 'howto': if (Input.pressed('confirm') || Input.pressed('jump')) { AUDIO.play('start'); startGame(0); } else if (Input.pressed('pause')) { AUDIO.play('select'); Game.state = 'menu'; } break;
       case 'controls': if (Input.pressed('confirm') || Input.pressed('jump') || Input.pressed('pause')) { AUDIO.play('select'); Game.state = 'menu'; } break;
       case 'play': updatePlay(); break;
       case 'pause': updatePause(); break;
@@ -473,7 +474,7 @@
     AUDIO.resume();
     const k = MENU_KEYS()[i];
     if (k === 'continue') { AUDIO.play('start'); startGame(savedIdx()); }
-    else if (k === 'new') { AUDIO.play('start'); RANKING.resetProgress(); startGame(0); }
+    else if (k === 'new') { AUDIO.play('select'); RANKING.resetProgress(); Game.state = 'howto'; }   // antes del Cap. 1: cómo se juega
     else if (k === 'chapters') { AUDIO.play('select'); Game.chaptersView = true; }
     else if (k === 'name') { AUDIO.play('select'); RANKING.register(true); }
     else if (k === 'controls') { AUDIO.play('select'); Game.state = 'controls'; }
@@ -714,6 +715,7 @@
     ctx.imageSmoothingEnabled = false;
     if (Game.state === 'menu') { renderMenu(); if (Game.rk) renderRank(); return; }
     if (Game.state === 'controls') { renderMenu(); renderControls(); return; }
+    if (Game.state === 'howto') { renderMenu(); renderHowto(); return; }
     if (Game.state === 'ending') { Game.chapter.ending.draw(ctx, BASE_W, BASE_H, Game.stateT, tick); renderOverlay(); return; }
     const lv = Game.level; if (!lv) return;
 
@@ -1525,6 +1527,20 @@
     }
   }
 
+  // CÓMO SE JUEGA: sale una vez al elegir NUEVO JUEGO, antes del Cap. 1. Lo justo y nada más.
+  function renderHowto() {
+    ctx.fillStyle = 'rgba(11,10,18,0.97)'; ctx.fillRect(0, 0, BASE_W, BASE_H);
+    drawText(ctx, 'CÓMO SE JUEGA', BASE_W / 2, 20, { scale: 2, color: '#ffd166', align: 'center', shadow: true });
+    drawText(ctx, '¡LLEGA AL COLE ANTES DE LAS 8:00!', BASE_W / 2, 50, { color: '#ffffff', align: 'center' });
+    const rows = [['CAMINAR', 'FLECHAS IZQUIERDA Y DERECHA'], ['SALTAR', 'ESPACIO  (O FLECHA ARRIBA)'], ['PAUSA', 'ESC']];
+    rows.forEach((r, i) => {
+      drawText(ctx, r[0], BASE_W / 2 - 8, 74 + i * 15, { color: '#9be7c4', align: 'right' });
+      drawText(ctx, r[1], BASE_W / 2 + 8, 74 + i * 15, { color: '#f4e9d8' });
+    });
+    ['TOCA LA LLAMA PARA MONTARLA.', 'JUNTA LAS 3 HOJAS DE TU TAREA.', 'SI TE CAES, VUELVES AL ÚLTIMO PUNTO.'].forEach((t, i) =>
+      drawText(ctx, t, BASE_W / 2, 128 + i * 12, { color: '#cdbde8', align: 'center' }));
+    if (Math.floor(tick / 30) % 2 === 0) drawText(ctx, 'PULSA ESPACIO PARA EMPEZAR', BASE_W / 2, 186, { color: '#ffd166', align: 'center' });
+  }
   function renderControls() {
     ctx.fillStyle = 'rgba(11,10,18,0.84)'; ctx.fillRect(0, 0, BASE_W, BASE_H);
     drawText(ctx, 'CONTROLES', BASE_W / 2, 20, { scale: 2, color: '#ffd166', align: 'center', shadow: true });
