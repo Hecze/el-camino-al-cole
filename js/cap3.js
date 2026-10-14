@@ -2387,6 +2387,7 @@ const ART3 = (() => {
     [AC + 2, ROOF, 15 * TILE, 58, paintStation('AGUAS CALIENTES')],
     [AC + 134, 40, 44, 52, paintIntiPunku],
   ];
+  const MP_FOTO = new Image(); MP_FOTO.src = 'img/machu-picchu.png';
   function renderBack3(ctx, g) {
     const cam = g.cam, vw = VIEW.w;
     const vis = (x, w) => x + w > cam.x - 8 && x < cam.x + vw + 8;
@@ -2395,11 +2396,17 @@ const ART3 = (() => {
     // el lomo, encima del camino del final; se mueve lento (está lejos)
     if (cam.x > (AC + 92) * TILE) {
       // ancha para que no se le vean los bordes; se mueve casi con la cámara (está lejos)
-      const PW = 920, PH = 250, refCam = (AC + 172) * TILE - vw / 2;   // la cámara en la foto de la promo
-      const post = cached('postal', PW, PH, paintPostal);
+      const refCam = (AC + 172) * TILE - vw / 2;   // la cámara en la foto de la promo
       // aparece de a poco al acercarte, como si se despejara la neblina
       ctx.globalAlpha = Math.min(1, (cam.x - (AC + 92) * TILE) / (18 * TILE));
-      ctx.drawImage(post, Math.round(refCam + vw / 2 - PW / 2 + (cam.x - refCam) * 0.9), 40 * TILE - 138);
+      if (MP_FOTO.complete && MP_FOTO.naturalWidth) {
+        // la foto de verdad (img/machu-picchu.png, 480×270): casi fija en pantalla, con la
+        // ciudadela asomando sobre el camino y el Huayna Picchu arriba
+        ctx.drawImage(MP_FOTO, Math.round(cam.x - (480 - vw) / 2 - (cam.x - refCam) * 0.02), 40 * TILE - 155);
+      } else {
+        const PW = 920, PH = 250, post = cached('postal', PW, PH, paintPostal);   // mientras carga: la postal dibujada
+        ctx.drawImage(post, Math.round(refCam + vw / 2 - PW / 2 + (cam.x - refCam) * 0.9), 40 * TILE - 138);
+      }
       ctx.globalAlpha = 1;
     }
     // mar de nubes a los pies del Camino Inca
