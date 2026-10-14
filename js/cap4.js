@@ -555,7 +555,7 @@ const ART4 = (() => {
         const held = Input.held('jump') || Input.held('up');
         this.vy += held && this.vy < 0 ? 0.3 : 0.42;
         // el motor: tac-tac-tac y su humito
-        if (this.t % (this.vx > 3 ? 9 : 14) === 0) g.audio('engine');
+        if (this.t % (this.vx > 3 ? 24 : 32) === 0) g.audio('engine');
         if (this.t % 6 === 0) g.particles.push({ x: this.x - 2, y: this.y - 6, vx: -0.6, vy: -0.4, life: 40, max: 40, col: '#c8c2cc', size: 2, grav: -0.006 });
       } else {
         this.vx *= 0.85; this.vy += 0.42;
@@ -1227,8 +1227,8 @@ const ART4 = (() => {
     // cada tramo trae su fondo, que se funde con el anterior
     bgZones: [
       // desde el malecón: el río ancho, la otra orilla y el arcoíris
-      { x0: 104, x1: 116, anchorRow: GI, sky: SELVA_SKY, layers: [
-        { kind: 'river', build: riverFar, color: '#c49a62', color2: '#a8804e', y: GI + 1.2, parallax: 0.1, vpar: 0.14 },
+      { x0: 97, x1: 106, anchorRow: GI, sky: SELVA_SKY, layers: [
+        { kind: 'river', build: riverFar, color: '#c49a62', color2: '#a8804e', y: GI - 1.4, parallax: 0.1, vpar: 0.14 },
         { kind: 'clouds', color: '#ffffff', parallax: 0.05, count: 9, seed: 3 },
       ] },
       // Belén: el Itaya y las casas de la otra orilla
@@ -1373,10 +1373,11 @@ const ART4 = (() => {
       { type: 'checkpoint', x: 641, y: GP }, { type: 'checkpoint', x: 663, y: GP }, { type: 'checkpoint', x: 686, y: GP },
       { type: 'page', x: 684.5, y: GP - 7 },
       // ── AGUAS NEGRAS ──
+      { type: 'espejo', x0: AN, x1: ES },
       { type: 'paiche', x: 716, wl: W, ph: 0, hint: true }, { type: 'paiche', x: 721, wl: W, ph: 250 },
       { type: 'paiche', x: 743, wl: W, ph: 0 }, { type: 'paiche', x: 748, wl: W, ph: 255 }, { type: 'paiche', x: 753, wl: W, ph: 210 },
       { type: 'paiche', x: 771, wl: W, ph: 100 },
-      { type: 'anaconda', x: 731.5, y: 61, low: DK }, { type: 'anaconda', x: 765, y: 61, low: DK },
+      { type: 'anaconda', x: 731.5, y: 63, low: DK }, { type: 'anaconda', x: 765, y: 63, low: DK },
       { type: 'help', x0: AN, x1: ES, kind: 'water', text: 'ESPERA LAS BURBUJAS: EL PAICHE VA A SUBIR' },
       { type: 'help', x0: AN, x1: ES, kind: 'anaconda', text: 'DEJA QUE LA ANACONDA ATAQUE Y PASA' },
       ...[711, 725, 738, 758, 776].map(x => ({ type: 'checkpoint', x, y: DK })),
@@ -1471,7 +1472,13 @@ const ART4 = (() => {
     R(g, '#2a1f2d', cx - 10, 86, 20, 20); R(g, '#3f6fb8', cx - 9, 87, 18, 18); R(g, '#d8432f', cx - 3, 93, 6, 6); R(g, '#f6c94a', cx - 1, 95, 2, 2);
     R(g, '#2a1f2d', cx - 13, H2 - 50, 26, 50); R(g, '#6b4524', cx - 12, H2 - 48, 24, 48);
     for (let r = 0; r < 8; r++) R(g, '#2a1f2d', cx - 12 + r * 1.5, H2 - 56 + r, 24 - r * 3, 1);
-    for (const k of [-34, 26]) { R(g, '#2a1f2d', cx + k, 120, 9, 26); R(g, '#3f6fb8', cx + k + 1, 121, 7, 24); }
+    // pilastras y ventanas ojivales con vitral
+    for (let k = 68; k < W2 - 8; k += 46) { R(g, hi, k, 72, 5, H2 - 72); R(g, dk, k + 5, 72, 1, H2 - 72); }
+    for (const k of [-38, 28]) {
+      R(g, '#2a1f2d', cx + k, 116, 11, 32); R(g, '#3f6fb8', cx + k + 1, 118, 9, 30); R(g, '#d8432f', cx + k + 3, 126, 5, 5); R(g, '#f6c94a', cx + k + 4, 136, 3, 3);
+      for (let r = 0; r < 5; r++) R(g, '#2a1f2d', cx + k + 1 + r, 116 - r, 9 - r * 2, 1);
+    }
+    R(g, dk, 61, H2 - 22, W2 - 66, 2);   // zócalo
     // la torre del reloj, con su aguja
     const tx = 6, tw = 50;
     R(g, '#2a1f2d', tx, 40, tw, H2 - 40); R(g, st, tx + 1, 41, tw - 2, H2 - 41); R(g, hi, tx + 1, 41, 3, H2 - 41);
@@ -1653,6 +1660,23 @@ const ART4 = (() => {
     }
     if (CAP4.flash > 0) { ctx.fillStyle = 'rgba(255,255,255,' + (CAP4.flash / 14 * 0.6).toFixed(2) + ')'; ctx.fillRect(0, 0, VIEW.w, VIEW.h); }
   }
+
+  // LA SELVA DE LOS ESPEJOS: en la cocha de aguas negras se refleja el bosque
+  // (va después del agua, como una entidad más; solo donde hay agua)
+  EXTRA_ENTITIES.espejo = (d) => ({
+    x: d.x0 * TILE, y: W * TILE, w: (d.x1 - d.x0) * TILE, h: 64, update() {},
+    draw(ctx, g) {
+      const wl = W * TILE + 4, x0 = Math.max(this.x, Math.floor(g.cam.x / 4) * 4), x1 = Math.min(this.x + this.w, g.cam.x + VIEW.w);
+      for (let x = x0; x < x1; x += 4) {
+        if (!liquidKind(g.level.tile(Math.floor(x / TILE), W))) continue;
+        const h = 14 + Math.floor(hash((x >> 3) + 7) * 12 + Math.abs(Math.sin(x * 0.02)) * 10);
+        for (let y = 3; y < h; y += 2) {
+          const off = Math.round(Math.sin(y * 0.5 + g.T * 0.04 + x * 0.01) * 1.2);
+          ctx.fillStyle = 'rgba(63,122,76,' + (0.2 * (1 - y / h)).toFixed(3) + ')'; ctx.fillRect(x + off, wl + y, 4, 2);
+        }
+      }
+    },
+  });
 
   // ═══════════════════════════════════════════════════════════════════════════
   //  MÚSICA: cumbia amazónica (guitarra eléctrica con su "wah", timbal y
