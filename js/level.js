@@ -18,6 +18,7 @@ const TILE_SPECS = {
   branch:    { oneway: true, body: T.branch },
   trunk:     { oneway: true, body: T.trunk },     // tronco caído flotando
   ropeBridge:{ oneway: true },                       // lo dibuja la entidad del puente
+  tranquera: { solid: true },                        // la dibuja la entidad del quipu (y la quita al abrirse)
   swampTop:  { liquid: 'swamp' }, swampBody: { liquid: 'swamp' },
   waterTop:  { liquid: 'water' }, waterBody: { liquid: 'water' },
   mudTop:    { liquid: 'mud' },   mudBody:   { liquid: 'mud' },
@@ -274,15 +275,19 @@ const sx = (lx) => SV + lx;
 
 // ── GUÍA (js/guide.js): pistas antes de cada mecánica nueva, gente que habla,
 // escenario que reacciona y ayudas si te caes seguido en el mismo tramo ─────
+const quipuOpen = (g) => g.entities.some(e => e instanceof Quipu && e.open);
 const onFoot = (g) => !g.player.riding, onLlama = (g) => g.player.riding instanceof Llama, onGoat = (g) => g.player.riding instanceof Cabra;
 const GUIA = [
   // EL VALLE
   { type: 'npc', x: 2.75, y: G, model: 'mama', ghost: true, r: 9, lines: ['¡YA SON LAS SEIS Y VEINTE, HIJITO!', '¡NO TE OLVIDES TU TAREA!'] },
   { type: 'hint', x: 10.5, y: G, text: '¡SÚBETE A LA LLAMA!', key: 'right', arrow: 'down', r: 10, pass: 1, dy: 22, when: onFoot },
   { type: 'hint', x: 13.5, y: G, text: 'SALTA', key: 'jump', r: 3, pass: 1.5, when: onLlama },
-  { type: 'prop', kind: 'gallina', x: 18, y: G }, { type: 'prop', kind: 'cuy', x: 22, y: G },
-  { type: 'npc', x: 26, y: G, model: 'pastor', lines: ['¡BUENOS DÍAS, WAWA!', '¡VAS TARDE, CAUSA!'] },
-  { type: 'prop', kind: 'flor', x: 29, y: G }, { type: 'prop', kind: 'gallina', x: 35, y: G, flip: true },
+  { type: 'prop', kind: 'gallina', x: 16.5, y: G },
+  { type: 'npc', x: 18.5, y: G, model: 'pastor', lines: ['¡BUENOS DÍAS, WAWA!', '¡VAS TARDE, CAUSA!'] },
+  // EL QUIPU: la piedra tallada dice en qué orden tocar los cordones
+  { type: 'hint', x: 21, y: G, text: 'EN ESTE ORDEN', arrow: 'down', r: 7, pass: 9, dy: -8, when: (g) => !quipuOpen(g) },
+  { type: 'prop', kind: 'cuy', x: 35.5, y: G },
+  { type: 'prop', kind: 'flor', x: 34, y: G }, { type: 'prop', kind: 'gallina', x: 36.5, y: G, flip: true },
   { type: 'npc', x: 41, y: G - 2, model: 'senora', lines: ['¡CHOCLITO CON QUESO, CASERITO!', '¡A UN SOLCITO NOMÁS!'] },
   { type: 'prop', kind: 'olla', x: 44, y: G - 2, bonus: 1 },
   { type: 'hint', x: 47, y: G - 4, text: '¡TU TAREA!', arrow: 'down', r: 6, pass: 0.5, dy: 4, item: 'page' },
@@ -366,7 +371,6 @@ const LEVEL = {
     // ── EL VALLE ──
     [0, G, 38, 6, 'grass'],
     [15, G - 1, 1, 1, 'pirca'],
-    [31, G - 2, 1, 2, 'pirca'],
     [38, G - 2, 12, 8, 'grass'],
     [46, G - 3, 1, 1, 'pirca'], [47, G - 4, 1, 2, 'pirca'],
     // el cañón (x 50–63): paredes de roca hasta el río del fondo
@@ -416,6 +420,8 @@ const LEVEL = {
     // la casa del niño, con mamá en la puerta
     { type: 'house', x: 0, y: G },
     { type: 'llama', x: 10, y: G },
+    // la tranquera del quipu (donde antes había una pirca): toca rojo, verde y amarillo
+    { type: 'quipu', x: 31, y: G, qx: 23.5, sx: 21, cords: [[24.75, 'amarillo'], [26.5, 'rojo'], [28.25, 'verde']], order: ['rojo', 'verde', 'amarillo'] },
     { type: 'bridge', x0: 50, x1: 64, row: G - 2 },
     { type: 'cabra', x: 91, y: G },
     // puntos de control invisibles: uno al pie del cerro, junto a la cabra (si un

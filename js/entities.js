@@ -938,7 +938,112 @@ class Checkpoint extends Actor {
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
-
+// EL QUIPU: una tranquera cierra el camino. Junto a ella cuelga un quipu de
+// cordones de colores y una piedra tallada muestra el orden. Toca los cordones
+// en ese orden (saltando bajo cada uno) y la tranquera se abre. Si te equivocas,
+// suena el error y la cuenta vuelve a empezar. Abierta, queda abierta.
+const QUIPU_COLS = { rojo: ['#d8432f', '#8f2418'], amarillo: ['#f6c94a', '#b88a14'], verde: ['#4caa4a', '#2a6e30'] };
+class Quipu extends Actor {
+  // def: x = columna de la puerta (centro), y = fila del suelo, qx = poste del quipu,
+  //      sx = piedra tallada, cords = [[columna, color]...] de izquierda a derecha, order = colores en orden
+  constructor(def, level) {
+    super((def.x - 1.5) * TS, (def.y - 7) * TS, 4 * TS, 7 * TS);
+    this.level = level; this.col = Math.floor(def.x); this.ground = def.y * TS;
+    this.qx = def.qx * TS; this.sx = def.sx * TS; this.order = def.order;
+    this.cords = def.cords.map(([cx, color]) => ({ x: cx * TS, color, lit: false, touch: false, sh: 0 }));
+    this.step = 0; this.open = false; this.openT = 0; this.wrongT = 0; this.t = 0;
+    this.setBars(true);   // la grilla del nivel se comparte entre partidas: se vuelve a cerrar
+  }
+  // la tranquera es invisible para la grilla: una columna sólida hasta arriba del dintel
+  setBars(on) { for (let r = 1; r <= 7; r++) this.level.grid[this.ground / TS - r][this.col] = on ? 'tranquera' : null; }
+  cordBottom() { return this.ground - 40; }
+  update(g) {
+    this.t++;
+    if (this.wrongT > 0) this.wrongT--;
+    for (const c of this.cords) if (c.sh > 0) c.sh--;
+    if (this.open) { if (this.openT < 40) { this.openT++; if (this.openT === 12) this.setBars(false); } return; }
+    const p = g.player, top = this.ground - 82, bot = this.cordBottom();
+    for (const c of this.cords) {
+      const t = p.x < c.x + 3 && p.x + p.w > c.x - 3 && p.y < bot && p.y + p.h > top;
+      if (t && !c.touch) this.pull(g, c);
+      c.touch = t;
+    }
+  }
+  pull(g, c) {
+    c.sh = 14;
+    if (c.lit) return;   // volver a tocar uno que ya está bien no cuenta como error
+    if (c.color === this.order[this.step]) {
+      c.lit = true; this.step++; g.audio('coin'); g.burst(c.x, this.cordBottom(), 'spark', 8);
+      if (this.step === this.order.length) {
+        this.open = true; this.openT = 0; g.audio('checkpoint'); g.audio('creak');
+        g.burst(this.cx, this.ground - 40, 'spark', 24); g.shake(1, 8);
+      }
+    } else {
+      g.audio('nope'); this.wrongT = 30; this.step = 0;
+      for (const k of this.cords) { k.lit = false; k.sh = 16; }
+    }
+  }
+  draw(ctx) {
+    const G = this.ground, x0 = Math.round(this.x), t = this.t;
+    // la portada de pirca, vista de frente: dos pilares y el dintel de madera
+    for (const px of [x0 - 8, x0 + 4 * TS - 8]) for (let r = 1; r <= 6; r++) ctx.drawImage(T.pirca, px, G - r * TS);
+    ctx.fillStyle = '#3a2412'; ctx.fillRect(x0 - 10, G - 7 * TS + 4, 4 * TS + 20, 12);
+    ctx.fillStyle = '#8a5a30'; ctx.fillRect(x0 - 9, G - 7 * TS + 5, 4 * TS + 18, 4);
+    ctx.fillStyle = '#6b4524'; ctx.fillRect(x0 - 9, G - 7 * TS + 9, 4 * TS + 18, 6);
+    // bajo la tranquera cerrada el pasto sigue (la grilla lo ve tapado por la columna sólida)
+    if (!this.open || this.openT < 12) ctx.drawImage(T.grass, this.col * TS, G);
+    // la tranquera: dos hojas de palos que se abren hacia ti (se angostan contra los pilares)
+    const k = this.open ? Math.min(1, this.openT / 24) : 0, leaf = Math.round((2 * TS - 8) * (1 - k * 0.85));
+    const shake = this.wrongT > 0 && !this.open ? (Math.floor(this.wrongT / 2) % 2 ? 1 : -1) : 0;
+    const hy = G - 6 * TS + 1, hh = 6 * TS - 1;
+    for (const side of [-1, 1]) {
+      const lx = side < 0 ? x0 + 8 + shake : x0 + 4 * TS - 8 - leaf + shake;
+      ctx.fillStyle = '#5a3a1e';
+      ctx.fillRect(lx, hy, 3, hh); ctx.fillRect(lx + leaf - 3, hy, 3, hh);   // largueros
+      for (let y = hy + 6; y < G - 2; y += 12) { ctx.fillStyle = '#5a3a1e'; ctx.fillRect(lx, y, leaf, 4); ctx.fillStyle = '#9b663b'; ctx.fillRect(lx, y, leaf, 2); }
+      // la cruz de refuerzo
+      ctx.fillStyle = '#7a4f28';
+      for (let i = 0; i < hh; i += 2) { const fx = Math.round(i / hh * (leaf - 3)); ctx.fillRect(side < 0 ? lx + fx : lx + leaf - 3 - fx, hy + i, 2, 2); }
+    }
+    // el palo y la cuerda madre del quipu, del poste al pilar
+    const qx = this.qx, beamY = G - 84;
+    ctx.fillStyle = '#5a3a1e'; ctx.fillRect(qx - 2, beamY - 6, 4, G - beamY + 6);
+    ctx.fillStyle = '#8a5a30'; ctx.fillRect(qx - 2, beamY - 6, 1, G - beamY + 6);
+    const sag = (x) => Math.round(Math.sin(Math.PI * (x - qx) / (x0 - 8 - qx)) * 4);
+    for (let x = qx; x < x0 - 6; x++) { ctx.fillStyle = '#c8a86a'; ctx.fillRect(x, beamY + sag(x), 1, 2); }
+    // los cordones: se mecen, y los que ya contaste llevan nudos y brillan
+    for (const c of this.cords) {
+      const [col, dark] = QUIPU_COLS[c.color], y0 = beamY + sag(c.x) + 1, len = this.cordBottom() - y0;
+      const sw = c.sh > 0 ? Math.round(Math.sin(c.sh * 0.9) * 2) : Math.round(Math.sin(t * 0.04 + c.x) * 0.6);
+      for (let i = 0; i < len; i++) {
+        const cx = Math.round(c.x + sw * i / len);
+        ctx.fillStyle = this.wrongT > 0 && Math.floor(this.wrongT / 4) % 2 ? '#ffffff' : (i % 4 < 2 ? col : dark);
+        ctx.fillRect(cx - 1, y0 + i, 2, 1);
+      }
+      const bx = Math.round(c.x + sw);
+      if (c.lit) {
+        for (const ky of [12, 22, 32]) { ctx.fillStyle = dark; ctx.fillRect(bx - 2, y0 + ky, 4, 3); }
+        ctx.fillStyle = 'rgba(255,240,170,' + (0.35 + Math.sin(t * 0.15) * 0.15).toFixed(2) + ')';
+        ctx.fillRect(bx - 3, y0, 6, len);
+      }
+      ctx.fillStyle = dark; ctx.fillRect(bx - 2, this.cordBottom() - 3, 4, 4);   // la borla
+      ctx.fillStyle = col; ctx.fillRect(bx - 1, this.cordBottom() - 3, 2, 3);
+    }
+    // la piedra tallada con el orden: tres círculos de colores (los ya hechos brillan)
+    const sx = Math.round(this.sx), sy = G - 22;
+    ctx.fillStyle = '#2a1f2d'; ctx.fillRect(sx - 18, sy, 36, 22); ctx.fillRect(sx - 19, sy + 2, 38, 20);
+    ctx.fillStyle = '#9a92a6'; ctx.fillRect(sx - 17, sy + 1, 34, 21); ctx.fillRect(sx - 18, sy + 3, 36, 19);
+    ctx.fillStyle = '#bdb6c8'; ctx.fillRect(sx - 16, sy + 1, 32, 2);
+    ctx.fillStyle = '#6d6680'; ctx.fillRect(sx - 18, G - 3, 36, 3);
+    this.order.forEach((name, i) => {
+      const [col, dark] = QUIPU_COLS[name], cx = sx - 11 + i * 11, cy = sy + 10;
+      if (i < this.step || this.open) { ctx.fillStyle = '#fff3c4'; ctx.fillRect(cx - 5, cy - 4, 10, 8); ctx.fillRect(cx - 4, cy - 5, 8, 10); }
+      ctx.fillStyle = dark; ctx.fillRect(cx - 4, cy - 3, 8, 6); ctx.fillRect(cx - 3, cy - 4, 6, 8);
+      ctx.fillStyle = col; ctx.fillRect(cx - 3, cy - 2, 6, 4); ctx.fillRect(cx - 2, cy - 3, 4, 6);
+      if (i < 2) { ctx.fillStyle = '#4a4458'; ctx.fillRect(cx + 5, cy, 2, 1); }   // flechita: luego el siguiente
+    });
+  }
+}
 
 // La hoja gigante del platanal de la cumbre: tómala y salta al vacío.
 class Leaf extends Actor {
@@ -1561,6 +1666,7 @@ function makeEntity(def, level) {
     case 'bridge': return new Bridge(def);
     case 'outdoorClass': return new OutdoorClass(def.x, def.y);
     case 'leaf': return new Leaf(def.x, def.y);
+    case 'quipu': return new Quipu(def, level);
     case 'eagle': return new Eagle(def);
     case 'page': return new Pickup('page', def.x, def.y);
     case 'coca': return new Pickup('coca', def.x, def.y);
