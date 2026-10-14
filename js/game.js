@@ -180,6 +180,7 @@
   };
   Game.playerEnvDeath = (kind) => {
     if (Game.state !== 'play') return;
+    if (Game.level.rescue && Game.level.rescue(Game, kind)) return;   // el nivel puede salvarte (p. ej. caer al agua junto al muelle)
     const p = Game.player, a = p.riding || p;
     if (kind === 'water') { AUDIO.play('splash'); Game.burst(a.cx, a.y + a.h, 'splash', 18); }
     else if (kind === 'mud') AUDIO.play('drown');

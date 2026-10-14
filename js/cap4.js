@@ -574,7 +574,8 @@ const ART4 = (() => {
       // llegó al embarcadero de la reserva: te bajas de un brinco
       if (this.rider && !this.retired && this.x + this.w > this.end && this.onGround) {
         this.retired = true; this.vx = 0; const p = this.rider;
-        p.syncRide(); p.dismount(g, -5.4); p.x = this.end + 6; p.vx = 1.4;
+        // te deja parado sobre el muelle (antes saltabas y a veces caías al agua justo en el borde)
+        p.syncRide(); p.dismount(g, 0); p.x = this.end + 2 * TS; p.y = DK * TS - p.h; p.vx = 0; p.vy = 0;
         g.audio('brake'); g.toast('¡LLEGASTE A PACAYA SAMIRIA!');
         // el punto de control pasa a la orilla: si no, al morir aquí reaparecías en el río sin bote, una y otra vez
         g.spawn = { x: this.end + 9 * TS, y: GP * TS }; g.spawnMount = null;   // donde está el punto de control de la restinga
@@ -1256,6 +1257,17 @@ const ART4 = (() => {
         { kind: 'clouds', color: '#ffffff', parallax: 0.05, count: 9, seed: 9 },
       ] },
     ],
+    // caer al agua junto al muelle de Pacaya Samiria no mata: te deja en el muelle y guarda el avance
+    rescue(g, kind) {
+      const p = g.player;
+      if (kind !== 'water' || p.cx < (PS - 12) * TS || p.cx > (PS + 6) * TS) return false;
+      if (p.riding) p.dismount(g, 0);
+      p.x = (PS + 2) * TS; p.y = DK * TS - p.h; p.vx = 0; p.vy = 0; p.invuln = 40;
+      g.spawn = { x: (PS + 9) * TS, y: GP * TS }; g.spawnMount = null;
+      for (const e of g.entities) if (e instanceof PequePeque) e.retired = true;
+      g.toast('¡LLEGASTE A PACAYA SAMIRIA!');
+      return true;
+    },
     zones: [
       { x: 0,   name: 'IQUITOS',        music: 'c4iquitos' },
       { x: 110, name: 'EL MALECÓN',     music: 'c4iquitos' },
