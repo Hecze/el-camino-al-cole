@@ -17,6 +17,11 @@ const CORTOS = {
   'LAS AZOTEAS':     { src: 'musica/azoteas-soy-provinciano.mp3', desde: 0, dura: 150, hasta: 'LA CASONA' },   // los techos (desde el 1:44 de la canción), hasta la casona
   'EL CUSCO':        { src: 'musica/cusco-valicha.mp3', desde: 0, dura: 30 },
   'VALLE SAGRADO':   { src: 'musica/valle-sagrado.mp3', desde: 0, dura: 1800, vuelta: true },   // Alborada: se repite del valle hasta la foto final (sin cortes)
+  // Cap. 4, cumbia amazónica: cada canción entera, repetida hasta el tramo siguiente que tiene la suya
+  'IQUITOS':         { src: 'musica/iquitos-ya-se-ha-muerto-mi-abuelo.mp3', desde: 0, dura: 1800, vuelta: true },   // Juaneco y su Combo; sigue por El Malecón
+  'BELÉN':           { src: 'musica/belen-sonido-amazonico.mp3', desde: 0, dura: 1800, vuelta: true },              // Los Wembler's de Iquitos
+  'EL AMAZONAS':     { src: 'musica/amazonas-mujer-hilandera.mp3', desde: 0, dura: 1800, vuelta: true },           // Juaneco y su Combo, en el peque-peque
+  'PACAYA SAMIRIA':  { src: 'musica/pacaya-vacilando-con-ayahuasca.mp3', desde: 0, dura: 1800, vuelta: true },     // Juaneco y su Combo; sigue por Aguas Negras y La Estación
   'FINAL':           { src: 'musica/final-contigo-peru.mp3', desde: 0, dura: 40 },
   // Capítulo 4 (la Amazonía): aún sin cortos. Sus tramos (la clave es el nombre) son
   // 'IQUITOS', 'EL MALECÓN', 'BELÉN', 'EL AMAZONAS', 'PACAYA SAMIRIA', 'AGUAS NEGRAS'

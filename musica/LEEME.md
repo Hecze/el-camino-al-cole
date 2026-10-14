@@ -18,3 +18,9 @@ En `js/cortos.js` ajustas desde qué segundo empieza (`desde`) y cuánto dura (`
 
 Si falta un archivo, ese momento sigue con la música del juego.
 Para quitar todos los cortos: deja `const CORTOS = {};` en `js/cortos.js` y borra esta carpeta.
+
+## Cap. 4 (La Amazonía)
+- iquitos-ya-se-ha-muerto-mi-abuelo.mp3 — Ya se ha muerto mi abuelo (Juaneco y su Combo). Iquitos y El Malecón.
+- belen-sonido-amazonico.mp3 — Sonido amazónico (Los Wembler's de Iquitos). Belén.
+- amazonas-mujer-hilandera.mp3 — Mujer hilandera (Juaneco y su Combo). El Amazonas.
+- pacaya-vacilando-con-ayahuasca.mp3 — Vacilando con ayahuasca (Juaneco y su Combo). Pacaya Samiria hasta La Estación.
