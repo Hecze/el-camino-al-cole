@@ -2497,7 +2497,7 @@
       ...BAJADA_STEPS.map(([x, w, row]) => [x, row, w, H - row, 'bajada']),
       [437, ST, 7, H - ST, 'paving'], [444, ST, 10, 1, 'blockInvis'], [454, ST, 36, H - ST, 'paving'],
       // el muro de la Vía Expresa: muy alto para saltarlo desde la calle; desde el techo de la combi sí
-      [490, ST - 6, 4, 4, 'conc'],
+      [490, ST - 6, 4, 6, 'conc'],
       // ── EL CENTRO: sobre el túnel de la Vía Expresa y la calle de lajas ──
       [490, ST, 14, 8, 'conc'], [496, 54, 8, H - 54, 'conc'],   // al mismo nivel que la calle y la avenida
       // la avenida del mototaxi, hasta la entrada del Jr. de la Unión
