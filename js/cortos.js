@@ -18,6 +18,9 @@ const CORTOS = {
   'MACHU PICCHU':    { src: 'musica/machupicchu-virgenes-del-sol.mp3', desde: 0, dura: 30 },
   'INTI PUNKU':      { src: 'musica/intipunku-el-condor-pasa.mp3', desde: 0, dura: 30 },
   'FINAL':           { src: 'musica/final-contigo-peru.mp3', desde: 0, dura: 40 },
+  // Capítulo 4 (la Amazonía): aún sin cortos. Sus tramos (la clave es el nombre) son
+  // 'IQUITOS', 'EL MALECÓN', 'BELÉN', 'EL AMAZONAS', 'PACAYA SAMIRIA', 'AGUAS NEGRAS'
+  // y 'LA ESTACIÓN'; 'FINAL' suena también en el cierre del Cap. 4 (y en el egreso del Cap. 3).
 };
 
 const CORTO = (() => {

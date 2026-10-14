@@ -1570,7 +1570,8 @@ const ART3 = (() => {
     ctx.globalAlpha = 1;
   }
   const ENDING = {
-    frames: SC[SC.length - 1], music: 'c3condor',
+    // con un capítulo después (la Amazonía) los créditos van al final de ese: aquí termina en "¡HOY EGRESAS!"
+    get frames() { return CHAPTERS[3] ? SC[3] : SC[4]; }, music: 'c3condor',
     // la voz del egreso: un clip 'egreso' de voces/manifest.js; si no hay, la de ganar
     start() { VOICE.play(VOICE_MANIFEST.egreso && VOICE_MANIFEST.egreso.length ? 'egreso' : 'gana', 700); },
     skip(t) { return SC.find(s => s > t + 1) || SC[SC.length - 1]; },
