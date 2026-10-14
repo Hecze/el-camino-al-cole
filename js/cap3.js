@@ -2369,7 +2369,8 @@ const ART3 = (() => {
     // la plaza principal
     for (let y = SAD + 2; y < SAD + 16; y++) for (let x = 104 + (y - SAD); x < 188; x++) px(nz(x, y) < 0.15 ? '#6f9a32' : '#88b442', x, y);
     // un poco de neblina abajo
-    for (let i = 0; i < 3; i++) { g.fillStyle = 'rgba(235,240,245,' + (0.18 + i * 0.1) + ')'; g.fillRect(X0, H - 10 + i * 3, W, 3); }
+    // abajo se funde en la neblina del mar de nubes (no queda un borde recto colgando)
+    for (let y = H - 100; y < H; y++) { g.fillStyle = 'rgba(232,238,244,' + Math.min(1, ((y - H + 100) / 60) ** 1.5).toFixed(3) + ')'; g.fillRect(X0, y, W, 1); }
   }
 
   // piezas del decorado: [x en casillas, fila del suelo, ancho y alto (px), pintor, ajuste x, ajuste y]
@@ -2392,11 +2393,14 @@ const ART3 = (() => {
     // Machu Picchu: el pico y la ciudadela tienen algo de parallax (están lejos)
     // la postal completa: Huayna Picchu, la falda de los cerros y la ciudadela sobre
     // el lomo, encima del camino del final; se mueve lento (está lejos)
-    if (cam.x > (AC + 100) * TILE) {
+    if (cam.x > (AC + 92) * TILE) {
       // ancha para que no se le vean los bordes; se mueve casi con la cámara (está lejos)
-      const PW = 920, PH = 150, refCam = (AC + 172) * TILE - vw / 2;   // la cámara en la foto de la promo
+      const PW = 920, PH = 250, refCam = (AC + 172) * TILE - vw / 2;   // la cámara en la foto de la promo
       const post = cached('postal', PW, PH, paintPostal);
-      ctx.drawImage(post, Math.round(refCam + vw / 2 - PW / 2 + (cam.x - refCam) * 0.9), 40 * TILE - PH + 12);
+      // aparece de a poco al acercarte, como si se despejara la neblina
+      ctx.globalAlpha = Math.min(1, (cam.x - (AC + 92) * TILE) / (18 * TILE));
+      ctx.drawImage(post, Math.round(refCam + vw / 2 - PW / 2 + (cam.x - refCam) * 0.9), 40 * TILE - 138);
+      ctx.globalAlpha = 1;
     }
     // mar de nubes a los pies del Camino Inca
     if (cam.x > (AC + 30) * TILE - vw) for (let i = 0; i < 26; i++) {
