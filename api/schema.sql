@@ -6,9 +6,12 @@ CREATE TABLE IF NOT EXISTS runs (
   chapter    INTEGER NOT NULL,
   started_at INTEGER NOT NULL,          -- ms epoch, hora del servidor
   ip_hash    TEXT NOT NULL,             -- sha-256(ip + sal), nunca la IP
-  finished   INTEGER NOT NULL DEFAULT 0
+  finished   INTEGER NOT NULL DEFAULT 0,
+  player_id  TEXT,                      -- uuid anónimo del navegador (opcional): cuenta jugadores
+  player_name TEXT                      -- nombre con el que se registró (opcional)
 );
 CREATE INDEX IF NOT EXISTS runs_by_ip ON runs (ip_hash, started_at);
+CREATE INDEX IF NOT EXISTS runs_by_day ON runs (started_at);
 
 CREATE TABLE IF NOT EXISTS scores (
   id         INTEGER PRIMARY KEY AUTOINCREMENT,

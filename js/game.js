@@ -200,6 +200,7 @@
     Game.arrival = clockMinutes();
     Game.runMs = performance.now() - Game.runStart - Game.pausedMs;
     Game.state = 'win'; Game.stateT = 0; Game.winSel = 0;
+    RANKING.saveChapter(Math.min(Game.chapterIdx + 1, CHAPTERS.length - 1));   // CONTINUAR apunta al siguiente
     AUDIO.stopMusic(); AUDIO.play('bell'); AUDIO.play('win');
     VOICE.play(Game.arrival < CLASS_START ? 'gana' : 'tarde', 900);
   };
@@ -238,7 +239,7 @@
     if (ch.onStart) ch.onStart(Game);   // contadores propios del capítulo
     // cronómetro real para el ranking (las pausas no cuentan) y ticket de la partida
     Game.runStart = performance.now(); Game.pausedMs = 0; Game.runMs = 0; Game.rankResult = null; Game.shareMsg = null;
-    if (typeof RANKING !== 'undefined') RANKING.start(ch.num);
+    if (typeof RANKING !== 'undefined') { RANKING.start(ch.num); RANKING.saveChapter(ci); }
     for (const def of lv.entities) { const e = makeEntity(def, lv); if (e) { Game.entities.push(e); if (e.isMover) Game.movers.push(e); } }
     for (const e of Game.entities.slice()) if (e instanceof Huaico) { Game.huaico = e; e.prefill(Game); }
     const px = lv.spawn.x * TILE + 4, py = lv.spawn.y * TILE - 15;
@@ -451,20 +452,21 @@
     return [clamp(r, 0, 1), clamp(m, 0, 1), clamp(j, 0, 1)];
   }
 
-  // la primera fila del menú es el selector de capítulo (izquierda/derecha elige)
-  // (RANKING solo aparece si la API del ranking está configurada)
+  // menú: CONTINUAR (si hay partida guardada), NUEVO JUEGO, CAPÍTULOS (el selector de tarjetas),
+  // CONTROLES, RANKING (solo con API) y SONIDO; abajo, "HOLA, <NOMBRE>" para cambiar el nombre
   const rankOn = () => typeof RANKING !== 'undefined' && RANKING.enabled();
-  const MENU_KEYS = () => ['play', 'controls', ...(rankOn() ? ['ranking'] : []), 'sound'];
-  const MENU_LABEL = { play: 'JUGAR', controls: 'CONTROLES', ranking: 'RANKING' };
-  const MENU_OPTS = () => MENU_KEYS().map(k => MENU_LABEL[k] || (AUDIO.isEnabled() ? 'SONIDO: SÍ' : 'SONIDO: NO'));
-  const MENU_Y = 150, MENU_DY = 16, CARDS_Y = 104;
+  const savedIdx = () => { const s = RANKING.saved(); return s != null && CHAPTERS[s] ? s : null; };
+  const MENU_KEYS = () => [...(savedIdx() != null ? ['continue'] : []), 'new', 'chapters', 'controls', ...(rankOn() ? ['ranking'] : []), 'sound', ...(RANKING.name() ? ['name'] : [])];
+  const MENU_LABEL = { new: 'NUEVO JUEGO', chapters: 'CAPÍTULOS', controls: 'CONTROLES', ranking: 'RANKING' };
+  const menuLabel = k => k === 'continue' ? 'CONTINUAR (CAP. ' + (savedIdx() + 1) + ')' : k === 'name' ? 'HOLA, ' + RANKING.name().toUpperCase() : MENU_LABEL[k] || (AUDIO.isEnabled() ? 'SONIDO: SÍ' : 'SONIDO: NO');
+  const MENU_Y = 94, MENU_DY = 15, CARDS_Y = 104;
   function menuActivate(i) {
     AUDIO.resume();
     const k = MENU_KEYS()[i];
-    if (k === 'play') {
-      if (CHAPTERS[Game.menuChapter]) { AUDIO.play('start'); startGame(Game.menuChapter); }
-      else { AUDIO.play('nope'); Game.lockedT = 24; }   // aún no existe: la tarjeta tiembla
-    }
+    if (k === 'continue') { AUDIO.play('start'); startGame(savedIdx()); }
+    else if (k === 'new') { AUDIO.play('start'); RANKING.resetProgress(); startGame(0); }
+    else if (k === 'chapters') { AUDIO.play('select'); Game.chaptersView = true; }
+    else if (k === 'name') { AUDIO.play('select'); RANKING.register(true); }
     else if (k === 'controls') { AUDIO.play('select'); Game.state = 'controls'; }
     else if (k === 'ranking') {
       AUDIO.play('select');
@@ -474,13 +476,19 @@
   }
   function updateMenu() {
     if (Game.lockedT > 0) Game.lockedT--;
+    if (Game.chaptersView) {
+      const d = (Input.pressed('right') ? 1 : 0) - (Input.pressed('left') ? 1 : 0);
+      if (d) { Game.menuChapter = mod(Game.menuChapter + d, CHAPTER_SLOTS); Game.lockedT = 0; AUDIO.play('select'); }
+      if (Input.pressed('pause') || Input.pressed('down')) { Game.chaptersView = false; AUDIO.play('select'); }
+      else if (Input.pressed('confirm') || Input.pressed('jump')) {
+        if (CHAPTERS[Game.menuChapter]) { AUDIO.play('start'); Game.chaptersView = false; startGame(Game.menuChapter); }
+        else { AUDIO.play('nope'); Game.lockedT = 24; }   // aún no existe: la tarjeta tiembla
+      }
+      return;
+    }
     const n = MENU_KEYS().length;
     if (Input.pressed('up')) { Game.menuSel = (Game.menuSel + n - 1) % n; AUDIO.play('select'); }
     if (Input.pressed('down')) { Game.menuSel = (Game.menuSel + 1) % n; AUDIO.play('select'); }
-    if (Game.menuSel === 0) {
-      const d = (Input.pressed('right') ? 1 : 0) - (Input.pressed('left') ? 1 : 0);
-      if (d) { Game.menuChapter = mod(Game.menuChapter + d, CHAPTER_SLOTS); Game.lockedT = 0; AUDIO.play('select'); }
-    }
     if (Input.pressed('confirm') || Input.pressed('jump')) menuActivate(Game.menuSel);
   }
   // pantalla final: pasar al siguiente capítulo o volver al menú
@@ -1444,24 +1452,30 @@
     const ts = BASE_W < 260 ? 2 : 3;   // en pantallas angostas (celular vertical) el título es más chico
     drawText(ctx, 'LA MARATÓN', BASE_W / 2, 34 + bob, { scale: ts, color: '#ffd166', align: 'center', shadow: true, shadowColor: '#5a2a12' });
     drawText(ctx, 'DE LOS ANDES', BASE_W / 2, (ts === 3 ? 60 : 54) + bob, { scale: ts, color: '#ffd166', align: 'center', shadow: true, shadowColor: '#5a2a12' });
-    // el objetivo del capítulo elegido
-    const chSel = CHAPTERS[Game.menuChapter];
-    const goal = chSel ? (BASE_W < 260 ? chSel.goalShort : chSel.goal) : '¡MUY PRONTO!';
-    drawText(ctx, goal, BASE_W / 2, (ts === 3 ? 90 : 78) + bob, { color: '#fff3d6', align: 'center', shadow: true, shadowColor: '#00000088' });
-    // en vertical se juega mejor girando el teléfono
-    if (BASE_H > BASE_W) drawText(ctx, '¡GIRA EL TELÉFONO!', BASE_W / 2, MENU_Y + (MENU_KEYS().length - 1) * MENU_DY + 10, { color: '#ffd166', align: 'center', shadow: true, shadowColor: '#000000' });
-    renderChapterCards(ts === 3 ? CARDS_Y : CARDS_Y - 10);
-    MENU_OPTS().forEach((o, i) => {
-      if (i === 0) return;   // "JUGAR" es el selector de capítulos
-      const sel = i === Game.menuSel, y = MENU_Y + (i - 1) * MENU_DY;
-      drawText(ctx, o, BASE_W / 2, y, { color: sel ? '#ffffff' : '#e7d3c4', align: 'center', shadow: true, shadowColor: '#00000099' });
+    if (Game.chaptersView) {
+      // el objetivo del capítulo elegido
+      const chSel = CHAPTERS[Game.menuChapter];
+      const goal = chSel ? (BASE_W < 260 ? chSel.goalShort : chSel.goal) : '¡MUY PRONTO!';
+      drawText(ctx, goal, BASE_W / 2, (ts === 3 ? 90 : 78) + bob, { color: '#fff3d6', align: 'center', shadow: true, shadowColor: '#00000088' });
+      renderChapterCards(ts === 3 ? CARDS_Y : CARDS_Y - 10);
+      drawText(ctx, BASE_W < 300 ? 'A: JUGAR   ABAJO: VOLVER' : 'ESPACIO: JUGAR   ESC / ABAJO: VOLVER', BASE_W / 2, BASE_H - 14, { color: '#fff3d6', align: 'center', shadow: true, shadowColor: '#000000' });
+      return;
+    }
+    const keys = MENU_KEYS(), top = ts === 3 ? MENU_Y : MENU_Y - 8;
+    keys.forEach((k, i) => {
+      const sel = i === Game.menuSel, name = k === 'name', main = k === 'continue';
+      const y = name ? BASE_H - 14 : top + i * MENU_DY, o = menuLabel(k);
+      const col = sel ? '#ffffff' : main ? '#ffd166' : name ? '#cdbde8' : '#e7d3c4';
+      drawText(ctx, o, BASE_W / 2, y, { color: col, align: 'center', shadow: true, shadowColor: '#00000099' });
       if (sel) { const w = textWidth(o); drawText(ctx, '>', BASE_W / 2 - w / 2 - 12, y, { color: '#ffd166' }); drawText(ctx, '<', BASE_W / 2 + w / 2 + 6, y, { color: '#ffd166' }); }
     });
+    // en vertical se juega mejor girando el teléfono
+    if (BASE_H > BASE_W) drawText(ctx, '¡GIRA EL TELÉFONO!', BASE_W / 2, top + keys.filter(k => k !== 'name').length * MENU_DY + 6, { color: '#ffd166', align: 'center', shadow: true, shadowColor: '#000000' });
   }
   // SELECTOR DE CAPÍTULO: una tarjeta por capítulo (los que faltan, con candado).
   // En pantallas angostas se ve solo la elegida, con flechas a los lados.
   function renderChapterCards(y) {
-    const active = Game.menuSel === 0, narrow = BASE_W < 320;
+    const active = true, narrow = BASE_W < 320;
     const cw = narrow ? Math.min(130, BASE_W - 44) : 100, chh = 30, gap = 8;
     const idx = narrow ? [Game.menuChapter] : [...Array(CHAPTER_SLOTS).keys()];
     let x = Math.round(BASE_W / 2 - (idx.length * cw + (idx.length - 1) * gap) / 2);
@@ -1563,6 +1577,8 @@
     const firstGesture = () => { AUDIO.resume(); if (Game.state === 'menu') AUDIO.playMusic(SONGS.menu); window.removeEventListener('keydown', firstGesture); };
     window.addEventListener('keydown', firstGesture);
     debugFromURL();
+    const sv = RANKING.saved(); if (sv != null && CHAPTERS[sv]) Game.menuChapter = sv;
+    if (Game.state === 'menu' && !RANKING.name()) RANKING.register();   // primera vez: una sola pregunta
     requestAnimationFrame(frame);
   }
   // modo de prueba solo por URL: ?cap=2 entra directo al capítulo 2 y
