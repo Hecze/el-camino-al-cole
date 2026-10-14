@@ -7,7 +7,7 @@ En `js/cortos.js` ajustas desde qué segundo empieza (`desde`) y cuánto dura (`
 |---|---|---|
 | `valle-mi-valentin.mp3` | Cap. 1, El Valle y El Apu (se apaga al llegar al huaico) | Mi Valentín (William Luna) |
 | `selva-danza-de-los-mirlos.mp3` | Cap. 1, La Selva | La danza de los mirlos |
-| `panamericana-toro-mata.mp3` | Cap. 2, La Panamericana | Toro mata |
+| `panamericana-toro-mata.mp3` | Cap. 2, La Panamericana | Toro mata (Eva Ayllón), desde el 4:13 |
 | `barranco-puente-de-los-suspiros.mp3` | Cap. 2, Barranco | El puente de los suspiros |
 | `mototaxi-el-aguajal.mp3` | Cap. 2, En mototaxi | El aguajal (Los Shapis) |
 | `plaza-marcha-de-banderas.mp3` | Cap. 2, al entrar a la Plaza de Armas (8 s) | Marcha de Banderas |
