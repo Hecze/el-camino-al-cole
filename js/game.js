@@ -39,9 +39,10 @@
   let tick = 0;
 
   // ── la hora del día ──────────────────────────────────────────────────────
-  // Sales de casa a las 6:20 con el sol saliendo; la clase empieza a las 8:00.
-  // Cada segundo de juego son 18 segundos del reloj (≈5 min 30 s para llegar).
-  // (cada capítulo puede salir a otra hora con dayStart)
+  // Sales de casa con el sol saliendo; la clase empieza a las 8:00. Cada
+  // segundo de juego son 18 segundos del reloj: saliendo a las 6:20 hay ≈5 min
+  // 30 s para llegar (cada capítulo puede salir a otra hora con dayStart; el
+  // Cap. 1, más largo, sale a las 5:40: ≈7 min 47 s).
   const DAY_START_DEFAULT = 6 * 60 + 20, CLASS_START = 8 * 60, CLOCK_RATE = 0.3;
   let DAY_START = DAY_START_DEFAULT;
   const SKY_DAWN = ['#2e2f63', '#c46f8a', '#ffb877'], SKY_MORNING = ['#4f86c6', '#9cc8e8', '#f6dcb0'];
@@ -188,6 +189,11 @@
     else if (kind === 'rock') { AUDIO.play('crush'); Game.shake(4, 12); Game.burst(a.cx, a.cy, 'rock', 14); }
     else if (kind === 'combi' || kind === 'buggy' || kind === 'carretilla' || kind === 'bici') { AUDIO.play('crush'); AUDIO.play('honk'); Game.shake(4, 12); Game.burst(a.cx, a.cy, 'dust', 18); }
     else if (kind === 'cactus' || kind === 'rebar') { AUDIO.play('ouch'); Game.shake(2, 8); Game.burst(a.cx, a.cy, 'spark', 12); }
+    else if (kind === 'lake') { AUDIO.play('splash'); AUDIO.play('snap'); Game.burst(a.cx, a.y + a.h, 'splash', 18); Game.burst(a.cx, a.y + a.h, 'paper', 10); }
+    else if (kind === 'remolino') { AUDIO.play('drown'); Game.burst(a.cx, a.y + a.h, 'splash', 18); }
+    else if (kind === 'cohete') { AUDIO.play('crush'); AUDIO.play('snap'); Game.shake(3, 10); Game.burst(a.cx, a.cy, 'spark', 20); }
+    else if (kind === 'tijeras') { AUDIO.play('clank'); AUDIO.play('crush'); Game.shake(2, 8); Game.burst(a.cx, a.cy, 'dust', 12); }
+    else if (kind === 'mono') { AUDIO.play('shout'); AUDIO.play('fall'); Game.burst(a.cx, a.cy, 'leaf', 12); }
     else if (kind === 'dog') { AUDIO.play('bark'); AUDIO.play('crush'); Game.shake(3, 10); Game.burst(a.cx, a.cy, 'dust', 14); }
     else AUDIO.play('fall');
     Game.deaths++; Game.lastDeath = kind; Game.state = 'respawn'; Game.stateT = 0;
@@ -446,7 +452,7 @@
       const dx = p.cx < X0 ? X0 - p.cx : p.cx > X1 ? p.cx - X1 : 0;
       const dy = Math.max(0, Math.abs(p.cy - wl) - 40);
       const d = Math.hypot(dx, dy);
-      if (L.kind === 'water') r = Math.max(r, 1 - d / 230); else if (L.kind === 'mud') m = Math.max(m, 1 - d / 300); else j = Math.max(j, 1 - d / 260);
+      if (L.kind === 'water' || L.kind === 'lake') r = Math.max(r, 1 - d / 230); else if (L.kind === 'mud') m = Math.max(m, 1 - d / 300); else j = Math.max(j, 1 - d / 260);
     }
     return [clamp(r, 0, 1), clamp(m, 0, 1), clamp(j, 0, 1)];
   }
@@ -930,6 +936,8 @@
   const LIQ = {
     water: { foam: '#ffffff', hi: '#d2f6f2', bands: ['#6fd6dc', '#4fbad0', '#3597bb', '#27739f', '#1d5683'], streak: ['#b4f0f0', '#8cdde6', '#69c2da', '#4ba0c6', '#3780ad'], speed: 1.0, amp: 1, chunks: null },
     swamp: { foam: '#c8ebd2', hi: '#7fae8c', bands: ['#3f6b55', '#30594a', '#24473b', '#1a372e', '#122822'], streak: ['#5a8a6c', '#4a7a5c', '#3a6a4c', '#2a5a3c', '#1a4a2c'], speed: 0, amp: 0.5, chunks: null },
+    // la laguna del Apu: turquesa, casi quieta y helada
+    lake:  { foam: '#ffffff', hi: '#e2fbf8', bands: ['#7fe0d6', '#4fc4c0', '#2f9aa6', '#22788e', '#185a72'], streak: ['#c4f4ef', '#9be6e0', '#6fcfd0', '#4caeb8', '#3790a0'], speed: 0.3, amp: 0.6, chunks: null },
     mud:   { foam: '#f0d6a8', hi: '#d6a56a', bands: ['#a8723c', '#8c5a2e', '#704623', '#56351a', '#3f2512'], streak: ['#dcae74', '#c2905a', '#a47546', '#875d36', '#6b4628'], speed: 1.3, amp: 1.7, chunks: ['#3a2414', '#5d5768', '#2a1f2d', '#6e4627'] },
   };
   const BAND_H = [5, 8, 12, 16, 9999];
@@ -1131,7 +1139,7 @@
         if (r2 > 0.7) { ctx.fillStyle = Pl.hi; ctx.fillRect(ix + 1, fy + 1, Math.max(1, len - 2), 1); }
       }
       // 5) destellos de sol (solo agua)
-      if (L.kind === 'water') for (let i = 0; i < W / 20; i++) {
+      if (L.kind === 'water' || L.kind === 'lake') for (let i = 0; i < W / 20; i++) {
         const ph = Math.floor(t / 5) + i * 3;
         if (hash(ph * 7 + i + L.x) > 0.8) {
           const gx = X0 + Math.floor(hash(ph * 3 + i * 17) * W), gy = wl + surf(gx, t, flow) + 2 + Math.floor(hash(ph + i) * 6);

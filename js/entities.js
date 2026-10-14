@@ -8,6 +8,8 @@ const PHYS = {
   LLAMA_MAX: 3.2, LLAMA_JUMP: -7.5,
   // cabra: rebote algo más alto y más lento (sube ~93 px, 1,45 salientes)
   GOAT_MAX: 2.6, GOAT_JUMP: -8.4, GOAT_GRAV: 0.38, GOAT_FALL: 5.2,
+  // hielo: se acelera despacio y casi no se frena (la rapidez máxima es la misma)
+  ICE_ACCEL: 0.13, ICE_FRICTION: 0.018,
 };
 
 function moveX(a, level) {
@@ -128,10 +130,13 @@ class Player extends Actor {
 
     let ax = 0;
     const left = Input.held('left'), right = Input.held('right');
-    const accel = this.onGround ? PHYS.RUN_ACCEL : PHYS.AIR_ACCEL;
+    // sobre el hielo de la laguna cuesta arrancar y más cuesta frenar: resbalas
+    const ice = this.onGround && this.onIce(level);
+    const accel = this.onGround ? (ice ? PHYS.ICE_ACCEL : PHYS.RUN_ACCEL) : PHYS.AIR_ACCEL;
     if (left && !right) { ax = -accel; this.facing = -1; }
     else if (right && !left) { ax = accel; this.facing = 1; }
-    if (ax !== 0) this.vx += ax; else this.vx *= (this.onGround ? 1 - PHYS.FRICTION : 0.985);
+    if (ax !== 0) this.vx += ax; else this.vx *= (this.onGround ? 1 - (ice ? PHYS.ICE_FRICTION : PHYS.FRICTION) : 0.985);
+    if (ice && Math.abs(this.vx) > 1.2 && (ax === 0 || Math.sign(ax) !== Math.sign(this.vx)) && this.animT % 4 === 0) g.burst(this.cx, this.y + this.h, 'paper', 1);   // escarcha al patinar
     // planeando no hay límite de carrera: se aplica el del parapente más abajo
     const runMax = PHYS.RUN_MAX * (g.soroche ? 0.72 : 1);   // con soroche caminas más lento
     if (!(this.gliding && !this.onGround)) this.vx = Math.max(-runMax, Math.min(runMax, this.vx));
@@ -222,6 +227,14 @@ class Player extends Actor {
     const mx = level.cols * TS - this.w; if (this.x > mx) { this.x = mx; this.vx = 0; }
   }
 
+  // ¿pisa hielo? (el de la laguna o una placa delgada)
+  onIce(level) {
+    if (this.lastMover instanceof IcePlate) return true;
+    const row = Math.floor((this.y + this.h + 1) / TS);
+    for (const px of [this.x + 1, this.x + this.w - 1]) { const s = tileSpec(level.tile(Math.floor(px / TS), row)); if (s && s.ice) return true; }
+    return false;
+  }
+
   syncRide() {
     const l = this.riding; if (!l) return;
     this.facing = l.facing;
@@ -245,12 +258,13 @@ class Player extends Actor {
   checkLiquids(g) {
     const level = g.level;
     const pts = [[this.x + 2, this.y + this.h - 2], [this.x + this.w - 2, this.y + this.h - 2], [this.cx, this.cy]];
-    let inWater = false, inMud = false;
+    let inWater = false, inMud = false, inLake = false;
     for (const [px, py] of pts) {
       const k = liquidAt(level, px, py);
-      if (k === 'water') inWater = true; else if (k === 'mud') inMud = true;
+      if (k === 'water') inWater = true; else if (k === 'mud') inMud = true; else if (k === 'lake') inLake = true;
     }
     if (inWater) { g.playerEnvDeath('water'); return; }
+    if (inLake) { g.playerEnvDeath('lake'); return; }
     if (!this.swimming && this.swimCd <= 0 && pts.some(([px, py]) => liquidAt(level, px, py) === 'swamp')) {
       // agua quieta de la selva: no te mata, nadas (despacio) mientras los caimanes se acercan
       this.swimming = true; this.vx *= 0.3; this.vy = Math.min(this.vy, 1); this.gliding = false;
@@ -1647,6 +1661,557 @@ class Bridge extends Actor {
   }
 }
 
+// ═════════════════════════════════════════════════════════════════════════════
+// EL PUEBLO: la fiesta patronal. Al alba revientan los cohetes de la alborada,
+// los danzantes de tijeras bailan en la calle y en la plaza arde el castillo.
+// ═════════════════════════════════════════════════════════════════════════════
+const FIESTA_COLS = ['#d8432f', '#f6c94a', '#3f6fb8', '#c2185b', '#93a84a', '#f0913c'];
+// fuegos artificiales: una lluvia de chispas de colores que caen despacio
+function fireworkBurst(g, x, y, n) {
+  const col = FIESTA_COLS[Math.floor(Math.random() * FIESTA_COLS.length)];
+  for (let i = 0; i < n; i++) {
+    const a = (i / n) * Math.PI * 2, sp = 1.2 + Math.random() * 1.4;
+    g.particles.push({ x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, life: 34 + Math.random() * 14, max: 48, col: Math.random() < 0.25 ? '#fff6b0' : col, size: Math.random() < 0.4 ? 2 : 1, grav: 0.03 });
+  }
+}
+
+// La escenografía del pueblo: casitas al fondo, la iglesia, el castillo de
+// fuegos, el arco de salida, banderines y las puertas y ventanas de las casas
+// que se cruzan por los techos. No colisiona.
+class Pueblo extends Actor {
+  constructor(def) {
+    super(0, 0, 1, 1);
+    this.d = def; this.t = 0; this.ground = G * TS;
+  }
+  update(g) {
+    this.t++;
+    // el castillo: sus ruedas sueltan chispas y de rato en rato dispara un cohete al cielo
+    const cx = this.d.castillo * TS + 8;
+    if (Math.abs(g.player.cx - cx) > 420) return;
+    if (this.t % 3 === 0) for (const k of [0, 1]) {
+      const wy = this.ground - 70 - k * 38, a = this.t * 0.25 + k * 2;
+      g.particles.push({ x: cx + Math.cos(a) * 10, y: wy + Math.sin(a) * 10, vx: Math.cos(a) * 1.2, vy: Math.sin(a) * 1.2, life: 14, max: 14, col: k ? '#fff6b0' : '#f6c94a', size: 1, grav: 0.05 });
+    }
+    if (this.t % 150 === 75) { this.rocket = { x: cx, y: this.ground - 130, vy: -5 }; if (g.near(cx, 300)) g.audio('swish'); }
+    const r = this.rocket;
+    if (r) {
+      r.y += r.vy; r.vy *= 0.97;
+      g.particles.push({ x: r.x + (Math.random() - 0.5) * 2, y: r.y + 4, vx: 0, vy: 0.4, life: 12, max: 12, col: '#ffd166', size: 1, grav: 0 });
+      if (r.vy > -1.6) { fireworkBurst(g, r.x, r.y, 22); if (g.near(r.x, 300)) g.audio('snap'); this.rocket = null; }
+    }
+  }
+  drawBack(ctx, g) {
+    const R = (c, x, y, w, h) => { ctx.fillStyle = c; ctx.fillRect(Math.round(x), Math.round(y), w, h); };
+    const gy = this.ground, cam = g.cam;
+    const vis = (x0, x1) => x1 > cam.x - 20 && x0 < cam.x + VIEW.w + 20;
+    // casitas al fondo, más pálidas por la bruma del amanecer
+    for (let i = 0; i < 9; i++) {
+      const hx = (2 + i * 11 + (i % 3) * 2) * TS, w = 56 + (i % 2) * 14, h = 34 + (i % 3) * 8;
+      const libre = (c, r) => hx + w < c - r || hx > c + r;   // no se tapan con la iglesia, el castillo ni el arco
+      if (!vis(hx, hx + w) || (hx > 28 * TS && hx < 64 * TS) || !libre(this.d.iglesia * TS, 96) || !libre(this.d.arco * TS, 50)) continue;   // donde están las casas de verdad no hace falta
+      R('#d9cdb8', hx, gy - h, w, h); R('#c4b69c', hx, gy - h, w, 2);
+      for (let k = 0; k < 7; k++) R(k % 2 ? '#a86a4a' : '#b8795a', hx - 4 + k, gy - h - 7 + k, w + 8 - k * 2, 1);   // tejado
+      R('#5c7fa8', hx + w / 2 - 5, gy - 18, 10, 18); R('#8a9cb4', hx + 8, gy - h + 10, 7, 7); R('#8a9cb4', hx + w - 15, gy - h + 10, 7, 7);
+    }
+    // LA IGLESIA del pueblo: fachada blanca con dos campanarios
+    const ix = this.d.iglesia * TS;
+    if (vis(ix - 90, ix + 90)) {
+      R('#efe2c8', ix - 56, gy - 96, 112, 96);
+      for (const tx of [ix - 80, ix + 52]) {
+        R('#efe2c8', tx, gy - 128, 28, 128); R('#d9c8a8', tx + 24, gy - 128, 4, 128);
+        R('#2a1f2d', tx + 8, gy - 116, 12, 16); R('#f6c94a', tx + 11, gy - 108, 6, 6);   // la campana
+        for (let k = 0; k < 10; k++) R('#c7ad86', tx + 14 - k * 1.5, gy - 138 + k, k * 3, 1);   // cúpula
+        R('#f6c94a', tx + 13, gy - 148, 2, 10); R('#f6c94a', tx + 10, gy - 145, 8, 2);   // cruz
+      }
+      R('#d9c8a8', ix - 56, gy - 96, 112, 3);
+      for (let k = 0; k < 14; k++) R('#efe2c8', ix - k * 4, gy - 110 + k, k * 8, 1);   // frontón
+      R('#f6c94a', ix - 1, gy - 120, 2, 10); R('#f6c94a', ix - 4, gy - 117, 8, 2);
+      R('#6b4524', ix - 14, gy - 44, 28, 44); R('#8a5a30', ix - 12, gy - 42, 11, 42); R('#8a5a30', ix + 1, gy - 42, 11, 42);   // portón
+      R('#5a3a1e', ix - 16, gy - 48, 32, 4);
+      R('#9cc7f0', ix - 6, gy - 82, 12, 16); R('#3f6fb8', ix - 1, gy - 82, 2, 16);   // ventana
+    }
+    // EL CASTILLO: torre de carrizo con figuras de colores y ruedas de fuego
+    const cx = this.d.castillo * TS + 8;
+    if (vis(cx - 40, cx + 40)) {
+      const top = gy - 124;
+      for (const sx of [-14, 14]) R('#8a6a3a', cx + sx - 1, top, 2, gy - top);
+      for (let y = top + 6, k = 0; y < gy - 4; y += 14, k++) {
+        R('#a8844a', cx - 14, y, 28, 1);
+        for (let i = 0; i < 12; i++) R('#7a5a2a', cx - 13 + i * 2.2, y + 1 + i, 1, 1);   // la diagonal de cada piso
+        // en cada piso, una figura de papel de colores
+        const col = FIESTA_COLS[k % FIESTA_COLS.length];
+        R(col, cx - 4, y + 4, 8, 6); R('#fff6b0', cx - 1, y + 6, 2, 2);
+        if (Math.floor(this.t / 8 + k) % 3 === 0) R('#ffffff', cx - 13 + ((this.t >> 2) + k * 5) % 26, y, 1, 1);   // chispitas
+      }
+      // las ruedas que giran
+      for (const k of [0, 1]) {
+        const wy = gy - 70 - k * 38;
+        for (let i = 0; i < 8; i++) {
+          const a = this.t * 0.25 + k * 2 + i * Math.PI / 4;
+          for (let r = 4; r <= 12; r += 4) R(i % 2 ? '#fff6b0' : FIESTA_COLS[(i + k) % FIESTA_COLS.length], cx + Math.cos(a) * r, wy + Math.sin(a) * r, 2, 2);
+        }
+        R('#f6c94a', cx - 1, wy - 1, 3, 3);
+      }
+      // en la punta, una banderita peruana
+      R('#5a3a1e', cx, top - 18, 1, 18); R('#d8432f', cx + 1, top - 18, 4, 7); R('#fffaf0', cx + 5, top - 18, 4, 7); R('#d8432f', cx + 9, top - 18, 4, 7);
+    }
+    // EL ARCO de la salida del pueblo
+    const ax = this.d.arco * TS;
+    if (vis(ax - 50, ax + 50)) {
+      for (const px of [ax - 40, ax + 30]) { R('#c7ad86', px, gy - 64, 10, 64); R('#a8957a', px + 8, gy - 64, 2, 64); }
+      R('#c7ad86', ax - 44, gy - 76, 88, 14); R('#a8957a', ax - 44, gy - 64, 88, 2);
+      drawText(ctx, 'BUEN VIAJE', ax, gy - 73, { color: '#7a3f24', align: 'center' });
+    }
+  }
+  draw(ctx, g) {
+    const R = (c, x, y, w, h) => { ctx.fillStyle = c; ctx.fillRect(Math.round(x), Math.round(y), w, h); };
+    const gy = this.ground, cam = g.cam;
+    // puertas y ventanas de las casas que se cruzan por arriba
+    for (const [x, y, w] of this.d.casas) {
+      const x0 = x * TS, x1 = (x + w) * TS; if (x1 < cam.x || x0 > cam.x + VIEW.w) continue;
+      const dx = x0 + Math.floor(w / 2) * TS - 2;
+      R('#2b4f86', dx - 1, gy - 26, 14, 26); R('#3f6fb8', dx, gy - 25, 12, 25); R('#2b4f86', dx + 5, gy - 25, 1, 25); R('#f6c94a', dx + 9, gy - 13, 1, 2);
+      for (const wx of [x0 + 12, x1 - 24]) {
+        const wy = y * TS + 22;
+        if (wy + 12 > gy - 4) continue;
+        R('#2b4f86', wx - 1, wy - 1, 14, 12); R('#2a1f2d', wx, wy, 12, 10); R('#3f6fb8', wx + 5, wy, 2, 10);
+        R('#9a5a30', wx - 1, wy + 10, 14, 3); R('#d8432f', wx + 1, wy + 8, 3, 2); R('#c2185b', wx + 7, wy + 8, 3, 2); R('#64803a', wx + 4, wy + 8, 2, 2);   // geranios
+      }
+    }
+    // banderines de colores colgados entre los techos (se mecen con el viento)
+    for (const [fx0, fx1, row] of this.d.flags) {
+      const a = fx0 * TS, b = fx1 * TS; if (b < cam.x || a > cam.x + VIEW.w) continue;
+      const y0 = row * TS;
+      for (let x = a; x < b; x++) { const t = (x - a) / (b - a), sag = Math.sin(Math.PI * t) * 14; R('#6b4524', x, y0 + sag, 1, 1); }
+      for (let k = 0, x = a + 6; x < b - 6; x += 10, k++) {
+        const t = (x - a) / (b - a), y = y0 + Math.sin(Math.PI * t) * 14 + 1, sw = Math.round(Math.sin(this.t * 0.06 + k) * 1);
+        ctx.fillStyle = FIESTA_COLS[k % FIESTA_COLS.length];
+        for (let j = 0; j < 6; j++) ctx.fillRect(Math.round(x - 3 + j / 2 + sw * j / 6), Math.round(y + j), Math.max(1, 6 - j), 1);
+      }
+    }
+  }
+}
+
+// DANZANTE DE TIJERAS: zapatea en la calle sonando sus tijeras y de rato en
+// rato se agacha y da un gran salto. Se le salta cuando está abajo, zapateando;
+// si choca contigo, te tumba.
+class Danzante extends Actor {
+  constructor(def) {
+    super(def.x * TS - 5, def.y * TS - 28, 10, 28);
+    this.base = def.y * TS; this.home = def.x * TS; this.phase = def.phase || 0; this.flip = !!def.flip;
+    this.hazardKind = 'tijeras'; this.onRespawn();
+  }
+  onRespawn() { this.t = this.phase; this.lift = 0; }
+  get state() { const k = this.t % Danzante.CYCLE; return k < Danzante.BAILA ? 'baila' : k < Danzante.BAILA + Danzante.AGACHA ? 'agacha' : 'salto'; }
+  update(g) {
+    this.t++;
+    const k = this.t % Danzante.CYCLE, st = this.state;
+    const p = g.player, near = Math.abs(p.cx - this.home) < 260;
+    if (st === 'salto') {
+      const u = (k - Danzante.BAILA - Danzante.AGACHA) / Danzante.SALTO;
+      this.lift = Math.sin(Math.PI * u) * 58;
+      if (k === Danzante.CYCLE - 1) { this.lift = 0; if (near) { g.audio('land'); g.audio('clank'); } g.burst(this.home, this.base, 'dust', 6); }
+    } else this.lift = 0;
+    if (st === 'baila' && k % 16 === 0 && near) g.audio('click');   // el clic-clic de las tijeras
+    this.face = p.cx < this.home ? -1 : 1;
+    if (this.flip && !near) this.face = -1;
+    this.y = this.base - this.h - this.lift;
+  }
+  hazardBox() {
+    const st = this.state, top = st === 'agacha' ? this.base - 20 : this.y + 3;
+    return { x: this.home - 5, y: top, w: 10, h: this.base - this.lift - top - 1 };
+  }
+  draw(ctx) {
+    const st = this.state, k = this.t % Danzante.CYCLE;
+    const img = st === 'salto' ? DANZ.leap : st === 'agacha' ? DANZ.crouch : (Math.floor(k / 8) % 2 ? DANZ.b : DANZ.a);
+    const x = Math.round(this.home - 8), y = Math.round(this.base - 28 - this.lift);
+    ctx.fillStyle = 'rgba(30,20,20,0.25)'; ctx.fillRect(x + 3, this.base - 1, 10, 2);   // sombra en el suelo
+    ctx.drawImage(this.face < 0 ? flipS(img) : img, x, y);
+    // las tijeras brillan al chocar
+    if (st === 'baila' && k % 16 < 3) { ctx.fillStyle = '#ffffff'; ctx.fillRect(x + (this.face < 0 ? 1 : 14), y + 12, 2, 2); }
+  }
+}
+Danzante.BAILA = 96; Danzante.AGACHA = 18; Danzante.SALTO = 46;
+Danzante.CYCLE = Danzante.BAILA + Danzante.AGACHA + Danzante.SALTO;
+
+// COHETE de la alborada clavado en el techo: se le prende la mecha (chispas y
+// un "!"), sale disparado hacia arriba y revienta en el cielo. Solo es peligroso
+// al despegar: hay que pasar cuando ya salió (o antes de que se prenda).
+class Cohete extends Actor {
+  constructor(def) {
+    super(def.x * TS - 2, def.y * TS - 14, 4, 12);
+    this.px = def.x * TS; this.pad = def.y * TS; this.phase = def.phase || 0;
+    this.hazardKind = 'cohete'; this.onRespawn();
+  }
+  onRespawn() { this.state = 'idle'; this.t = this.phase; this.ry = this.pad - 14; this.vy = 0; }
+  update(g) {
+    this.t++;
+    const near = g.near(this.px, 260);
+    if (this.state === 'idle') { if (this.t > Cohete.IDLE) { this.state = 'lit'; this.t = 0; } }
+    else if (this.state === 'lit') {
+      if (this.t % 2 === 0) g.particles.push({ x: this.px + (Math.random() - 0.5) * 3, y: this.pad - 3, vx: (Math.random() - 0.5) * 1.6, vy: -Math.random() * 1.4, life: 12, max: 12, col: Math.random() < 0.5 ? '#ffe27a' : '#ffffff', size: 1, grav: 0.1 });
+      if (this.t % 12 === 0 && near) g.audio('swish');
+      if (this.t > Cohete.LIT) { this.state = 'fly'; this.t = 0; this.vy = -2; if (near) g.audio('swoosh'); g.burst(this.px, this.pad - 2, 'spark', 10); }
+    } else if (this.state === 'fly') {
+      this.vy = Math.max(-9, this.vy - 0.35); this.ry += this.vy;
+      g.particles.push({ x: this.px + (Math.random() - 0.5) * 2, y: this.ry + 12, vx: (Math.random() - 0.5) * 0.4, vy: 0.6, life: 16, max: 16, col: Math.random() < 0.5 ? '#ffd166' : '#f08a7a', size: 1, grav: 0.02 });
+      if (this.t > 40) { fireworkBurst(g, this.px, this.ry, 26); if (near) g.audio('snap'); this.state = 'idle'; this.t = 0; this.ry = this.pad - 14; }
+    }
+    this.y = this.ry;
+  }
+  // solo hace daño mientras despega (los primeros cuadros, cerca del techo)
+  hazardBox() { return this.state === 'fly' && this.ry > this.pad - 70 ? { x: this.px - 3, y: this.ry, w: 6, h: 14 } : null; }
+  draw(ctx) {
+    const R = (c, x, y, w, h) => { ctx.fillStyle = c; ctx.fillRect(Math.round(x), Math.round(y), w, h); };
+    const x = Math.round(this.px), pad = this.pad;
+    // la caña donde va amarrado (queda en el techo)
+    R('#8a6a3a', x + 2, pad - 18, 1, 18);
+    if (this.state === 'idle' && this.t < 20) return;   // recién clavan otro
+    const y = Math.round(this.ry);
+    R('#2a1f2d', x - 2, y + 2, 5, 10); R('#d8432f', x - 1, y + 3, 3, 8); R('#f6c94a', x - 1, y + 6, 3, 1);
+    R('#2a1f2d', x - 1, y, 3, 2); R('#fffaf0', x, y + 1, 1, 1);   // la punta
+    if (this.state === 'lit') {
+      // la mecha chisporrotea y aparece el aviso
+      R(this.t % 4 < 2 ? '#ffffff' : '#ffe27a', x - 1, pad - 3, 3, 3);
+      if (this.t > Cohete.LIT - 40 && Math.floor(this.t / 5) % 2 === 0) drawText(ctx, '!', x, y - 18, { scale: 2, color: '#ffffff', align: 'center', shadow: true, shadowColor: '#2a1f2d' });
+    }
+  }
+}
+Cohete.IDLE = 120; Cohete.LIT = 70;
+
+// ═════════════════════════════════════════════════════════════════════════════
+// LA LAGUNA DEL APU: placa de hielo delgado sobre el agua helada. Aguanta un
+// momento; si te quedas encima cruje, se raja y se hunde. Al rato se vuelve a
+// congelar.
+class IcePlate extends Actor {
+  constructor(def, level) {
+    super(def.x * TS + 1, 0, 2 * TS - 2, 4);
+    this.isMover = true; this.dx = 0; this.dy = 0;
+    const L = level.liquids.find(l => l.kind === 'lake' && def.x >= l.x && def.x < l.x + l.w);
+    this.base = (L ? L.y : def.y) * TS + 1; this.onRespawn();
+  }
+  onRespawn() { this.crack = 0; this.broken = false; this.goneT = 0; this.y = this.base; }
+  update(g) {
+    const py = this.y;
+    if (this.broken) {
+      if (++this.goneT > 220) this.onRespawn();
+      this.y = this.base + 16;
+    } else {
+      const on = g.player.lastMover === this;
+      if (on) {
+        if (this.crack === 0) g.audio('creak');
+        if (++this.crack % 10 === 0) { g.audio('click'); g.burst(this.cx + (Math.random() - 0.5) * 20, this.base + 2, 'paper', 3); }
+        if (this.crack > 40) { this.broken = true; this.goneT = 0; g.audio('snap'); g.audio('splash'); g.burst(this.cx, this.base + 3, 'splash', 16); g.burst(this.cx, this.base, 'paper', 10); }
+      } else if (this.crack > 0) this.crack = Math.max(0, this.crack - 0.25);
+      this.y = this.base + (this.crack > 24 ? 1 : 0);
+    }
+    this.dy = this.y - py;
+  }
+  draw(ctx) {
+    const R = (c, x, y, w, h) => { ctx.fillStyle = c; ctx.fillRect(Math.round(x), Math.round(y), w, h); };
+    if (this.broken) {
+      if (this.goneT < 30) for (let i = 0; i < 4; i++) R('#e9f6fb', this.x + 3 + i * 7, this.base + 2 + this.goneT * 0.3 + (i % 2) * 2, 4, 2);   // trozos que se hunden
+      else if (this.goneT > 190) { ctx.globalAlpha = (this.goneT - 190) / 30; R('#d2f6f2', this.x, this.base + 1, this.w, 3); ctx.globalAlpha = 1; }   // se congela otra vez
+      return;
+    }
+    const sh = this.crack > 24 ? (this.crack % 4 < 2 ? 1 : -1) : 0, x = Math.round(this.x + sh), y = Math.round(this.y);
+    R('#2a1f2d', x, y + 4, this.w, 1);
+    R('#bfe8ef', x, y, this.w, 4); R('#ffffff', x + 1, y, this.w - 2, 1); R('#8fd0dc', x, y + 3, this.w, 1);
+    // las rajaduras crecen mientras más tiempo estás encima
+    const n = Math.min(5, Math.floor(this.crack / 8));
+    for (let i = 0; i < n; i++) { const cx = x + 4 + ((i * 11) % (this.w - 8)); R('#3d7468', cx, y + 1, 1, 2); R('#3d7468', cx + (i % 2 ? 1 : -1), y + 2, 1, 2); }
+  }
+}
+
+// El glaciar del Apu detrás de la laguna, con sus grietas azules, y las
+// apachetas (montoncitos de piedras que deja la gente al pasar) en la orilla.
+class Laguna extends Actor {
+  constructor(def) { super(def.x0 * TS, 0, (def.x1 - def.x0) * TS, 1); this.d = def; }
+  update() {}
+  drawBack(ctx, g) {
+    const R = (c, x, y, w, h) => { ctx.fillStyle = c; ctx.fillRect(Math.round(x), Math.round(y), w, h); };
+    const d = this.d, base = d.row * TS, cam = g.cam;
+    const x0 = Math.max(d.x0 * TS, Math.floor(cam.x / 4) * 4 - 4), x1 = Math.min(d.x1 * TS, cam.x + VIEW.w + 4);
+    for (let x = x0 - (x0 % 4); x < x1; x += 4) {
+      // cumbres nevadas lejanas (se funden con el cielo) y, delante, la lengua del glaciar
+      const edge = Math.min(1, (x - d.x0 * TS) / 90, (d.x1 * TS - x) / 90);   // en las orillas el glaciar baja hasta desaparecer
+      if (edge <= 0) continue;
+      const far = base - Math.round((70 + Math.abs(Math.sin(x * 0.011)) * 46 + Math.sin(x * 0.037) * 8) * edge);
+      R('#9aa3d4', x, far, 4, base - far); R('#dfe6f6', x, far, 4, 4 + Math.round(Math.abs(Math.sin(x * 0.05)) * 8));
+      const top = base - Math.round((22 + Math.abs(Math.sin(x * 0.02 + 1)) * 22 + Math.sin(x * 0.09) * 4) * edge);
+      R('#dbe9f5', x, top, 4, base - top); R('#ffffff', x, top, 4, 2); R('#b7d3e6', x, top + 2, 4, 2);
+      R('#a9cde0', x, base - 8, 4, 8);   // el pie del glaciar, más azul
+      if (hash1(x >> 2) > 0.8) R('#7fb0cc', x + 1, top + 5, 1, 4 + Math.floor(hash1(x) * 8));   // grieta
+    }
+    // apachetas en las dos orillas
+    for (const ax of [d.x0 * TS + 40, d.x1 * TS - 70]) {
+      if (ax + 20 < cam.x || ax - 20 > cam.x + VIEW.w) continue;
+      [18, 14, 10, 6].forEach((w, k) => { R('#2a1f2d', ax - w / 2 - 1, base - 5 - k * 5, w + 2, 5); R(k % 2 ? '#8a8296' : '#b9b1c2', ax - w / 2, base - 5 - k * 5, w, 4); });
+      R('#6b4524', ax, base - 32, 1, 12); R('#d8432f', ax + 1, base - 32, 4, 3);   // una banderita de ofrenda
+    }
+  }
+  draw() {}
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// EL RÍO: la balsa la manejas tú (como el mototaxi del Cap. 2). La corriente
+// la lleva sola; a la derecha remas más rápido, a la izquierda frenas y con el
+// salto brinca sobre las piedras y los remolinos.
+const waterSurfaceAt = (level, x) => {
+  for (const l of level.liquids) if (l.kind === 'water' && x >= l.x * TS && x < (l.x + l.w) * TS) return l.y * TS + 4;
+  return null;
+};
+class Balsa extends Mount {
+  constructor(def) {
+    super(def.x * TS, def.y * TS - 9, 34, 9, { dx: 13, dy: -13 });
+    this.end = def.end * TS;
+    this.canDismount = false; this.drawsRider = true; this.ownJump = true; this.camMax = 3.4;
+    this.caught = null; this.bumpT = 0; this.rowT = 0; this.spin = 0;
+  }
+  reset() { super.reset(); this.caught = null; this.bumpT = 0; this.spin = 0; }
+  update(g) {
+    this.animT++;
+    const lv = g.level;
+    // un remolino la atrapó: da vueltas y se hunde
+    if (this.caught) {
+      const c = this.caught; c.t++;
+      this.spin += 0.25; this.x += (c.e.x - this.cx) * 0.1; this.y += 0.35;
+      if (c.t % 6 === 0) g.burst(this.cx, this.y + this.h, 'splash', 3);
+      if (this.rider) this.rider.syncRide();
+      if (c.t > 46) g.playerEnvDeath('remolino');
+      return;
+    }
+    if (this.rider) {
+      const left = Input.held('left'), right = Input.held('right');
+      // la corriente la lleva sola; a la derecha remas, a la izquierda remas contra la corriente (retrocedes despacio)
+      const want = right ? 3.3 : left ? -0.5 : 1.9;
+      this.vx += Math.max(-0.08, Math.min(0.08, want - this.vx));
+      this.facing = 1; this.rowT += right ? 2 : left ? 1 : 0.5;
+      if (this.onGround) this.coyote = PHYS.COYOTE; else if (this.coyote > 0) this.coyote--;
+      if (this.coyote > 0 && Input.consumeJump()) {
+        this.vy = -7.4; this.onGround = false; this.coyote = 0;
+        g.audio('jump'); g.burst(this.cx, this.y + this.h, 'splash', 10);
+      }
+      const held = Input.held('jump') || Input.held('up');
+      if (!held && this.vy < -PHYS.JUMP_CUT) this.vy = -PHYS.JUMP_CUT;
+      if (this.onGround && Math.abs(this.vx) > 1 && this.animT % 6 === 0) g.burst(this.x + 2, this.y + this.h, 'splash', 1);   // estela
+    } else {
+      this.vx *= 0.8;
+      // fácil de abordar: si saltas desde el muelle por encima de ella, igual caes sentado
+      const p = g.player;
+      if (!this.retired && !p.riding && p.mountCd <= 0 && g.state === 'play' && p.rectOverlaps(this.x - 4, this.y - 48, this.w + 8, this.h + 48)) p.mount(this, g);
+    }
+    this.vy = Math.min(this.vy + PHYS.GRAV, PHYS.MAX_FALL);
+    const was = this.onGround;
+    moveX(this, lv);
+    // se topa con una piedra: ¡PUM! la corriente la deja ahí hasta que saltes
+    if (this.wall && this.rider) { if (this.bumpT === 0) { g.audio('rock'); g.shake(1.5, 6); g.burst(this.x + this.w, this.y + 4, 'splash', 8); } this.bumpT++; }
+    else this.bumpT = 0;
+    moveY(this, lv);
+    // flota en el agua (en los rápidos cae al escalón de abajo)
+    const s = waterSurfaceAt(lv, this.cx);
+    if (s !== null && this.vy >= 0 && this.y + this.h >= s + 2) { this.y = s + 2 - this.h; this.vy = 0; this.onGround = true; }
+    if (this.rider && this.onGround && !was) { g.burst(this.cx, this.y + this.h, 'splash', 8); if (this.air > 20) { g.audio('splash'); g.shake(1.5, 6); } }
+    this.air = this.onGround ? 0 : (this.air || 0) + 1;
+    // un remolino abierto justo debajo la atrapa
+    if (this.rider && this.onGround && !this.caught) for (const e of g.entities) {
+      if (e instanceof Remolino && e.open && Math.abs(this.cx - e.x) < e.r) { this.caught = { e, t: 0 }; this.spin = 0; g.audio('gurgle'); g.audio('drown'); break; }
+    }
+    // llegó a la playita: se queda varada y te bajas
+    if (this.rider && this.onGround && this.cx > this.end) { this.retired = true; this.vx = 0; this.rider.dismount(g, -5); g.audio('land'); }
+    if (this.rider) this.rider.syncRide();
+    if (this.y > lv.rows * TS + 24) { if (this.rider) g.playerEnvDeath('fall'); else this.reset(); }
+  }
+  draw(ctx, g) {
+    const p = g.player, bob = this.onGround ? Math.round(Math.sin(this.animT * 0.15)) : 0;
+    const x = Math.round(this.x), y = Math.round(this.y) + bob;
+    ctx.save();
+    if (this.caught) { ctx.translate(Math.round(this.cx), y + 4); ctx.rotate(this.spin); ctx.translate(-Math.round(this.cx), -(y + 4)); }
+    if (this.rider === p && !(p.invuln > 0 && Math.floor(p.invuln / 4) % 2 === 0)) {
+      // tú sentado, remando: el remo entra y sale del agua
+      const k = Math.floor(this.rowT / 10) % 2;
+      ctx.drawImage(P.sit, x + 9, y - 19);
+      ctx.fillStyle = '#6b4524';
+      for (let i = 0; i < 14; i++) ctx.fillRect(x + 10 + i * (k ? 0.6 : -0.2) + (k ? 0 : 4), y - 8 + i, 1, 1);
+      ctx.fillStyle = '#9b663b'; ctx.fillRect(x + (k ? 17 : 0), y + 5, 4, 3);   // la pala del remo
+    }
+    ctx.drawImage(OBJ.balsa, x, y);
+    ctx.restore();
+    if (!this.rider && !this.retired && Math.floor(this.animT / 20) % 2) drawText(ctx, '¡SUBE!', this.cx, this.y - 16, { color: '#ffd166', align: 'center', shadow: true, shadowColor: '#2a1f2d' });
+    if (this.rider && this.bumpT > 8 && Math.floor(this.animT / 10) % 2) drawText(ctx, '¡SALTA!', this.cx, this.y - 34, { color: '#ffffff', align: 'center', shadow: true, shadowColor: '#2a1f2d' });
+  }
+}
+
+// REMOLINO del río: el agua empieza a girar (aviso), se abre un hoyo que se
+// traga la balsa y luego se cierra. Se le salta o se espera a que se cierre.
+class Remolino extends Actor {
+  constructor(def, level) {
+    super(def.x * TS - 22, 0, 44, 6);
+    this.x = def.x * TS; this.s = waterSurfaceAt(level, this.x) || 0; this.r = 22;
+    this.phase = def.phase || 0; this.onRespawn();
+  }
+  onRespawn() { this.t = this.phase; }
+  get k() { return this.t % Remolino.CYCLE; }
+  get open() { const k = this.k; return k >= Remolino.CALM + Remolino.FORM && k < Remolino.CALM + Remolino.FORM + Remolino.OPEN; }
+  update(g) {
+    this.t++;
+    if (this.k === Remolino.CALM + Remolino.FORM && g.near(this.x, 240)) g.audio('gurgle');
+  }
+  draw(ctx) {
+    const k = this.k, C = Remolino;
+    let a = 0;   // qué tan abierto está (0 = agua tranquila, 1 = hoyo grande)
+    if (k >= C.CALM && k < C.CALM + C.FORM) a = (k - C.CALM) / C.FORM * 0.45;
+    else if (this.open) a = 1;
+    else if (k >= C.CALM + C.FORM + C.OPEN) a = 1 - (k - C.CALM - C.FORM - C.OPEN) / C.CLOSE;
+    if (a <= 0) return;
+    const x = this.x, s = this.s, r = this.r * Math.max(0.35, a);
+    // anillos de espuma que giran hacia el centro (elipses aplastadas)
+    for (let ring = 0; ring < 3; ring++) {
+      const rr = r * (1 - ring * 0.3);
+      for (let i = 0; i < 18; i++) {
+        const ang = this.t * (0.12 + ring * 0.05) + i * Math.PI / 9;
+        ctx.fillStyle = ring === 0 ? 'rgba(255,255,255,' + (0.85 * a).toFixed(2) + ')' : '#d2f6f2';
+        ctx.fillRect(Math.round(x + Math.cos(ang) * rr), Math.round(s + 2 + Math.sin(ang) * rr * 0.22), 2, 1);
+      }
+    }
+    // el hoyo oscuro del centro
+    if (a > 0.5) { const w = Math.round(r * 0.9 * a); ctx.fillStyle = '#1d5683'; ctx.fillRect(Math.round(x - w / 2), s + 1, w, 3); ctx.fillStyle = '#123a5a'; ctx.fillRect(Math.round(x - w / 4), s + 2, Math.round(w / 2), 2); }
+    // a punto de abrirse: "!" de aviso
+    if (k >= C.CALM && k < C.CALM + C.FORM && Math.floor(this.t / 5) % 2 === 0) drawText(ctx, '!', x, s - 20, { scale: 2, color: '#ffffff', align: 'center', shadow: true, shadowColor: '#2a1f2d' });
+  }
+}
+Remolino.CALM = 150; Remolino.FORM = 60; Remolino.OPEN = 90; Remolino.CLOSE = 24;
+Remolino.CYCLE = Remolino.CALM + Remolino.FORM + Remolino.OPEN + Remolino.CLOSE;
+
+// ═════════════════════════════════════════════════════════════════════════════
+// EL DOSEL: lupunas gigantes que salen de la quebrada, con sus copas, lianas y
+// plataformas de tablones. Solo escenografía (las plataformas son tiles).
+class Dosel extends Actor {
+  constructor(def) { super(def.x0 * TS, 0, (def.x1 - def.x0) * TS, 1); this.d = def; this.t = 0; }
+  update() { this.t++; }
+  drawBack(ctx, g) {
+    const R = (c, x, y, w, h) => { ctx.fillStyle = c; ctx.fillRect(Math.round(x), Math.round(y), w, h); };
+    const d = this.d, cam = g.cam, deck = d.deck * TS;
+    if (d.x1 * TS < cam.x - 60 || d.x0 * TS > cam.x + VIEW.w + 60) return;
+    // la quebrada: paredes de tierra húmeda en sombra, con helechos colgando
+    for (let x = (d.x0 + 12) * TS; x < (d.x1) * TS; x += 4) {
+      if (x < cam.x - 4 || x > cam.x + VIEW.w) continue;
+      const top = 110 * TS + Math.round(Math.sin(x * 0.03) * 6 + 12);
+      R('#2a3a26', x, top, 4, d.water * TS - top + 8);
+      if (hash1(x) > 0.8) R('#3f6b3a', x, top + Math.floor(hash1(x * 3) * 80), 3, 6);
+    }
+    for (const [tx, base] of d.trees) {
+      const x = tx * TS, bot = base * TS;
+      if (x + 70 < cam.x || x - 70 > cam.x + VIEW.w) continue;
+      // el tronco, ancho y con raíces tablares (aletones) abajo
+      R('#4a3220', x - 10, deck - 30, 20, bot - deck + 30); R('#6b4a2c', x - 6, deck - 30, 4, bot - deck + 30);
+      R('#3a2414', x + 6, deck - 30, 3, bot - deck + 30);
+      for (let y = deck; y < bot; y += 11) R('#3a2414', x - 4 + ((y >> 3) % 3) * 3, y, 4, 1);
+      for (let k = 0; k < 14; k++) { R('#4a3220', x - 10 - k, bot - 14 + k, 2 + k, 1); R('#4a3220', x + 9, bot - 14 + k, 2 + k, 1); }
+      R('#5f9f4a', x + 3, deck + 40, 4, 2); R('#5f9f4a', x - 7, deck + 90, 4, 2);   // musgo
+      // la copa: un cerro de hojas encima de la plataforma
+      for (let k = 0; k < 9; k++) {
+        const ox = Math.round(Math.cos(k * 1.1) * 40), oy = Math.round(Math.sin(k * 1.9) * 8);
+        R(k % 2 ? '#2f6b3a' : '#255a30', x + ox - 22, deck - 70 + oy, 44, 18);
+      }
+      for (let k = 0; k < 6; k++) R('#3f8a46', x + Math.round(Math.cos(k * 1.4) * 34) - 12, deck - 76 + k * 2, 24, 5);
+      // lianas que cuelgan de la copa
+      for (let i = 0; i < 3; i++) {
+        const lx = x - 30 + i * 28, len = 40 + i * 14;
+        for (let y = 0; y < len; y += 2) R('#3f6b2c', lx + Math.round(Math.sin(this.t * 0.02 + i + y * 0.04) * 2 * y / len), deck - 56 + y, 1, 2);
+      }
+    }
+  }
+  draw() {}
+}
+const hash1 = (n) => { n = (n | 0) ^ 0x51ed27; n = Math.imul(n ^ (n >>> 15), 0x2c1b3c6d); n ^= n >>> 13; return (n >>> 0) / 4294967296; };
+
+// MONO MAQUISAPA colgado de una liana sobre el puente: se mece de un lado a
+// otro. Abajo del todo pasa a la altura del puente y si te alcanza te arranca
+// la mochila. Se cruza justo después de que pasa.
+class Mono extends Actor {
+  constructor(def) {
+    super(0, 0, 12, 14);
+    this.ax = def.x * TS + 8; this.len = 100; this.ay = def.row * TS - 19 - this.len;
+    this.phase = def.phase || 0; this.hazardKind = 'mono'; this.onRespawn();
+  }
+  onRespawn() { this.t = 0; this.place(); }
+  get ang() { return Mono.AMP * Math.sin(this.t * Math.PI * 2 / Mono.PERIOD + this.phase); }
+  place() { const a = this.ang; this.hx = this.ax + Math.sin(a) * this.len; this.hy = this.ay + Math.cos(a) * this.len; this.x = this.hx - 6; this.y = this.hy + 3; }
+  update(g) {
+    this.t++;
+    const prev = this.hx; this.place(); this.face = this.hx >= prev ? 1 : -1;
+    // al pasar por abajo suena el "¡juuu!" de la liana
+    if (Math.abs(this.ang) < 0.05 && g.near(this.ax, 200) && this.t % 4 === 0) g.audio('swish');
+  }
+  hazardBox() { return { x: this.hx - 5, y: this.hy + 4, w: 10, h: 12 }; }
+  draw(ctx, g) {
+    // la rama de una copa alta de donde cuelga, y la liana
+    const R = (c, x, y, w, h) => { ctx.fillStyle = c; ctx.fillRect(Math.round(x), Math.round(y), w, h); };
+    R('#4a3220', this.ax - 30, this.ay - 3, 60, 4); R('#6b4a2c', this.ax - 30, this.ay - 3, 60, 1);
+    for (let k = 0; k < 6; k++) R(k % 2 ? '#2f6b3a' : '#255a30', this.ax - 44 + k * 15 + Math.round(Math.sin(k * 2.1) * 3), this.ay - 16 + Math.round(Math.cos(k * 1.7) * 4), 22, 12);
+    for (let k = 0; k < 4; k++) R('#3f8a46', this.ax - 34 + k * 20, this.ay - 18 + (k % 2) * 3, 14, 4);
+    const n = Math.ceil(this.len / 2);
+    ctx.fillStyle = '#3f6b2c';
+    for (let i = 0; i < n; i++) { const k = i / n; ctx.fillRect(Math.round(this.ax + (this.hx - this.ax) * k), Math.round(this.ay + (this.hy - this.ay) * k), 1, 2); }
+    const img = Math.floor(this.t / 10) % 2 ? MONO.a : MONO.b;
+    ctx.drawImage(this.face < 0 ? flipS(img) : img, Math.round(this.hx - 7), Math.round(this.hy - 1));
+    if (g.lastDeath === 'mono' && g.state === 'respawn' && Math.abs(g.player.cx - this.hx) < 40) ctx.drawImage(OBJ.mochila, Math.round(this.hx + this.face * 4 - 4), Math.round(this.hy + 10));
+  }
+}
+Mono.PERIOD = 250; Mono.AMP = 1.05;
+
+// TIROLESA: un cable de la última copa hasta la orilla del colegio. Toca la
+// polea y bajas solo, cada vez más rápido; al llegar te sueltas.
+class Tirolesa extends Mount {
+  constructor(def) {
+    // la polea cuelga 22 px bajo el cable: el niño de pie en la plataforma la alcanza
+    const ax = def.x0 * TS, ay = def.y0 * TS - 22;
+    super(ax - 5, ay + 2, 10, 15, { dx: 1, dy: 12 });
+    // al final, los pies del niño quedan justo sobre el suelo
+    this.a = { x: ax, y: ay }; this.b = { x: def.x1 * TS, y: def.y1 * TS - 29 };
+    this.len = Math.hypot(this.b.x - this.a.x, this.b.y - this.a.y);
+    this.canDismount = false; this.drawsRider = true; this.ownJump = true; this.camMax = 4;
+    this.reset();
+  }
+  reset() { super.reset(); this.u = 0; this.sp = 0; this.place(); }
+  place() { this.px = this.a.x + (this.b.x - this.a.x) * this.u; this.py = this.a.y + (this.b.y - this.a.y) * this.u; this.x = this.px - 5; this.y = this.py + 2; }
+  update(g) {
+    this.animT++;
+    if (this.rider) {
+      Input.clearJump();
+      if (this.sp === 0) { g.audio('swish'); }
+      this.sp = Math.min(4.2, this.sp + 0.07);
+      this.u = Math.min(1, this.u + this.sp / this.len);
+      if (this.animT % 3 === 0) g.particles.push({ x: this.px, y: this.py, vx: -0.6, vy: -0.4, life: 10, max: 10, col: '#ffe27a', size: 1, grav: 0.1 });   // la polea echa chispas
+      this.place(); this.vx = this.sp; this.vy = 0;
+      if (this.u >= 1) { this.retired = true; this.rider.dismount(g, -2.5); g.audio('land'); }
+      else this.rider.syncRide();
+    } else {
+      this.place();
+      // la manija se alcanza también saltando
+      const p = g.player;
+      if (!this.retired && !p.riding && p.mountCd <= 0 && g.state === 'play' && p.rectOverlaps(this.x - 4, this.y - 24, this.w + 8, this.h + 24)) p.mount(this, g);
+    }
+  }
+  hazards() {}
+  draw(ctx, g) {
+    const R = (c, x, y, w, h) => { ctx.fillStyle = c; ctx.fillRect(Math.round(x), Math.round(y), w, h); };
+    const A = this.a, B = this.b;
+    // los postes de cada lado y el cable
+    R('#5a3a1e', A.x + 6, A.y - 8, 3, 30); R('#5a3a1e', B.x + 2, B.y - 8, 3, 30);
+    const n = Math.ceil(this.len / 2);
+    for (let i = 0; i <= n; i++) { const k = i / n; R('#2a1f2d', A.x + (B.x - A.x) * k, A.y + (B.y - A.y) * k + Math.sin(Math.PI * k) * 6, 1, 1); }
+    // la polea y la manija
+    const sag = Math.sin(Math.PI * this.u) * 6, px = this.px, py = this.py + sag;
+    R('#8a8296', px - 3, py - 2, 6, 4); R('#b9b1c2', px - 2, py - 1, 4, 2);
+    R('#5d5768', px, py + 2, 1, 6); R('#d8432f', px - 5, py + 8, 11, 2);
+    const p = g.player;
+    if (this.rider === p) ctx.drawImage(P.jump, Math.round(px - 8), Math.round(py + 7));   // colgado de la manija, con los pies al aire
+    else if (!this.retired && Math.floor(this.animT / 20) % 2) drawText(ctx, '¡AGÁRRATE!', px, py - 16, { color: '#ffd166', align: 'center', shadow: true, shadowColor: '#2a1f2d' });
+  }
+}
+
 // entidades de otros capítulos: cada archivo de capítulo registra las suyas aquí
 const EXTRA_ENTITIES = {};
 function makeEntity(def, level) {
@@ -1674,6 +2239,16 @@ function makeEntity(def, level) {
     case 'coca': return new Pickup('coca', def.x, def.y);
     case 'condor': return new Condor(def);
     case 'puma': return new Puma(def);
+    case 'pueblo': return new Pueblo(def);
+    case 'danzante': return new Danzante(def);
+    case 'cohete': return new Cohete(def);
+    case 'iceplate': return new IcePlate(def, level);
+    case 'laguna': return new Laguna(def);
+    case 'balsa': return new Balsa(def);
+    case 'remolino': return new Remolino(def, level);
+    case 'dosel': return new Dosel(def);
+    case 'mono': return new Mono(def);
+    case 'tirolesa': return new Tirolesa(def);
     default: return EXTRA_ENTITIES[def.type] ? EXTRA_ENTITIES[def.type](def, level) : null;
   }
 }
