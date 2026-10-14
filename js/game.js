@@ -187,7 +187,7 @@
     else if (kind === 'bird' || kind === 'eagle') { AUDIO.play('crush'); Game.shake(3, 10); Game.burst(a.cx, a.cy, 'feather', 16); }
     else if (kind === 'puma') AUDIO.play('fall');
     else if (kind === 'rock') { AUDIO.play('crush'); Game.shake(4, 12); Game.burst(a.cx, a.cy, 'rock', 14); }
-    else if (kind === 'combi' || kind === 'buggy' || kind === 'carretilla' || kind === 'bici') { AUDIO.play('crush'); AUDIO.play('honk'); Game.shake(4, 12); Game.burst(a.cx, a.cy, 'dust', 18); }
+    else if (kind === 'combi' || kind === 'buggy' || kind === 'carretilla' || kind === 'bici' || kind === 'motocarro') { AUDIO.play('crush'); AUDIO.play('honk'); Game.shake(4, 12); Game.burst(a.cx, a.cy, 'dust', 18); }
     else if (kind === 'cactus' || kind === 'rebar') { AUDIO.play('ouch'); Game.shake(2, 8); Game.burst(a.cx, a.cy, 'spark', 12); }
     else if (kind === 'lake') { AUDIO.play('splash'); AUDIO.play('snap'); Game.burst(a.cx, a.y + a.h, 'splash', 18); Game.burst(a.cx, a.y + a.h, 'paper', 10); }
     else if (kind === 'remolino') { AUDIO.play('drown'); Game.burst(a.cx, a.y + a.h, 'splash', 18); }
@@ -195,6 +195,9 @@
     else if (kind === 'tijeras') { AUDIO.play('clank'); AUDIO.play('crush'); Game.shake(2, 8); Game.burst(a.cx, a.cy, 'dust', 12); }
     else if (kind === 'mono') { AUDIO.play('shout'); AUDIO.play('fall'); Game.burst(a.cx, a.cy, 'leaf', 12); }
     else if (kind === 'dog') { AUDIO.play('bark'); AUDIO.play('crush'); Game.shake(3, 10); Game.burst(a.cx, a.cy, 'dust', 14); }
+    else if (kind === 'palizada' || kind === 'tronco') { AUDIO.play('crush'); AUDIO.play('splash'); Game.shake(3, 10); Game.burst(a.cx, a.y + a.h, 'splash', 18); }
+    else if (kind === 'huangana') { AUDIO.play('growl'); AUDIO.play('crush'); Game.shake(3, 12); Game.burst(a.cx, a.cy, 'dust', 18); }
+    else if (kind === 'anaconda') { AUDIO.play('snap'); Game.shake(3, 10); Game.burst(a.cx, a.cy, 'leaf', 12); }
     else AUDIO.play('fall');
     Game.deaths++; Game.lastDeath = kind; Game.state = 'respawn'; Game.stateT = 0;
     GUIDE.onDeath(Game);
@@ -499,8 +502,9 @@
   }
   // pantalla final: pasar al siguiente capítulo o volver al menú
   // (con ranking: también entrar al ranking y compartir la hora de llegada)
+  // (si el capítulo trae su secuencia de cierre y hay otro después, esa secuencia lleva al siguiente)
   function winOptions() {
-    return [...(CHAPTERS[Game.chapterIdx + 1] ? ['next'] : []), ...(Game.chapter.ending ? ['ending'] : []), ...(rankOn() ? ['ranking', 'share'] : []), 'menu'];
+    return [...(CHAPTERS[Game.chapterIdx + 1] && !Game.chapter.ending ? ['next'] : []), ...(Game.chapter.ending ? ['ending'] : []), ...(rankOn() ? ['ranking', 'share'] : []), 'menu'];
   }
   function updateWin() {
     const opts = winOptions();
@@ -532,7 +536,11 @@
     const E = Game.chapter.ending;
     Game.stateT++;
     if (Game.stateT > 20 && (Input.pressed('confirm') || Input.pressed('jump'))) Game.stateT = E.skip(Game.stateT);
-    if (Game.stateT >= E.frames) { Game.state = 'menu'; CORTO.stop(); AUDIO.playMusic(SONGS.menu); }
+    if (Game.stateT >= E.frames) {
+      CORTO.stop();
+      if (CHAPTERS[Game.chapterIdx + 1]) { AUDIO.play('start'); startGame(Game.chapterIdx + 1); }   // el egreso del Cap. 3 sigue en el Cap. 4
+      else { Game.state = 'menu'; AUDIO.playMusic(SONGS.menu); }
+    }
   }
 
   // ── RANKING ──────────────────────────────────────────────────────────────
@@ -1413,13 +1421,13 @@
     if (Game.stateT <= 90) return;
     const opts = winOptions();
     if (opts.length === 1) {
-      if (Game.chapterIdx + 1 < CHAPTER_SLOTS) drawText(ctx, 'CAPÍTULO ' + (Game.chapterIdx + 2) + ': ¡PRÓXIMAMENTE!', BASE_W / 2, WY.info, { color: '#cdbde8', align: 'center' });
+      if (Game.chapterIdx + 1 < CHAPTER_SLOTS && !CHAPTERS[Game.chapterIdx + 1]) drawText(ctx, 'CAPÍTULO ' + (Game.chapterIdx + 2) + ': ¡PRÓXIMAMENTE!', BASE_W / 2, WY.info, { color: '#cdbde8', align: 'center' });
       if (Math.floor(tick / 24) % 2 === 0) drawText(ctx, narrow ? 'PULSA A PARA SEGUIR' : 'PULSA ESPACIO PARA VOLVER AL MENÚ', BASE_W / 2, WY.foot, { color: '#fff3d6', align: 'center' });
       return;
     }
-    if (!opts.includes('next') && !Game.shareMsg && Game.chapterIdx + 1 < CHAPTER_SLOTS) drawText(ctx, 'CAPÍTULO ' + (Game.chapterIdx + 2) + ': ¡PRÓXIMAMENTE!', BASE_W / 2, WY.info, { color: '#cdbde8', align: 'center' });
+    if (!opts.includes('next') && !Game.shareMsg && Game.chapterIdx + 1 < CHAPTER_SLOTS && !CHAPTERS[Game.chapterIdx + 1]) drawText(ctx, 'CAPÍTULO ' + (Game.chapterIdx + 2) + ': ¡PRÓXIMAMENTE!', BASE_W / 2, WY.info, { color: '#cdbde8', align: 'center' });
     if (Game.shareMsg) drawText(ctx, Game.shareMsg.text, BASE_W / 2, WY.info, { color: '#9be7c4', align: 'center', shadow: true, shadowColor: '#000000' });
-    const LONG = { next: 'SIGUIENTE CAPÍTULO', ending: 'SEGUIR', ranking: 'RANKING', share: 'COMPARTIR', menu: 'MENÚ' }, SHORT = { next: 'SIGUIENTE', ending: 'SEGUIR', ranking: 'RANKING', share: 'COMPARTIR', menu: 'MENÚ' };
+    const LONG = { next: 'SIGUIENTE CAPÍTULO', ending: CHAPTERS[Game.chapterIdx + 1] ? 'SIGUIENTE CAPÍTULO' : 'SEGUIR', ranking: 'RANKING', share: 'COMPARTIR', menu: 'MENÚ' }, SHORT = { next: 'SIGUIENTE', ending: CHAPTERS[Game.chapterIdx + 1] ? 'SIGUIENTE' : 'SEGUIR', ranking: 'RANKING', share: 'COMPARTIR', menu: 'MENÚ' };
     let gap = 26, labels = opts.map(o => (narrow ? SHORT : LONG)[o]);
     const fits = () => labels.reduce((a, l) => a + textWidth(l), 0) + gap * (labels.length - 1) <= BASE_W - 24;
     if (!fits()) { labels = opts.map(o => SHORT[o]); gap = 16; }
@@ -1483,8 +1491,9 @@
   // SELECTOR DE CAPÍTULO: una tarjeta por capítulo (los que faltan, con candado).
   // En pantallas angostas se ve solo la elegida, con flechas a los lados.
   function renderChapterCards(y) {
-    const active = true, narrow = BASE_W < 320;
-    const cw = narrow ? Math.min(130, BASE_W - 44) : 100, chh = 30, gap = 8;
+    const gap = 8, fit = Math.floor((BASE_W - 40 - gap * (CHAPTER_SLOTS - 1)) / CHAPTER_SLOTS);
+    const active = true, narrow = fit < 76;   // vista propia de capítulos; si no caben todas, se ve solo la elegida
+    const cw = narrow ? Math.min(130, BASE_W - 44) : Math.min(100, fit), chh = 30;
     const idx = narrow ? [Game.menuChapter] : [...Array(CHAPTER_SLOTS).keys()];
     let x = Math.round(BASE_W / 2 - (idx.length * cw + (idx.length - 1) * gap) / 2);
     for (const i of idx) {

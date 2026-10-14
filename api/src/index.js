@@ -6,7 +6,7 @@
 // El juego pide un ticket al empezar; al terminar, el servidor comprueba que
 // el tiempo reportado sea creíble contra su propio reloj.
 
-const CHAPTERS = [1, 2, 3];
+const CHAPTERS = [1, 2, 3, 4];
 const MAX_TIME_MS = 2 * 60 * 60 * 1000;   // una partida de más de 2 h no cuenta
 const RUN_TTL_MS = 3 * 60 * 60 * 1000;    // un ticket vale 3 h
 const CLOCK_SLACK_MS = 3000;              // latencia entre el juego y el servidor
