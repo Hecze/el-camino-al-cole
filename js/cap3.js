@@ -1967,8 +1967,7 @@ const ART3 = (() => {
       // ── MACHU PICCHU ──
       { type: 'checkpoint', x: AC + 3, y: ROOF },
       { type: 'tourist', x: AC + 9, y: ROOF, v: 1 },
-      { type: 'sign3', x: AC + 15, y: ROOF, lines: ['A MACHU PICCHU:', 'BUS S/ 80', 'A PIE: GRATIS'], color: 'wood' },
-      { type: 'sign3', x: AC + 17, y: ROOF, lines: ['CAMINO INCA', '¡SOLO 1700 ESCALONES!'], color: 'wood' },
+      { type: 'sign3', x: AC + 15, y: ROOF, lines: ['A MACHU PICCHU:', 'BUS S/ 80', 'CAMINO INCA: GRATIS', '¡SOLO 1700 ESCALONES!'], color: 'wood' },
       { type: 'npc', x: AC + 26, y: 68, model: 'guia', lines: ['¡RESPIREN, JÓVENES!', '¡LA FOTO ES ARRIBA!'] },
       { type: 'checkpoint', x: AC + 46, y: 60 },
       { type: 'tourist', x: AC + 48, y: 60, v: 0 },
