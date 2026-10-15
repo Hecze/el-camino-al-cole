@@ -16,14 +16,17 @@
 
   function fit() {
     const vv = window.visualViewport;
-    const sw = Math.round(vv ? vv.width : window.innerWidth), sh = Math.round(vv ? vv.height : window.innerHeight);
+    // se mide en píxeles reales de la pantalla (no de CSS): así la escala es entera también
+    // con Windows al 125/150 % o con zoom del navegador, y cada píxel del juego queda nítido
+    const dpr = window.devicePixelRatio || 1;
+    const sw = Math.round((vv ? vv.width : window.innerWidth) * dpr), sh = Math.round((vv ? vv.height : window.innerHeight) * dpr);
     // escala entera: ~216 px de alto, pero sin dejar la vista más angosta que 180 px
     const scale = Math.max(1, Math.min(Math.round(sh / 216), Math.floor(sw / 180)));
     BASE_W = Math.min(800, Math.ceil(sw / scale)); BASE_H = Math.min(900, Math.ceil(sh / scale));
     window.VIEW.w = BASE_W; window.VIEW.h = BASE_H;
     if (canvas.width !== BASE_W || canvas.height !== BASE_H) { canvas.width = BASE_W; canvas.height = BASE_H; ctx.imageSmoothingEnabled = false; }
-    canvas.style.width = BASE_W * scale + 'px';
-    canvas.style.height = BASE_H * scale + 'px';
+    canvas.style.width = BASE_W * scale / dpr + 'px';
+    canvas.style.height = BASE_H * scale / dpr + 'px';
   }
   window.addEventListener('resize', fit); window.addEventListener('orientationchange', () => setTimeout(fit, 200));
   if (window.visualViewport) window.visualViewport.addEventListener('resize', fit);
