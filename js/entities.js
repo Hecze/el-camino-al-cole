@@ -2250,8 +2250,8 @@ function makeEntity(def, level) {
     case 'cohete': return new Cohete(def);
     case 'iceplate': return new IcePlate(def, level);
     case 'laguna': return new Laguna(def);
-    case 'balsa': return new Balsa(def);
-    case 'remolino': return new Remolino(def, level);
+    case 'balsaRio': return new Balsa(def);   // la balsa del río del Cap. 1 ('balsa' es la de totora del Cap. 3)
+    case 'remolinoRio': return new Remolino(def, level);   // el del Cap. 1 ('remolino' es el del Cap. 4)
     case 'dosel': return new Dosel(def);
     case 'mono': return new Mono(def);
     case 'tirolesa': return new Tirolesa(def);

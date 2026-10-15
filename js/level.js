@@ -561,10 +561,10 @@ const LEVEL = {
     // ── EL RÍO ──
     { type: 'checkpoint', x: ce(266), y: 110, w: 4, help: 'FRENA HASTA QUE SE CIERRE EL REMOLINO' },
     // la balsa espera amarrada junto al muelle; al final se queda en la playita
-    { type: 'balsa', x: rio(0), y: 110, end: rio(116) },
-    { type: 'remolino', x: rio(30.5), phase: 0 },
-    { type: 'remolino', x: rio(69), phase: 120 },
-    { type: 'remolino', x: rio(98), phase: 60 },
+    { type: 'balsaRio', x: rio(0), y: 110, end: rio(116) },
+    { type: 'remolinoRio', x: rio(30.5), phase: 0 },
+    { type: 'remolinoRio', x: rio(69), phase: 120 },
+    { type: 'remolinoRio', x: rio(98), phase: 60 },
     // a mitad del río, ya montado: reapareces sobre la balsa
     { type: 'checkpoint', x: rio(49), y: 112, w: 4, h: 6, help: 'FRENA HASTA QUE SE CIERRE EL REMOLINO' },
     // ── la selva ──

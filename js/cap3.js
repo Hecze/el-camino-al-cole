@@ -1223,7 +1223,8 @@ const ART3 = (() => {
   // LA BALSA DE TOTORA de los Uros, con proa de cabeza de puma. La rema una
   // señora uro y va de parada en parada (stops): si la siguiente parada es
   // `behind`, la balsa rodea la isla por detrás (sin ti) y te espera al otro
-  // lado; si no, zarpa cuando te subes. Si te bajas a medio camino, vuelve.
+  // lado; si no, la remas tú (derecha avanza, izquierda retrocede) hasta la
+  // siguiente parada. Si te bajas a medio camino, vuelve sola a la parada.
   const BALSA_W = 64;
   let currentBalsa = null;
   class Balsa {
@@ -1245,12 +1246,22 @@ const ART3 = (() => {
           // llegó a la isla: cuando te bajas, la rodea por detrás
           if (!on && p.onGround && p.cx > this.x + this.w + 2) this.state = 'behind';
         } else if (nx) {
-          if (on) { if (++this.onT === 20) { this.state = 'sail'; this.offT = 0; g.audio('swish'); } } else this.onT = 0;
+          if (on) { this.state = 'sail'; this.offT = 0; this.v = 0; if (!this.told) { this.told = true; g.toast('¡TÚ REMAS LA BALSA!'); } }
         }
       } else {
         // a bordo cuenta también el salto encima de la balsa
         const aboard = on || (!p.onGround && Math.abs(p.cx - this.cx) < 48 && p.y < this.wl);
         if (this.state === 'sail' && !aboard && ++this.offT > 30) this.state = 'back';
+        if (this.state === 'sail') {
+          // la remas tú: derecha avanza, izquierda retrocede (sin pasar de la parada de salida)
+          if (aboard) this.offT = 0;
+          const want = aboard ? (Input.held('right') ? 1.7 : Input.held('left') ? -1.2 : 0) : 0;
+          this.v += (want - this.v) * 0.06;
+          this.x = Math.max(this.stops[this.i].x, Math.min(nx.x, this.x + this.v));
+          // las flechas reman: el niño no camina fuera de la balsa mientras rema
+          if (on) { p.x = Math.max(this.x + 10, Math.min(this.x + this.w - 18 - p.w, p.x)); if (p.onGround) p.vx = this.v; }
+          if (this.x >= nx.x) { this.v = 0; this.onT = 0; this.i++; this.state = 'wait'; }
+        } else {
         const to = this.state === 'back' ? this.stops[this.i].x : nx.x, left = Math.abs(to - this.x), dir = Math.sign(to - this.x);
         // rodeando la isla va rápido: tiene que llegar al otro lado antes que tú
         const vmax = this.state === 'behind' ? 7 : this.state === 'back' ? 2 : 1.55, acc = this.state === 'behind' ? 0.3 : 0.025;
@@ -1260,11 +1271,12 @@ const ART3 = (() => {
           if (this.state !== 'back') this.i++;
           this.state = 'wait';
         } else this.x += dir * this.v;
+        }
       }
       this.falling = this.state === 'behind';   // por detrás de la isla no se pisa
       this.y = this.wl - 12 + Math.round(Math.sin(this.t * 0.05) * 1.2) + (on ? 1 : 0);
       this.dx = this.x - px; this.dy = this.y - py;
-      if (this.state === 'sail' && this.t % 5 === 0) g.particles.push({ x: this.x + 3, y: this.wl, vx: -0.5, vy: -0.4, life: 22, max: 22, col: '#d8f0ff', size: 1, grav: 0.04 });
+      if (this.state === 'sail' && Math.abs(this.v) > 0.3 && this.t % 5 === 0) g.particles.push({ x: this.x + 3, y: this.wl, vx: -0.5, vy: -0.4, life: 22, max: 22, col: '#d8f0ff', size: 1, grav: 0.04 });
     }
     onRespawn(g) {
       // vuelve a esperarte en la primera parada de salida que está por delante
@@ -1303,7 +1315,7 @@ const ART3 = (() => {
       const p = g.player, on = p.lastMover === this, nx = this.next();
       // la remera va con la balsa (un npc de la guía no se mueve): su globo lo dibuja la balsa
       if (this.i === 0 && this.state === 'wait' && !on && Math.abs(p.cx - this.x) < 9 * TS) bubble(ctx, this.x + 12, this.y - 26, ['¡SUBE, HIJITO!', '¡TU PROMO YA ZARPÓ!'], this.x + 12);
-      else if (on && this.state === 'sail' && this.offT === 0 && this.x - this.stops[this.i].x < 80) bubble(ctx, this.x + 12, this.y - 26, ['¡AGÁRRATE!'], this.x + 12);
+      else if (on && this.state === 'sail' && this.x - this.stops[this.i].x < 40) bubble(ctx, this.x + 12, this.y - 26, ['¡REMA CON DERECHA!'], this.x + 12);
     }
     // rodeando la isla: se ve por detrás, tapada por la totora
     drawBack(ctx, g) { if (this.state === 'behind' && onScreen(this.x, this.w)) this.paint(ctx, g); }
