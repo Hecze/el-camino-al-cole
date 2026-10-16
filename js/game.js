@@ -214,6 +214,10 @@
     Game.runMs = performance.now() - Game.runStart - Game.pausedMs;
     Game.state = 'win'; Game.stateT = 0; Game.winSel = 0;
     RANKING.saveChapter(Math.min(Game.chapterIdx + 1, CHAPTERS.length - 1));   // CONTINUAR apunta al siguiente
+    // el puntaje entra solo al ranking con el nombre guardado (antes solo si elegías RANKING, y casi nadie lo hacía)
+    Game.rankSubmit = RANKING.enabled() && RANKING.name()
+      ? RANKING.submit(RANKING.name(), Game.runMs, Game.deaths).then(r => (Game.rankResult = r)).catch(() => null)
+      : null;
     AUDIO.stopMusic(); AUDIO.play('bell'); AUDIO.play('win');
     VOICE.play(Game.arrival < CLASS_START ? 'gana' : 'tarde', 900);
   };
@@ -251,7 +255,7 @@
     Game.pages = 0; Game.score = 0; Game.deaths = 0; Game.time = 0;
     if (ch.onStart) ch.onStart(Game);   // contadores propios del capítulo
     // cronómetro real para el ranking (las pausas no cuentan) y ticket de la partida
-    Game.runStart = performance.now(); Game.pausedMs = 0; Game.runMs = 0; Game.rankResult = null; Game.shareMsg = null;
+    Game.runStart = performance.now(); Game.pausedMs = 0; Game.runMs = 0; Game.rankResult = null; Game.rankSubmit = null; Game.shareMsg = null;
     if (typeof RANKING !== 'undefined') { RANKING.start(ch.num); RANKING.saveChapter(ci); }
     for (const def of lv.entities) { const e = makeEntity(def, lv); if (e) { Game.entities.push(e); if (e.isMover) Game.movers.push(e); } }
     for (const e of Game.entities.slice()) if (e instanceof Huaico) { Game.huaico = e; e.prefill(Game); }
@@ -561,7 +565,7 @@
     if (!submit) { loadTop(); return; }
     // ya enviado en esta partida: solo se vuelve a mirar
     if (Game.rankResult) { rk.result = Game.rankResult; loadTop(); return; }
-    RANKING.askAndSubmit(Game.runMs, Game.deaths)
+    (Game.rankSubmit || Promise.resolve(null)).then(r => r || RANKING.askAndSubmit(Game.runMs, Game.deaths))
       .then(res => { if (res) { rk.result = Game.rankResult = res; AUDIO.play('page'); } loadTop(); })
       .catch(() => { rk.error = 'SIN CONEXIÓN CON EL RANKING'; rk.phase = 'show'; });
   }
